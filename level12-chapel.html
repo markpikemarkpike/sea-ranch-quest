@@ -1395,25 +1395,36 @@ html, body {
 
     // Mobile scaling
     function scaleGame() {
-        const container = document.getElementById('game-container');
-        const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
-        if (!isMobile) {
+        var container = document.getElementById('game-container');
+        var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        var isSmall = window.innerWidth <= 768;
+        var isMobileUA = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (!isTouch && !isSmall && !isMobileUA) {
             container.style.transform = '';
+            container.style.webkitTransform = '';
             container.style.marginTop = '';
             return;
         }
-        const gameWidth = 640, gameHeight = 480, controlsHeight = 180, padding = 10;
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const availableHeight = vh - controlsHeight - padding;
-        const scaleX = (vw - padding * 2) / gameWidth;
-        const scaleY = availableHeight / gameHeight;
-        const scale = Math.min(scaleX, scaleY, 1);
-        container.style.transform = `scale(${scale})`;
-        container.style.marginTop = `${Math.max(padding, (availableHeight - gameHeight * scale) / 2)}px`;
+        var gameWidth = 640, gameHeight = 480, controlsHeight = 180, padding = 10;
+        var vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+        var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        var availableHeight = vh - controlsHeight - padding;
+        var scaleX = (vw - padding * 2) / gameWidth;
+        var scaleY = availableHeight / gameHeight;
+        var scale = Math.min(scaleX, scaleY, 1);
+        var t = 'scale(' + scale + ')';
+        container.style.transform = t;
+        container.style.webkitTransform = t;
+        container.style.transformOrigin = 'top center';
+        container.style.webkitTransformOrigin = 'top center';
+        container.style.marginTop = Math.max(padding, (availableHeight - gameHeight * scale) / 2) + 'px';
     }
     window.addEventListener('resize', scaleGame);
-    window.addEventListener('orientationchange', () => setTimeout(scaleGame, 100));
+    window.addEventListener('orientationchange', function() { setTimeout(scaleGame, 150); });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', scaleGame);
     scaleGame();
+    setTimeout(scaleGame, 100);
+    setTimeout(scaleGame, 500);
     </script>
 </body>
 </html>

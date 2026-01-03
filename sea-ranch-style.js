@@ -1439,14 +1439,20 @@ const SeaRanchStyle = {
         document.body.appendChild(rotatePrompt);
 
         // JavaScript-based scaling for proper fit
-        const scaleGame = () => {
+        const self = this;
+        const scaleGame = function() {
             const container = document.querySelector('#game-container, .game-container, #gameContainer');
             if (!container) return;
 
-            // Only scale on mobile/touch devices
-            const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
+            // Detect mobile: touch device OR small screen OR iOS/Android
+            const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+            const isSmallScreen = window.innerWidth <= 768;
+            const isMobileUA = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const isMobile = isTouch || isSmallScreen || isMobileUA;
+
             if (!isMobile) {
                 container.style.transform = '';
+                container.style.webkitTransform = '';
                 container.style.marginTop = '';
                 return;
             }
@@ -1456,8 +1462,9 @@ const SeaRanchStyle = {
             const controlsHeight = 180; // Space for touch controls
             const padding = 10;
 
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
+            // Use visualViewport if available (better for Safari)
+            const viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
             const availableHeight = viewportHeight - controlsHeight - padding;
 
             // Calculate scale to fit both width and height
@@ -1465,25 +1472,33 @@ const SeaRanchStyle = {
             const scaleY = availableHeight / gameHeight;
             const scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
 
-            // Apply transform
-            container.style.transform = `scale(${scale})`;
+            // Apply transform with webkit prefix for Safari
+            const transformValue = 'scale(' + scale + ')';
+            container.style.transform = transformValue;
+            container.style.webkitTransform = transformValue;
             container.style.transformOrigin = 'top center';
+            container.style.webkitTransformOrigin = 'top center';
 
             // Center vertically in available space
             const scaledHeight = gameHeight * scale;
             const topMargin = Math.max(padding, (availableHeight - scaledHeight) / 2);
-            container.style.marginTop = `${topMargin}px`;
+            container.style.marginTop = topMargin + 'px';
 
             // Update orientation class
             const isLandscape = viewportWidth > viewportHeight;
             document.body.classList.toggle('is-landscape', isLandscape);
             document.body.classList.toggle('is-portrait', !isLandscape);
-            this._responsive.orientation = isLandscape ? 'landscape' : 'portrait';
+            self._responsive.orientation = isLandscape ? 'landscape' : 'portrait';
         };
 
         // Run on load and resize
         window.addEventListener('resize', scaleGame);
-        window.addEventListener('orientationchange', () => setTimeout(scaleGame, 100));
+        window.addEventListener('orientationchange', function() { setTimeout(scaleGame, 150); });
+
+        // Safari's visualViewport API for better resize handling
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', scaleGame);
+        }
 
         // Run after DOM is ready
         if (document.readyState === 'loading') {
@@ -1491,8 +1506,9 @@ const SeaRanchStyle = {
         } else {
             scaleGame();
         }
-        // Also run after a short delay to catch late-loading elements
+        // Run after delays to catch Safari's viewport changes
         setTimeout(scaleGame, 100);
+        setTimeout(scaleGame, 500);
 
         this._responsive.initialized = true;
     },
