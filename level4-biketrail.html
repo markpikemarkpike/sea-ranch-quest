@@ -610,6 +610,7 @@ function update(dt) {
             currentStop++;
             if (currentStop >= STOPS.length) {
                 gameState = 'complete';
+                SeaRanchStyle.saveCompletion(4);
             } else {
                 gameState = 'biking';
                 bikeProgress = 0;
@@ -1738,20 +1739,17 @@ function gameLoop(currentTime) {
 // ============ CLICK/TOUCH SUPPORT ============
 // Use document-level handler to ensure clicks are captured
 document.addEventListener('click', (e) => {
-    console.log('Document clicked, gameState:', gameState);
     if (gameState === 'title') {
         justPressed['Space'] = true;
     } else if (gameState === 'photo') {
         if (!binocularsRaised) {
             binocularsRaised = true;
-            console.log('Binoculars raised!');
         } else if (!photoTaken) {
             // Take photo if binoculars are raised (even if still animating)
             if (binocularProgress < 0.3) {
                 binocularProgress = 0.3; // Force minimum progress
             }
             takePhoto();
-            console.log('Photo taken!');
         }
     } else if (gameState === 'departure' || gameState === 'biking') {
         // Do nothing, wait for animation

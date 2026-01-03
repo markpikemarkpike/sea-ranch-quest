@@ -695,6 +695,7 @@ function calculateCoverage() {
 function endGame() {
     if (gameState !== 'playing') return;
     gameState = 'complete';
+    SeaRanchStyle.saveCompletion(5);
     currentPiece = null;
     
     const coverage = calculateCoverage();
