@@ -1699,6 +1699,7 @@ const SeaRanchStyle = {
             }
 
             .touch-action-btn {
+                position: relative;
                 width: 56px;
                 height: 56px;
                 border-radius: 50%;
