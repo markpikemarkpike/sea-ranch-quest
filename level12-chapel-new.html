@@ -296,9 +296,12 @@ html, body {
     let currentGlow = 0;
     let unlockedSections = 0;
 
-    // Breath timing (in frames at 60fps)
-    const INHALE_DURATION = 300; // 5 seconds
-    const EXHALE_DURATION = 300; // 5 seconds
+    // Breath timing (in seconds)
+    const INHALE_DURATION = 5; // 5 seconds
+    const EXHALE_DURATION = 5; // 5 seconds
+
+    // Delta time tracking
+    let lastTime = 0;
 
     // Shake effect
     let shakeAmount = 0;
@@ -372,7 +375,7 @@ html, body {
         }
     }
 
-    function update() {
+    function update(deltaTime) {
         time++;
         updateInput();
         applyShake();
@@ -390,13 +393,13 @@ html, body {
             return;
         }
 
-        stateTimer++;
+        stateTimer += deltaTime;
 
         // Walking to chapel
         if (gameState === STATES.WALKING_TO_CHAPEL) {
-            playerWalkFrame += 0.12;
+            playerWalkFrame += deltaTime * 7.2;
 
-            const walkProgress = Math.min(1, stateTimer / 180);
+            const walkProgress = Math.min(1, stateTimer / 3); // 3 seconds
 
             // Walking path from (540, 450) to (510, 320)
             playerX = 540 - walkProgress * 30;
@@ -412,7 +415,7 @@ html, body {
 
         // Entering chapel
         if (gameState === STATES.ENTERING_CHAPEL) {
-            if (stateTimer > 90 || justPressed.a) {
+            if (stateTimer > 1.5 || justPressed.a) { // 1.5 seconds
                 gameState = STATES.SITTING_DOWN;
                 stateTimer = 0;
             }
@@ -421,7 +424,7 @@ html, body {
 
         // Sitting down
         if (gameState === STATES.SITTING_DOWN) {
-            if (stateTimer > 120 || justPressed.a) {
+            if (stateTimer > 2 || justPressed.a) { // 2 seconds
                 gameState = STATES.MEDITATION;
                 stateTimer = 0;
             }
@@ -439,7 +442,7 @@ html, body {
                     breathProgress = 0;
                 }
 
-                breathProgress = Math.min(1, breathProgress + 1 / INHALE_DURATION);
+                breathProgress = Math.min(1, breathProgress + deltaTime / INHALE_DURATION);
                 currentGlow = Math.min(1, breathProgress * 1.2);
 
             } else if (!aHeld && breathPhase === "inhale" && breathProgress > 0.7) {
@@ -456,8 +459,8 @@ html, body {
 
             } else if (breathPhase === "exhale") {
                 // Exhaling happens automatically
-                breathProgress = Math.min(1, breathProgress + 1 / EXHALE_DURATION);
-                currentGlow *= 0.98;
+                breathProgress = Math.min(1, breathProgress + deltaTime / EXHALE_DURATION);
+                currentGlow *= Math.pow(0.98, deltaTime * 60); // Decay adjusted for delta time
 
                 if (breathProgress >= 1) {
                     breathPhase = "waiting";
@@ -474,7 +477,7 @@ html, body {
 
             // Check for completion
             if (breathCycleCount >= totalBreathCycles) {
-                if (stateTimer > 60) {
+                if (stateTimer > 1) { // 1 second
                     gameState = STATES.LEVEL_COMPLETE;
                     stateTimer = 0;
                     // Save completion
@@ -1303,12 +1306,12 @@ html, body {
         if (gameState === STATES.WALKING_TO_CHAPEL) {
             drawChapelExterior();
         } else if (gameState === STATES.ENTERING_CHAPEL) {
-            const fade = Math.min(1, stateTimer / 60);
+            const fade = Math.min(1, stateTimer / 1); // 1 second fade
             drawChapelExterior();
             ctx.fillStyle = `rgba(0,0,0,${fade})`;
             ctx.fillRect(0, 0, W, H);
         } else if (gameState === STATES.SITTING_DOWN) {
-            const sitProgress = Math.min(1, stateTimer / 90);
+            const sitProgress = Math.min(1, stateTimer / 1.5); // 1.5 second sit animation
             drawSittingScene(sitProgress);
         } else if (gameState === STATES.MEDITATION) {
             drawMeditationScene();
@@ -1321,8 +1324,13 @@ html, body {
         drawGrain(0.04);
     }
 
-    function gameLoop() {
-        update();
+    function gameLoop(currentTime) {
+        // Calculate delta time in seconds
+        if (!lastTime) lastTime = currentTime;
+        const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.1); // Cap at 100ms to avoid huge jumps
+        lastTime = currentTime;
+
+        update(deltaTime);
         draw();
         requestAnimationFrame(gameLoop);
     }
