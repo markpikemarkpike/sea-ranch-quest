@@ -1,22 +1,20 @@
 # Sea Ranch Quest
 
-A 12-level mini-game collection celebrating The Sea Ranch, a planned community on the Northern California coast.
+12 mini-games set at The Sea Ranch, California.
 
-Play it at: [pacificpike.com/searanchquest](https://pacificpike.com/searanchquest)
+**Play**: [pacificpike.com/searanchquest](https://pacificpike.com/searanchquest)
 
 ## About
 
-Follow a day at Sea Ranch from dawn to dawn through 12 relaxing mini-games featuring kelp forests, sheep herding, bike trails, and the iconic Sea Ranch Chapel.
+A day at Sea Ranch. Kelp forests, sheep meadows, bike trails, driftwood forts, the chapel, and more.
 
-Visual style inspired by Barbara Stauffacher Solomon's Supergraphic murals.
+Visual design inspired by Sea Ranch supergraphics and Barbara Stauffacher Solomon.
 
 ## Controls
 
-**Desktop**: Arrow keys, Enter/Space, A/B keys
-
-**Mobile**: Touch controls appear automatically
+- **Desktop**: Arrow keys, Enter, A/B
+- **Mobile**: Touch
 
 ## Credits
 
-- Concept & Development: Mark & Family
-- Supergraphic Inspiration: Barbara Stauffacher Solomon
+Made by Mark & Family
