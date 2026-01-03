@@ -1380,111 +1380,51 @@ const SeaRanchStyle = {
                 position: fixed;
                 width: 100%;
                 height: 100%;
+                margin: 0;
+                padding: 0;
             }
 
-            /* Mobile: Scale game container to fit viewport */
+            /* Mobile responsive container */
             @media (max-width: 768px), (pointer: coarse) {
                 body {
                     display: flex !important;
                     flex-direction: column !important;
                     justify-content: flex-start !important;
                     align-items: center !important;
-                    padding-top: env(safe-area-inset-top, 10px) !important;
+                    background: #1a1a1a !important;
                 }
 
-                #game-container, .game-container {
-                    width: calc(100vw - 20px) !important;
-                    max-width: 640px !important;
-                    height: auto !important;
-                    aspect-ratio: 4 / 3 !important;
+                #game-container, .game-container, #gameContainer {
                     transform-origin: top center !important;
-                }
-
-                #game-container canvas, .game-container canvas {
-                    width: 100% !important;
-                    height: 100% !important;
-                }
-
-                /* Title card needs to scale too */
-                .title-card {
-                    font-size: clamp(12px, 2.5vw, 16px) !important;
-                }
-
-                .title-card .title {
-                    font-size: clamp(24px, 6vw, 42px) !important;
-                }
-
-                .title-card .title span {
-                    font-size: clamp(12px, 3vw, 18px) !important;
-                }
-
-                .title-card .level-name {
-                    font-size: clamp(16px, 4vw, 28px) !important;
-                }
-
-                .title-card .controls-hint {
-                    font-size: clamp(10px, 2vw, 12px) !important;
+                    flex-shrink: 0 !important;
                 }
             }
 
-            /* Landscape mobile: game takes more vertical space */
-            @media (max-width: 900px) and (orientation: landscape) and (pointer: coarse) {
-                body {
-                    padding-top: 5px !important;
-                }
-
-                #game-container, .game-container {
-                    height: calc(100vh - 160px) !important;
-                    width: auto !important;
-                    max-height: calc(100vh - 160px) !important;
-                    aspect-ratio: 4 / 3 !important;
-                }
-            }
-
-            /* Portrait mobile: show rotate hint for better experience */
-            @media (max-width: 500px) and (orientation: portrait) and (pointer: coarse) {
-                #game-container, .game-container {
-                    max-height: 45vh !important;
-                    width: auto !important;
-                    aspect-ratio: 4 / 3 !important;
-                }
-            }
-
-            /* Orientation prompt */
+            /* Rotate prompt for portrait */
             .rotate-prompt {
                 display: none;
                 position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                background: linear-gradient(to bottom, rgba(26,26,26,0.95), rgba(26,26,26,0.8));
+                bottom: 200px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(26,26,26,0.9);
                 color: #f5f5f0;
                 padding: 8px 16px;
+                border-radius: 20px;
                 text-align: center;
                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                font-size: 12px;
+                font-size: 11px;
                 z-index: 10000;
-                backdrop-filter: blur(4px);
+                white-space: nowrap;
             }
 
-            .rotate-prompt .icon {
-                display: inline-block;
-                margin-right: 8px;
-                animation: rotate-hint 2s ease-in-out infinite;
-            }
-
-            @keyframes rotate-hint {
-                0%, 100% { transform: rotate(0deg); }
-                50% { transform: rotate(90deg); }
-            }
-
-            @media (max-width: 500px) and (orientation: portrait) and (pointer: coarse) {
+            @media (orientation: portrait) and (pointer: coarse) {
                 .rotate-prompt {
                     display: block;
                 }
             }
 
-            @media (orientation: landscape), (pointer: fine) {
+            @media (orientation: landscape) {
                 .rotate-prompt {
                     display: none !important;
                 }
@@ -1492,30 +1432,67 @@ const SeaRanchStyle = {
         `;
         document.head.appendChild(style);
 
-        // Add rotate prompt using safe DOM methods
+        // Add rotate prompt
         const rotatePrompt = document.createElement('div');
         rotatePrompt.className = 'rotate-prompt';
-        const icon = document.createElement('span');
-        icon.className = 'icon';
-        icon.textContent = '📱';
-        const text = document.createTextNode(' Rotate for best experience');
-        rotatePrompt.appendChild(icon);
-        rotatePrompt.appendChild(text);
+        rotatePrompt.textContent = '📱 Rotate for best experience';
         document.body.appendChild(rotatePrompt);
 
-        // Handle orientation changes
-        const handleOrientation = () => {
-            const isLandscape = window.innerWidth > window.innerHeight;
-            this._responsive.orientation = isLandscape ? 'landscape' : 'portrait';
+        // JavaScript-based scaling for proper fit
+        const scaleGame = () => {
+            const container = document.querySelector('#game-container, .game-container, #gameContainer');
+            if (!container) return;
+
+            // Only scale on mobile/touch devices
+            const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
+            if (!isMobile) {
+                container.style.transform = '';
+                container.style.marginTop = '';
+                return;
+            }
+
+            const gameWidth = 640;
+            const gameHeight = 480;
+            const controlsHeight = 180; // Space for touch controls
+            const padding = 10;
+
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const availableHeight = viewportHeight - controlsHeight - padding;
+
+            // Calculate scale to fit both width and height
+            const scaleX = (viewportWidth - padding * 2) / gameWidth;
+            const scaleY = availableHeight / gameHeight;
+            const scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
+
+            // Apply transform
+            container.style.transform = `scale(${scale})`;
+            container.style.transformOrigin = 'top center';
+
+            // Center vertically in available space
+            const scaledHeight = gameHeight * scale;
+            const topMargin = Math.max(padding, (availableHeight - scaledHeight) / 2);
+            container.style.marginTop = `${topMargin}px`;
+
+            // Update orientation class
+            const isLandscape = viewportWidth > viewportHeight;
             document.body.classList.toggle('is-landscape', isLandscape);
             document.body.classList.toggle('is-portrait', !isLandscape);
+            this._responsive.orientation = isLandscape ? 'landscape' : 'portrait';
         };
 
-        window.addEventListener('resize', handleOrientation);
-        window.addEventListener('orientationchange', () => {
-            setTimeout(handleOrientation, 100);
-        });
-        handleOrientation();
+        // Run on load and resize
+        window.addEventListener('resize', scaleGame);
+        window.addEventListener('orientationchange', () => setTimeout(scaleGame, 100));
+
+        // Run after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', scaleGame);
+        } else {
+            scaleGame();
+        }
+        // Also run after a short delay to catch late-loading elements
+        setTimeout(scaleGame, 100);
 
         this._responsive.initialized = true;
     },

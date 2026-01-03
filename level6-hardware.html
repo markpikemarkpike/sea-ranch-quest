@@ -47,37 +47,15 @@
             body {
                 flex-direction: column;
                 justify-content: flex-start;
-                padding-top: env(safe-area-inset-top, 10px);
+                align-items: center;
             }
             #gameContainer {
-                width: calc(100vw - 20px);
-                max-width: 640px;
-                height: auto;
-                aspect-ratio: 4 / 3;
-            }
-            #gameCanvas {
-                width: 100%;
-                height: 100%;
+                transform-origin: top center;
             }
             #touchControls {
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-end;
-            }
-        }
-
-        @media (max-width: 900px) and (orientation: landscape) and (pointer: coarse) {
-            #gameContainer {
-                height: calc(100vh - 160px);
-                width: auto;
-                max-height: calc(100vh - 160px);
-            }
-        }
-
-        @media (max-width: 500px) and (orientation: portrait) and (pointer: coarse) {
-            #gameContainer {
-                max-height: 45vh;
-                width: auto;
             }
         }
         .dpad-container {
@@ -1689,6 +1667,28 @@ storeImage.src = STORE_IMAGE;
 
 // Start game loop
 gameLoop();
+
+// Mobile scaling
+function scaleGame() {
+    const container = document.getElementById('gameContainer');
+    const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
+    if (!isMobile) {
+        container.style.transform = '';
+        container.style.marginTop = '';
+        return;
+    }
+    const gameWidth = 640, gameHeight = 480, controlsHeight = 180, padding = 10;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const availableHeight = vh - controlsHeight - padding;
+    const scaleX = (vw - padding * 2) / gameWidth;
+    const scaleY = availableHeight / gameHeight;
+    const scale = Math.min(scaleX, scaleY, 1);
+    container.style.transform = `scale(${scale})`;
+    container.style.marginTop = `${Math.max(padding, (availableHeight - gameHeight * scale) / 2)}px`;
+}
+window.addEventListener('resize', scaleGame);
+window.addEventListener('orientationchange', () => setTimeout(scaleGame, 100));
+scaleGame();
 </script>
 </body>
 </html>
