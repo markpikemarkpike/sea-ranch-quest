@@ -1,0 +1,2352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Covey</title>
+    <script src="sea-ranch-style.js"></script>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100vw; height: 100vh; overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #1a1a1a;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #game-container { width: 640px; height: 480px; position: relative; overflow: hidden; }
+        canvas { display: block; }
+        .title-card {
+            position: absolute; inset: 0; z-index: 200;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .title-card .wood-bg {
+            position: absolute; inset: 0;
+            background: repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(139,115,85,0.08) 3px, rgba(139,115,85,0.08) 4px),
+                radial-gradient(ellipse at 20% 30%, rgba(139,115,85,0.15) 0%, transparent 50%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+        .title-card .supergraphic {
+            position: absolute; top: -80px; right: -120px; width: 550px; height: 550px; pointer-events: none;
+        }
+        .title-card .supergraphic::before, .title-card .supergraphic::after {
+            content: ''; position: absolute; border-radius: 50%; border: 36px solid var(--blue);
+        }
+        .title-card .supergraphic::before {
+            width: 420px; height: 420px; top: 0; right: 0;
+            border-color: transparent transparent var(--blue) var(--blue); transform: rotate(-45deg);
+        }
+        .title-card .supergraphic::after {
+            width: 320px; height: 320px; top: 50px; right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue); transform: rotate(-45deg); opacity: 0.7;
+        }
+        .title-card .arrow-accent { position: absolute; bottom: 30px; left: 30px; width: 80px; height: 100px; }
+        .title-card .arrow-accent::before {
+            content: ''; position: absolute; width: 0; height: 0;
+            border-left: 40px solid transparent; border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red); top: 0;
+        }
+        .title-card .arrow-accent::after {
+            content: ''; position: absolute; width: 26px; height: 50px;
+            background: var(--red); top: 45px; left: 27px;
+        }
+        .title-card .title-content { position: relative; z-index: 10; text-align: center; }
+        .title-card .level-title { font-size: 52px; font-weight: 700; color: var(--black); letter-spacing: -2px; }
+        .title-card .level-subtitle { font-size: 16px; letter-spacing: 3px; text-transform: uppercase; color: var(--wood); margin-top: 8px; }
+        .title-card .continue-hint { position: absolute; bottom: 36px; right: 36px; font-size: 12px; color: var(--wood); text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="title-card" id="title-card">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="arrow-accent"></div>
+            <div class="title-content">
+                <div class="level-title">Covey</div>
+                <div class="level-subtitle">A Year in the Life</div>
+            </div>
+            <div class="continue-hint">A to start · B to menu</div>
+        </div>
+        <canvas id="game" width="640" height="480"></canvas>
+    </div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = 640, H = 480;
+
+// ============ SEASONS & PALETTES ============
+const SEASONS = ['Spring', 'Summer', 'Fall', 'Winter'];
+const SEASON_DURATION = 1500; // ~25 seconds at 60fps
+
+const PALETTES = {
+    Spring: { sky: [135, 180, 210], grass: [120, 150, 90], ground: [100, 120, 80], accent: '#e8a0c0' },
+    Summer: { sky: [135, 190, 220], grass: [180, 160, 90], ground: [150, 130, 80], accent: '#f0d060' },
+    Fall:   { sky: [140, 140, 155], grass: [170, 130, 70], ground: [130, 100, 65], accent: '#d07030' },
+    Winter: { sky: [170, 175, 185], grass: [140, 145, 130], ground: [110, 105, 95], accent: '#a8b8c8' }
+};
+
+// ============ GAME STATE ============
+let gameState = 'title';
+let time = 0;
+let currentSeason = 0;
+let seasonTimer = 0;
+let seasonAnnounceTimer = 0;
+
+// Hunger - latent risk, need to forage occasionally
+let hunger = 0;
+const HUNGER_MAX = 100;
+
+// Mama quail - faster and more nimble
+const mama = {
+    x: 100, y: H * 0.7,
+    vx: 0, vy: 0,
+    speed: 0.8, maxSpeed: 5.5, friction: 0.88,
+    facing: 1, bobPhase: 0
+};
+
+// Baby quail
+const CHICK_COUNT = 8;
+const chicks = [];
+let chicksAlive = CHICK_COUNT;
+
+// Environment
+const bushes = [];
+const food = [];
+const predators = [];
+const vehicles = [];
+const particles = [];
+const leaves = []; // Fall leaves
+
+// Timers
+let foodSpawnTimer = 0;
+let predatorSpawnTimer = 0;
+let vehicleSpawnTimer = 0;
+
+// Road
+const ROAD_Y = H * 0.45;
+const ROAD_H = 45;
+
+// Input
+const keys = {};
+
+// Audio
+let audioCtx = null;
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playSound(type) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    switch(type) {
+        case 'chirp':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1100 + Math.random() * 300, now);
+            osc.frequency.exponentialRampToValueAtTime(700, now + 0.06);
+            gain.gain.setValueAtTime(0.04, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            osc.start(now); osc.stop(now + 0.08);
+            break;
+        case 'eat':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.setValueAtTime(800, now + 0.03);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+            osc.start(now); osc.stop(now + 0.06);
+            break;
+        case 'alarm':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1400, now);
+            osc.frequency.setValueAtTime(900, now + 0.04);
+            osc.frequency.setValueAtTime(1400, now + 0.08);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            osc.start(now); osc.stop(now + 0.12);
+            break;
+        case 'lost':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(200, now + 0.4);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc.start(now); osc.stop(now + 0.5);
+            break;
+        case 'hawk':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(450, now);
+            osc.frequency.exponentialRampToValueAtTime(200, now + 0.5);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+            osc.start(now); osc.stop(now + 0.6);
+            break;
+        case 'car':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(100, now);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.03, now + 0.1);
+            gain.gain.linearRampToValueAtTime(0, now + 0.5);
+            osc.start(now); osc.stop(now + 0.5);
+            break;
+        case 'win':
+            osc.type = 'sine';
+            [523, 659, 784, 1047].forEach((f, i) => osc.frequency.setValueAtTime(f, now + i * 0.12));
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+            osc.start(now); osc.stop(now + 0.6);
+            break;
+    }
+}
+
+// ============ UTILITIES ============
+function lerp(a, b, t) { return a + (b - a) * t; }
+function lerpColor(c1, c2, t) {
+    return `rgb(${Math.round(lerp(c1[0], c2[0], t))},${Math.round(lerp(c1[1], c2[1], t))},${Math.round(lerp(c1[2], c2[2], t))})`;
+}
+
+function getCurrentPalette() {
+    const curr = PALETTES[SEASONS[currentSeason]];
+    const next = PALETTES[SEASONS[(currentSeason + 1) % 4]];
+    const t = seasonTimer > SEASON_DURATION * 0.8 ? (seasonTimer - SEASON_DURATION * 0.8) / (SEASON_DURATION * 0.2) : 0;
+    return {
+        sky: lerpColor(curr.sky, next.sky, t),
+        grass: lerpColor(curr.grass, next.grass, t),
+        ground: lerpColor(curr.ground, next.ground, t),
+        accent: curr.accent
+    };
+}
+
+function isInBush(x, y) {
+    for (const b of bushes) {
+        const dx = x - b.x, dy = y - b.y;
+        if (dx * dx / (b.w * b.w / 4) + dy * dy / (b.h * b.h / 4) < 1) return true;
+    }
+    return false;
+}
+
+function isAtHouse(x, y) {
+    // House area (upper right, above road)
+    const houseX = W - 95;
+    const houseY = ROAD_Y * 0.72;
+    const houseW = 80;
+    const houseH = 50;
+    return x > houseX - houseW/2 && x < houseX + houseW/2 &&
+           y > houseY - houseH && y < houseY + 10;
+}
+
+function isHiding(x, y) {
+    return isInBush(x, y) || isAtHouse(x, y);
+}
+
+function isOnRoad(y) {
+    return y > ROAD_Y && y < ROAD_Y + ROAD_H;
+}
+
+function spawnParticles(x, y, color, count = 6) {
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 2;
+        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 1,
+            life: 25 + Math.random() * 15, color, size: 2 + Math.random() * 2 });
+    }
+}
+
+// ============ INITIALIZATION ============
+function initBushes() {
+    bushes.length = 0;
+    bushes.push({ x: 70, y: H * 0.6, w: 55, h: 35 });
+    bushes.push({ x: 180, y: H * 0.82, w: 60, h: 38 });
+    bushes.push({ x: 320, y: H * 0.65, w: 50, h: 32 });
+    bushes.push({ x: 450, y: H * 0.85, w: 55, h: 35 });
+    bushes.push({ x: 550, y: H * 0.68, w: 48, h: 30 });
+}
+
+function initChicks() {
+    chicks.length = 0;
+    for (let i = 0; i < CHICK_COUNT; i++) {
+        chicks.push({
+            x: mama.x - 15 - Math.random() * 20,
+            y: mama.y + (Math.random() - 0.5) * 20,
+            vx: 0, vy: 0,
+            bobPhase: Math.random() * Math.PI * 2,
+            alive: true,
+            personality: 0.5 + Math.random() * 0.5, // How closely they follow (0.5-1)
+            size: 5 + Math.random() * 2, // Size variation
+            wanderAngle: Math.random() * Math.PI * 2,
+            scared: 0
+        });
+    }
+    chicksAlive = CHICK_COUNT;
+}
+
+function spawnFood() {
+    const season = SEASONS[currentSeason];
+    // Fewer food patches - scarcity creates tension
+    let count = season === 'Spring' ? 2 : season === 'Summer' ? 2 : season === 'Fall' ? 1 : 1;
+
+    // House bounds - don't spawn food here
+    const houseX = W - 95;
+    const houseLeft = houseX - 50;
+    const houseRight = houseX + 50;
+    const houseTop = ROAD_Y * 0.72 - 60;
+    const houseBottom = ROAD_Y * 0.72 + 20;
+
+    for (let i = 0; i < count; i++) {
+        let x, y;
+        let attempts = 0;
+
+        // Food spawns on both sides of road, but NOT on house
+        do {
+            const aboveRoadChance = season === 'Summer' ? 0.5 : 0.3;
+
+            if (Math.random() < aboveRoadChance) {
+                // Above road (risky - must cross) - but avoid house area
+                x = 60 + Math.random() * (W - 180);
+                y = 65 + Math.random() * (ROAD_Y - 85);
+            } else {
+                // Below road (meadow area)
+                x = 60 + Math.random() * (W - 120);
+                y = ROAD_Y + ROAD_H + 40 + Math.random() * (H - ROAD_Y - ROAD_H - 70);
+            }
+            attempts++;
+        } while (attempts < 10 && x > houseLeft && x < houseRight && y > houseTop && y < houseBottom);
+
+        food.push({
+            x, y,
+            size: 10 + Math.random() * 4,
+            amount: 1,
+            leaves: Array(4).fill(0).map(() => ({
+                angle: Math.random() * Math.PI * 2,
+                size: 0.7 + Math.random() * 0.4
+            }))
+        });
+    }
+}
+
+function startGame() {
+    gameState = 'playing';
+    time = 0;
+    currentSeason = 0;
+    seasonTimer = 0;
+    seasonAnnounceTimer = 120;
+    hunger = 0;
+
+    mama.x = 100;
+    mama.y = H * 0.7;
+    mama.vx = 0;
+    mama.vy = 0;
+
+    predators.length = 0;
+    vehicles.length = 0;
+    food.length = 0;
+    particles.length = 0;
+    leaves.length = 0;
+
+    foodSpawnTimer = 60;
+    predatorSpawnTimer = 200;
+    vehicleSpawnTimer = 100;
+
+    initBushes();
+    initChicks();
+    initAudio();
+
+    // Initial food patches
+    spawnFood();
+    spawnFood();
+}
+
+// ============ INPUT ============
+document.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    const action = e.key === ' ' || e.key === 'Enter' || e.key === 'a' || e.key === 'A';
+    const back = e.key === 'Escape' || e.key === 'b' || e.key === 'B';
+
+    if (back) { window.location.href = 'level0-menu.html'; return; }
+    if (gameState === 'title' && action) {
+        document.getElementById('title-card').style.display = 'none';
+        startGame();
+    } else if ((gameState === 'win' || gameState === 'lose') && action) {
+        if (gameState === 'win') window.location.href = 'level0-menu.html';
+        else startGame();
+    }
+});
+document.addEventListener('keyup', e => keys[e.key] = false);
+document.getElementById('title-card').addEventListener('click', () => {
+    if (gameState === 'title') {
+        document.getElementById('title-card').style.display = 'none';
+        startGame();
+    }
+});
+
+// ============ UPDATE FUNCTIONS ============
+function updateSeason() {
+    seasonTimer++;
+
+    // Season progresses naturally over time
+    if (seasonTimer >= SEASON_DURATION) {
+        seasonTimer = 0;
+        currentSeason++;
+
+        if (currentSeason >= 4) {
+            // Survived the year!
+            gameState = 'win';
+            playSound('win');
+            SeaRanchStyle.saveCompletion(9);
+            return;
+        }
+
+        seasonAnnounceTimer = 120;
+        spawnFood(); // New season, spawn some food
+    }
+
+    if (seasonAnnounceTimer > 0) seasonAnnounceTimer--;
+
+    // Fall leaves
+    if (SEASONS[currentSeason] === 'Fall' && Math.random() < 0.02) {
+        leaves.push({
+            x: Math.random() * W,
+            y: -10,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: 0.5 + Math.random() * 0.5,
+            rot: Math.random() * Math.PI * 2,
+            rotSpeed: (Math.random() - 0.5) * 0.1,
+            size: 4 + Math.random() * 4,
+            color: ['#c06020', '#a04010', '#d07030', '#b05020'][Math.floor(Math.random() * 4)]
+        });
+    }
+}
+
+function updateMama() {
+    let ax = 0, ay = 0;
+    if (keys['ArrowLeft'] || keys['a']) ax -= 1;
+    if (keys['ArrowRight'] || keys['d']) ax += 1;
+    if (keys['ArrowUp'] || keys['w']) ay -= 1;
+    if (keys['ArrowDown'] || keys['s']) ay += 1;
+
+    if (ax && ay) { ax *= 0.707; ay *= 0.707; }
+
+    mama.vx += ax * mama.speed;
+    mama.vy += ay * mama.speed;
+    mama.vx *= mama.friction;
+    mama.vy *= mama.friction;
+
+    const spd = Math.sqrt(mama.vx * mama.vx + mama.vy * mama.vy);
+    if (spd > mama.maxSpeed) {
+        mama.vx = (mama.vx / spd) * mama.maxSpeed;
+        mama.vy = (mama.vy / spd) * mama.maxSpeed;
+    }
+
+    mama.x += mama.vx;
+    mama.y += mama.vy;
+
+    // Bounds - can go above road but not into the sky/hills area
+    mama.x = Math.max(25, Math.min(W - 25, mama.x));
+    mama.y = Math.max(ROAD_Y - 60, Math.min(H - 25, mama.y)); // Above road area only, not into sky
+
+    if (Math.abs(mama.vx) > 0.3) mama.facing = mama.vx > 0 ? 1 : -1;
+    if (spd > 0.5) mama.bobPhase += 0.25;
+    if (spd > 1 && Math.random() < 0.008) playSound('chirp');
+}
+
+function updateChicks() {
+    const active = chicks.filter(c => c.alive);
+
+    // Detect if mama is moving at all
+    const mamaSpeed = Math.sqrt(mama.vx * mama.vx + mama.vy * mama.vy);
+    const mamaMoving = mamaSpeed > 0.3; // Lower threshold - any movement counts
+
+    for (const chick of active) {
+        // Wander angle for natural movement
+        chick.wanderAngle += (Math.random() - 0.5) * 0.15;
+
+        if (mamaMoving) {
+            // TIGHT CLUSTER MODE: Chicks stay very close to mama when moving
+            // They cluster densely behind/around her
+            const offset = chick.personality * 8; // Tighter spread (was 15)
+            const targetX = mama.x - mama.facing * (8 + offset);
+            const targetY = mama.y + Math.sin(chick.wanderAngle) * 4; // Less vertical spread
+
+            const dx = targetX - chick.x;
+            const dy = targetY - chick.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Strong pull to stay clustered
+            let pull = 0.18 * chick.personality;
+            if (dist > 20) pull = 0.28;
+            if (dist > 40) pull = 0.4;
+            if (chick.scared > 0) pull *= 0.6;
+
+            if (dist > 4) {
+                chick.vx += (dx / dist) * pull;
+                chick.vy += (dy / dist) * pull;
+            }
+        } else {
+            // SCATTER MODE: Chicks wander when mama stops completely
+            chick.wanderAngle += (Math.random() - 0.5) * 0.25;
+
+            // Gentle wander
+            const wanderX = Math.cos(chick.wanderAngle) * 0.08;
+            const wanderY = Math.sin(chick.wanderAngle) * 0.08;
+            chick.vx += wanderX;
+            chick.vy += wanderY;
+
+            // Don't go too far - tighter leash (was 70)
+            const dx = mama.x - chick.x;
+            const dy = mama.y - chick.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 45) {
+                chick.vx += (dx / dist) * 0.08;
+                chick.vy += (dy / dist) * 0.08;
+            }
+        }
+
+        // Separation from siblings - gentler to allow clustering
+        for (const other of active) {
+            if (other === chick) continue;
+            const ox = chick.x - other.x;
+            const oy = chick.y - other.y;
+            const od = Math.sqrt(ox * ox + oy * oy);
+            if (od < 8 && od > 0) { // Smaller separation distance (was 14)
+                chick.vx += (ox / od) * 0.08; // Weaker push (was 0.12)
+                chick.vy += (oy / od) * 0.08;
+            }
+        }
+
+        // Scared decay
+        if (chick.scared > 0) chick.scared -= 0.015;
+
+        // Physics - slightly more friction for tighter movement
+        chick.vx *= 0.89;
+        chick.vy *= 0.89;
+        const cspd = Math.sqrt(chick.vx * chick.vx + chick.vy * chick.vy);
+        const maxSpd = chick.scared > 0.3 ? 5.0 : 3.5;
+        if (cspd > maxSpd) {
+            chick.vx = (chick.vx / cspd) * maxSpd;
+            chick.vy = (chick.vy / cspd) * maxSpd;
+        }
+
+        chick.x += chick.vx;
+        chick.y += chick.vy;
+
+        // Bounds - same as mama, can't go into sky
+        chick.x = Math.max(15, Math.min(W - 15, chick.x));
+        chick.y = Math.max(ROAD_Y - 55, Math.min(H - 15, chick.y));
+
+        chick.bobPhase += 0.2 + cspd * 0.1;
+    }
+}
+
+function updateHunger() {
+    const season = SEASONS[currentSeason];
+
+    // Hunger increases slowly over time - latent risk
+    const hungerRate = season === 'Winter' ? 0.06 : 0.03;
+    hunger += hungerRate;
+
+    // Whole covey can eat food - mama and chicks
+    for (let i = food.length - 1; i >= 0; i--) {
+        const f = food[i];
+        let eaten = false;
+
+        // Mama eats (if not hiding)
+        if (!isHiding(mama.x, mama.y)) {
+            const distMama = Math.sqrt((mama.x - f.x) ** 2 + (mama.y - f.y) ** 2);
+            if (distMama < 28 && f.amount > 0) {
+                f.amount -= 0.03;
+                hunger = Math.max(0, hunger - 2.5);
+                eaten = true;
+            }
+        }
+
+        // Chicks eat too!
+        for (const c of chicks) {
+            if (!c.alive || isHiding(c.x, c.y)) continue;
+            const distChick = Math.sqrt((c.x - f.x) ** 2 + (c.y - f.y) ** 2);
+            if (distChick < 20 && f.amount > 0) {
+                f.amount -= 0.02;
+                hunger = Math.max(0, hunger - 1.5);
+                eaten = true;
+            }
+        }
+
+        if (eaten && Math.random() < 0.03) playSound('eat');
+
+        if (f.amount <= 0) {
+            spawnParticles(f.x, f.y, '#5a8a40', 5);
+            food.splice(i, 1);
+        }
+    }
+
+    // Spawn food periodically
+    foodSpawnTimer--;
+    if (foodSpawnTimer <= 0) {
+        const baseDelay = season === 'Spring' ? 250 : season === 'Summer' ? 300 : season === 'Fall' ? 400 : 500;
+        foodSpawnTimer = baseDelay + Math.random() * 150;
+        if (food.length < 4) {
+            spawnFood();
+        }
+    }
+
+    // Starvation - lose a chick if too hungry
+    if (hunger >= HUNGER_MAX) {
+        hunger = 40; // Reset partially
+        loseChick('hunger');
+    }
+}
+
+function loseChick(reason) {
+    const alive = chicks.filter(c => c.alive);
+    if (alive.length === 0) return;
+
+    // Lose smallest/weakest chick
+    alive.sort((a, b) => a.size - b.size);
+    const victim = alive[0];
+    victim.alive = false;
+    chicksAlive--;
+
+    spawnParticles(victim.x, victim.y, '#aa8866', 10);
+    playSound('lost');
+
+    // Check lose condition
+    if (chicksAlive < 4) {
+        gameState = 'lose';
+    }
+}
+
+function updatePredators() {
+    const season = SEASONS[currentSeason];
+    const mamaHiding = isHiding(mama.x, mama.y);
+
+    // Spawn predators based on season
+    predatorSpawnTimer--;
+    if (predatorSpawnTimer <= 0) {
+        if (season === 'Spring' && predators.length < 3) {
+            // Fox - spawns frequently and aggressively
+            const fromLeft = Math.random() > 0.5;
+            predators.push({
+                type: 'fox',
+                x: fromLeft ? -40 : W + 40,
+                y: H * 0.68 + Math.random() * 70,
+                vx: fromLeft ? 2.2 : -2.2,
+                facing: fromLeft ? 1 : -1,
+                phase: 'prowling',
+                runPhase: 0
+            });
+            predatorSpawnTimer = 220 + Math.random() * 120;
+        } else if (season === 'Fall' && predators.length < 3) {
+            // Hawk - more aggressive, circles then dives
+            predators.push({
+                type: 'hawk',
+                x: Math.random() > 0.5 ? -60 : W + 60,
+                y: H * 0.12,
+                vx: 0,
+                phase: 'circling',
+                circleAngle: Math.random() * Math.PI * 2,
+                swoopTimer: 120 + Math.random() * 80, // Faster swoops
+                wingPhase: 0
+            });
+            playSound('hawk');
+            predatorSpawnTimer = 250 + Math.random() * 100;
+        } else {
+            predatorSpawnTimer = 80;
+        }
+    }
+
+    // Update predators
+    for (let i = predators.length - 1; i >= 0; i--) {
+        const p = predators[i];
+
+        if (p.type === 'fox') {
+            p.runPhase += 0.15;
+
+            if (p.phase === 'prowling') {
+                p.x += p.vx;
+
+                // Chase if sees mama (wider detection, also checks vertical distance)
+                const dx = Math.abs(p.x - mama.x);
+                const dy = Math.abs(p.y - mama.y);
+                if (!mamaHiding && dx < 150 && dy < 100 && mama.y > ROAD_Y) {
+                    p.phase = 'chasing';
+                    playSound('alarm');
+                }
+
+                if (p.x < -60 || p.x > W + 60) {
+                    predators.splice(i, 1);
+                    continue;
+                }
+            } else if (p.phase === 'chasing') {
+                // Fox chases mama but WON'T CROSS THE ROAD!
+                // This gives quail a reason to cross to safety
+                const mamaAcrossRoad = mama.y < ROAD_Y;
+
+                // Fox stops at road edge - frustrated!
+                if (mamaAcrossRoad && p.y <= ROAD_Y + ROAD_H + 15) {
+                    // Pace back and forth at road edge for a moment
+                    p.phase = 'frustrated';
+                    p.frustratedTimer = 60 + Math.random() * 40;
+                } else {
+                    // Chase toward mama aggressively (both X and Y!)
+                    const dx = mama.x - p.x;
+                    const dy = mama.y - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // Fast chase speed
+                    const chaseSpeed = 4.2;
+                    if (dist > 5) {
+                        p.vx = (dx / dist) * chaseSpeed;
+                        // Fox moves vertically too, but won't cross the road
+                        let newY = p.y + (dy / dist) * chaseSpeed * 0.8;
+                        // Clamp to not cross road
+                        newY = Math.max(ROAD_Y + ROAD_H + 8, Math.min(H - 20, newY));
+                        p.y = newY;
+                    }
+                    p.x += p.vx;
+                    p.facing = p.vx > 0 ? 1 : -1;
+
+                    // Catch chicks! (only ones on fox's side of road, not hiding)
+                    for (const c of chicks) {
+                        if (c.alive && c.y > ROAD_Y && !isHiding(c.x, c.y)) {
+                            const cd = Math.sqrt((c.x - p.x) ** 2 + (c.y - p.y) ** 2);
+                            if (cd < 22) {
+                                c.alive = false;
+                                chicksAlive--;
+                                spawnParticles(c.x, c.y, '#aa6644', 12);
+                                playSound('lost');
+                                p.phase = 'leaving';
+                                if (chicksAlive < 4) gameState = 'lose';
+                            }
+                        }
+                    }
+
+                    // Give up only if mama hides well or gets very far
+                    if (mamaHiding || dist > 250) {
+                        p.phase = 'leaving';
+                    }
+                }
+            } else if (p.phase === 'frustrated') {
+                // Pace at road edge, looking across
+                p.frustratedTimer--;
+                p.x += Math.sin(time * 0.1) * 2;
+                p.facing = mama.x > p.x ? 1 : -1;
+                if (p.frustratedTimer <= 0) {
+                    p.phase = 'leaving';
+                }
+                // If mama comes back to fox's side, resume chase!
+                if (mama.y > ROAD_Y + ROAD_H && !mamaHiding) {
+                    p.phase = 'chasing';
+                }
+            } else if (p.phase === 'leaving') {
+                p.x += p.facing * 4;
+                if (p.x < -60 || p.x > W + 60) {
+                    predators.splice(i, 1);
+                }
+            }
+
+        } else if (p.type === 'hawk') {
+            p.wingPhase += 0.12;
+
+            if (p.phase === 'circling') {
+                p.circleAngle += 0.018;
+                const targetX = mama.x + Math.cos(p.circleAngle) * 70;
+                const targetY = H * 0.15 + Math.sin(p.circleAngle * 0.5) * 12;
+                p.x += (targetX - p.x) * 0.025;
+                p.y += (targetY - p.y) * 0.025;
+
+                p.swoopTimer--;
+
+                // Hawk ALWAYS swoops for drama - even if hiding!
+                // Creates tension. Only exposed chicks get hurt though.
+                if (p.swoopTimer <= 0) {
+                    p.phase = 'swooping';
+                    // Target an exposed chick if any, otherwise mama's position
+                    const exposedChicks = chicks.filter(c => c.alive && !isHiding(c.x, c.y));
+                    if (exposedChicks.length > 0) {
+                        const target = exposedChicks[Math.floor(Math.random() * exposedChicks.length)];
+                        p.targetX = target.x;
+                        p.targetY = target.y;
+                    } else {
+                        // Swoop at mama anyway for drama (she's hiding, so she's safe)
+                        p.targetX = mama.x;
+                        p.targetY = mama.y;
+                    }
+                    playSound('alarm');
+                }
+            } else if (p.phase === 'swooping') {
+                const dx = p.targetX - p.x;
+                const dy = p.targetY - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                p.x += (dx / dist) * 8;
+                p.y += (dy / dist) * 8;
+
+                if (dist < 35) {
+                    // Dramatic swoop! Scatter everyone, grab exposed chicks
+                    for (const c of chicks) {
+                        if (!c.alive) continue;
+
+                        // Everyone gets scared
+                        c.scared = 1;
+                        c.vx += (Math.random() - 0.5) * 8;
+                        c.vy += (Math.random() - 0.5) * 5;
+
+                        // But only exposed chicks can be caught
+                        if (!isHiding(c.x, c.y)) {
+                            const cd = Math.sqrt((c.x - p.x) ** 2 + (c.y - p.y) ** 2);
+                            if (cd < 40 && Math.random() < 0.2) {
+                                c.alive = false;
+                                chicksAlive--;
+                                spawnParticles(c.x, c.y, '#aa6644', 12);
+                                playSound('lost');
+                                if (chicksAlive < 4) gameState = 'lose';
+                            }
+                        }
+                    }
+                    p.phase = 'climbing';
+                    p.climbTimer = 40;
+                }
+            } else if (p.phase === 'climbing') {
+                // Hawk climbs back up after swoop
+                p.y -= 3;
+                p.x += 2;
+                p.climbTimer--;
+                if (p.climbTimer <= 0) {
+                    // Circle again or leave
+                    if (Math.random() < 0.6) {
+                        p.phase = 'circling';
+                        p.swoopTimer = 100 + Math.random() * 60;
+                    } else {
+                        p.phase = 'leaving';
+                    }
+                }
+            } else if (p.phase === 'leaving') {
+                p.x += 4;
+                p.y -= 1.5;
+                if (p.x > W + 80 || p.y < -50) {
+                    predators.splice(i, 1);
+                }
+            }
+        }
+    }
+}
+
+function updateVehicles() {
+    const season = SEASONS[currentSeason];
+    if (season !== 'Summer') {
+        vehicles.length = 0;
+        return;
+    }
+
+    vehicleSpawnTimer--;
+    if (vehicleSpawnTimer <= 0) {
+        const fromLeft = Math.random() > 0.5;
+        const type = Math.random() < 0.7 ? 'car' : 'cyclist';
+        vehicles.push({
+            type,
+            x: fromLeft ? -60 : W + 60,
+            y: ROAD_Y + ROAD_H / 2,
+            vx: (fromLeft ? 1 : -1) * (type === 'car' ? 4 : 2.5),
+            color: ['#3a5a8a', '#8a3a3a', '#2a6a4a', '#5a4a6a'][Math.floor(Math.random() * 4)],
+            honked: false
+        });
+        vehicleSpawnTimer = 120 + Math.random() * 180; // Less frequent traffic
+    }
+
+    for (let i = vehicles.length - 1; i >= 0; i--) {
+        const v = vehicles[i];
+        v.x += v.vx;
+
+        // Warning honk
+        if (!v.honked && isOnRoad(mama.y) && Math.abs(v.x - mama.x) < 100) {
+            playSound('car');
+            v.honked = true;
+        }
+
+        // Hit mama/chicks on road
+        if (isOnRoad(mama.y) && Math.abs(v.x - mama.x) < 25) {
+            mama.vy = 4;
+            mama.vx = v.vx * 0.3;
+            for (const c of chicks) {
+                if (c.alive) {
+                    c.scared = 1;
+                    c.vx += (Math.random() - 0.5) * 8;
+                    c.vy += 4;
+                }
+            }
+        }
+
+        for (const c of chicks) {
+            if (c.alive && isOnRoad(c.y) && Math.abs(v.x - c.x) < 18) {
+                c.alive = false;
+                chicksAlive--;
+                spawnParticles(c.x, c.y, '#888', 8);
+                playSound('lost');
+                if (chicksAlive < 4) gameState = 'lose';
+            }
+        }
+
+        if (v.x < -80 || v.x > W + 80) {
+            vehicles.splice(i, 1);
+        }
+    }
+}
+
+function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.1;
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // Fall leaves
+    for (let i = leaves.length - 1; i >= 0; i--) {
+        const l = leaves[i];
+        l.x += l.vx + Math.sin(time * 0.02 + l.rot) * 0.3;
+        l.y += l.vy;
+        l.rot += l.rotSpeed;
+        if (l.y > H + 10) leaves.splice(i, 1);
+    }
+}
+
+function update() {
+    if (gameState !== 'playing') return;
+    time++;
+
+    updateSeason();
+    updateMama();
+    updateChicks();
+    updateHunger();
+    updatePredators();
+    updateVehicles();
+    updateParticles();
+}
+
+// ============ DRAWING ============
+function drawSky() {
+    const pal = getCurrentPalette();
+    const grad = ctx.createLinearGradient(0, 0, 0, ROAD_Y);
+    grad.addColorStop(0, pal.sky);
+    grad.addColorStop(1, lerpColor(PALETTES[SEASONS[currentSeason]].sky, [220, 220, 210], 0.3));
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, ROAD_Y);
+}
+
+function drawHills() {
+    const pal = getCurrentPalette();
+
+    // Distant hill
+    ctx.fillStyle = lerpColor(PALETTES[SEASONS[currentSeason]].grass, [120, 130, 110], 0.4);
+    ctx.beginPath();
+    ctx.moveTo(0, ROAD_Y * 0.6);
+    ctx.quadraticCurveTo(W * 0.3, ROAD_Y * 0.4, W * 0.6, ROAD_Y * 0.55);
+    ctx.quadraticCurveTo(W * 0.85, ROAD_Y * 0.45, W, ROAD_Y * 0.6);
+    ctx.lineTo(W, ROAD_Y);
+    ctx.lineTo(0, ROAD_Y);
+    ctx.fill();
+
+    // Monterey Cypress hedgerow - iconic Sea Ranch windbreak
+    // These grow in dense, wind-sculpted rows
+    const hedgerowY = ROAD_Y * 0.52;
+    const sway = Math.sin(time * 0.012) * 1.5;
+
+    // Draw the hedgerow as a continuous wind-sculpted mass
+    // Dark base layer
+    ctx.fillStyle = '#1a2a18';
+    ctx.beginPath();
+    ctx.moveTo(-10, hedgerowY + 15);
+
+    // Sculpted top edge - wind-blown from left to right
+    for (let x = 0; x <= W; x += 20) {
+        const h = 35 + Math.sin(x * 0.02) * 8 + Math.sin(x * 0.05) * 5;
+        const lean = 8 + Math.sin(x * 0.015) * 3;
+        ctx.lineTo(x + lean + sway, hedgerowY - h);
+    }
+
+    ctx.lineTo(W + 10, hedgerowY + 15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Middle layer - slightly lighter
+    ctx.fillStyle = '#243824';
+    ctx.beginPath();
+    ctx.moveTo(-10, hedgerowY + 12);
+
+    for (let x = 5; x <= W; x += 25) {
+        const h = 28 + Math.sin(x * 0.025 + 1) * 6 + Math.sin(x * 0.06) * 4;
+        const lean = 6 + Math.sin(x * 0.02) * 2;
+        ctx.lineTo(x + lean + sway * 0.8, hedgerowY - h);
+    }
+
+    ctx.lineTo(W + 10, hedgerowY + 12);
+    ctx.closePath();
+    ctx.fill();
+
+    // Highlight layer - wind-blown texture
+    ctx.fillStyle = '#2a4a2a';
+    for (let x = 10; x < W; x += 35) {
+        const h = 20 + Math.sin(x * 0.03) * 5;
+        const lean = 5 + sway * 0.5;
+        ctx.beginPath();
+        ctx.ellipse(x + lean, hedgerowY - h, 12, 8, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Individual tree tops poking up
+    ctx.fillStyle = '#1a2a18';
+    const treeTops = [80, 200, 350, 480, 580];
+    for (const tx of treeTops) {
+        const h = 42 + Math.sin(tx * 0.02) * 6;
+        ctx.beginPath();
+        ctx.ellipse(tx + sway + 5, hedgerowY - h, 8, 12, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function drawHouse() {
+    // Sea Ranch architecture - MLTW / Obie Bowman inspired
+    // Shed roofs, weathered redwood siding, tower elements, asymmetric forms
+    const stage = currentSeason;
+    const x = W - 95;
+    const y = ROAD_Y * 0.72;
+    const scale = 0.55;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    // Colors - weathered redwood palette
+    const redwood = '#6a5040';
+    const redwoodDark = '#4a3528';
+    const redwoodLight = '#8a7060';
+    const metalRoof = '#5a6065';
+    const metalHighlight = '#7a8085';
+    const glassDay = '#a0c8d8';
+    const glassDark = '#304858';
+
+    if (stage >= 0) {
+        // SPRING: Foundation and stakes - site preparation
+        ctx.fillStyle = '#5a5045';
+        // Concrete piers
+        ctx.fillRect(-55, 8, 12, 10);
+        ctx.fillRect(-5, 8, 12, 10);
+        ctx.fillRect(35, 8, 12, 10);
+
+        // Survey stakes with orange flags
+        ctx.strokeStyle = '#7a6050';
+        ctx.lineWidth = 1.5;
+        const stakes = [-50, -20, 10, 40];
+        for (const sx of stakes) {
+            ctx.beginPath();
+            ctx.moveTo(sx, 8);
+            ctx.lineTo(sx, 22);
+            ctx.stroke();
+            // Orange flag
+            ctx.fillStyle = '#e06020';
+            ctx.fillRect(sx, 10, 6, 4);
+        }
+
+        // String lines between stakes
+        ctx.strokeStyle = '#d08040';
+        ctx.lineWidth = 0.5;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(-50, 12);
+        ctx.lineTo(40, 12);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    if (stage >= 1) {
+        // SUMMER: Timber frame going up - exposed structure
+        ctx.strokeStyle = '#6a5038';
+        ctx.lineWidth = 4;
+
+        // Main posts - heavy timber
+        ctx.beginPath();
+        // Tower section posts (taller)
+        ctx.moveTo(-50, 8); ctx.lineTo(-50, -55);
+        ctx.moveTo(-25, 8); ctx.lineTo(-25, -55);
+        // Main section posts
+        ctx.moveTo(0, 8); ctx.lineTo(0, -35);
+        ctx.moveTo(40, 8); ctx.lineTo(40, -35);
+        ctx.stroke();
+
+        // Beams
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        // Tower top beam
+        ctx.moveTo(-55, -55); ctx.lineTo(-20, -55);
+        // Shed roof angle - dramatic slope (Sea Ranch signature)
+        ctx.moveTo(-55, -55); ctx.lineTo(45, -25);
+        // Secondary beam
+        ctx.moveTo(-5, -35); ctx.lineTo(45, -35);
+        ctx.stroke();
+
+        // Cross bracing
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#5a4030';
+        ctx.beginPath();
+        ctx.moveTo(-25, -20); ctx.lineTo(0, -35);
+        ctx.moveTo(0, -10); ctx.lineTo(40, -25);
+        ctx.stroke();
+    }
+
+    if (stage >= 2) {
+        // FALL: Walls going up - vertical redwood siding
+
+        // Main volume - lower section
+        ctx.fillStyle = redwood;
+        ctx.beginPath();
+        ctx.moveTo(-5, 8);
+        ctx.lineTo(-5, -32);
+        ctx.lineTo(45, -22); // Shed roof slope
+        ctx.lineTo(45, 8);
+        ctx.closePath();
+        ctx.fill();
+
+        // Tower volume - taller section (MLTW style)
+        ctx.fillStyle = redwoodDark;
+        ctx.beginPath();
+        ctx.moveTo(-55, 8);
+        ctx.lineTo(-55, -52);
+        ctx.lineTo(-20, -52);
+        ctx.lineTo(-20, -38);
+        ctx.lineTo(-5, -32);
+        ctx.lineTo(-5, 8);
+        ctx.closePath();
+        ctx.fill();
+
+        // Vertical siding lines (signature Sea Ranch detail)
+        ctx.strokeStyle = '#3a2a1a';
+        ctx.lineWidth = 0.5;
+        for (let sx = -52; sx < 43; sx += 6) {
+            ctx.beginPath();
+            if (sx < -20) {
+                // Tower section
+                ctx.moveTo(sx, 8);
+                ctx.lineTo(sx, -50);
+            } else if (sx < -5) {
+                // Transition
+                ctx.moveTo(sx, 8);
+                ctx.lineTo(sx, -38 + (sx + 20) * 0.4);
+            } else {
+                // Main section with slope
+                ctx.moveTo(sx, 8);
+                ctx.lineTo(sx, -32 + (sx + 5) * 0.2);
+            }
+            ctx.stroke();
+        }
+
+        // Shed roof outline - corrugated metal (Obie Bowman)
+        ctx.fillStyle = metalRoof;
+        ctx.beginPath();
+        ctx.moveTo(-58, -52);
+        ctx.lineTo(-17, -52);
+        ctx.lineTo(48, -20);
+        ctx.lineTo(48, -24);
+        ctx.lineTo(-17, -56);
+        ctx.lineTo(-58, -56);
+        ctx.closePath();
+        ctx.fill();
+
+        // Window openings (framed, awaiting glass)
+        ctx.fillStyle = '#2a2520';
+        ctx.fillRect(-48, -40, 12, 18);
+        ctx.fillRect(8, -18, 20, 14);
+    }
+
+    if (stage >= 3) {
+        // WINTER: Finished house - full Sea Ranch glory
+
+        // Main volume with subtle color variation
+        ctx.fillStyle = redwood;
+        ctx.beginPath();
+        ctx.moveTo(-5, 8);
+        ctx.lineTo(-5, -32);
+        ctx.lineTo(45, -22);
+        ctx.lineTo(45, 8);
+        ctx.closePath();
+        ctx.fill();
+
+        // Tower volume
+        ctx.fillStyle = redwoodDark;
+        ctx.beginPath();
+        ctx.moveTo(-55, 8);
+        ctx.lineTo(-55, -52);
+        ctx.lineTo(-20, -52);
+        ctx.lineTo(-20, -38);
+        ctx.lineTo(-5, -32);
+        ctx.lineTo(-5, 8);
+        ctx.closePath();
+        ctx.fill();
+
+        // Vertical board siding texture
+        ctx.strokeStyle = '#3a2518';
+        ctx.lineWidth = 0.7;
+        for (let sx = -53; sx < 44; sx += 5) {
+            ctx.beginPath();
+            if (sx < -20) {
+                ctx.moveTo(sx, 6);
+                ctx.lineTo(sx, -50);
+            } else if (sx < -5) {
+                ctx.moveTo(sx, 6);
+                ctx.lineTo(sx, -36 + (sx + 20) * 0.4);
+            } else {
+                ctx.moveTo(sx, 6);
+                ctx.lineTo(sx, -30 + (sx + 5) * 0.2);
+            }
+            ctx.stroke();
+        }
+
+        // Corrugated metal shed roof
+        ctx.fillStyle = metalRoof;
+        ctx.beginPath();
+        ctx.moveTo(-58, -52);
+        ctx.lineTo(-17, -52);
+        ctx.lineTo(48, -20);
+        ctx.lineTo(48, -25);
+        ctx.lineTo(-17, -57);
+        ctx.lineTo(-58, -57);
+        ctx.closePath();
+        ctx.fill();
+
+        // Roof corrugation lines
+        ctx.strokeStyle = metalHighlight;
+        ctx.lineWidth = 0.5;
+        for (let ry = -55; ry < -22; ry += 3) {
+            ctx.beginPath();
+            const startX = ry < -52 ? -56 : -17 + (ry + 52) * 2.6;
+            ctx.moveTo(startX, ry);
+            ctx.lineTo(46, ry + 32);
+            ctx.stroke();
+        }
+
+        // Tower window - tall, vertical (Sea Ranch style)
+        ctx.fillStyle = glassDark;
+        ctx.fillRect(-50, -45, 14, 28);
+        // Window frame
+        ctx.strokeStyle = '#2a2015';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-50, -45, 14, 28);
+        // Mullion
+        ctx.beginPath();
+        ctx.moveTo(-43, -45);
+        ctx.lineTo(-43, -17);
+        ctx.stroke();
+        // Glass reflection
+        ctx.fillStyle = 'rgba(160,200,220,0.3)';
+        ctx.fillRect(-49, -44, 5, 12);
+
+        // Main window - large, horizontal view window
+        ctx.fillStyle = glassDay;
+        ctx.fillRect(5, -18, 28, 14);
+        // Frame
+        ctx.strokeStyle = '#2a2015';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(5, -18, 28, 14);
+        // Mullions - divided light
+        ctx.beginPath();
+        ctx.moveTo(19, -18);
+        ctx.lineTo(19, -4);
+        ctx.moveTo(5, -11);
+        ctx.lineTo(33, -11);
+        ctx.stroke();
+
+        // Small accent window on tower
+        ctx.fillStyle = glassDark;
+        ctx.fillRect(-32, -35, 8, 6);
+        ctx.strokeRect(-32, -35, 8, 6);
+
+        // Recessed entry - shadow
+        ctx.fillStyle = '#1a1510';
+        ctx.fillRect(-8, -8, 10, 16);
+
+        // Door - simple redwood
+        ctx.fillStyle = redwoodLight;
+        ctx.fillRect(-7, -7, 8, 15);
+
+        // Deck/platform extending out
+        ctx.fillStyle = '#5a4535';
+        ctx.fillRect(-12, 6, 25, 4);
+
+        // Chimney/flue - simple metal
+        ctx.fillStyle = '#4a4a4a';
+        ctx.fillRect(-45, -62, 4, 10);
+    }
+
+    ctx.restore();
+
+    // Construction workers (visible during building phases)
+    if (currentSeason < 3) {
+        drawConstructionWorkers();
+    }
+
+    // Builder dialogue - Sea Ranch design principles
+    drawBuilderDialogue();
+}
+
+function drawConstructionWorkers() {
+    const x = W - 95;
+    const y = ROAD_Y * 0.72;
+    const scale = 0.55;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    // Worker 1 - standing/working
+    const w1x = -70;
+    const w1y = 5;
+    const bobble1 = Math.sin(time * 0.08) * 1;
+
+    // Hard hat
+    ctx.fillStyle = '#e8a020';
+    ctx.beginPath();
+    ctx.ellipse(w1x, w1y - 18 + bobble1, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(w1x - 6, w1y - 17 + bobble1, 12, 2);
+
+    // Head
+    ctx.fillStyle = '#d4a574';
+    ctx.beginPath();
+    ctx.arc(w1x, w1y - 13 + bobble1, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body (work shirt)
+    ctx.fillStyle = '#4a6a8a';
+    ctx.fillRect(w1x - 4, w1y - 9 + bobble1, 8, 10);
+
+    // Arms
+    const armSwing = Math.sin(time * 0.1) * 0.3;
+    ctx.save();
+    ctx.translate(w1x + 4, w1y - 7 + bobble1);
+    ctx.rotate(armSwing - 0.5);
+    ctx.fillRect(0, 0, 3, 8);
+    ctx.restore();
+
+    // Legs
+    ctx.fillStyle = '#5a4a3a';
+    ctx.fillRect(w1x - 3, w1y + 1, 3, 8);
+    ctx.fillRect(w1x + 1, w1y + 1, 3, 8);
+
+    // Worker 2 - different position
+    const w2x = 55;
+    const w2y = 8;
+    const bobble2 = Math.sin(time * 0.07 + 1) * 1;
+
+    // Hard hat
+    ctx.fillStyle = '#f0f0f0';
+    ctx.beginPath();
+    ctx.ellipse(w2x, w2y - 18 + bobble2, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(w2x - 6, w2y - 17 + bobble2, 12, 2);
+
+    // Head
+    ctx.fillStyle = '#c49464';
+    ctx.beginPath();
+    ctx.arc(w2x, w2y - 13 + bobble2, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body (work vest)
+    ctx.fillStyle = '#e08030';
+    ctx.fillRect(w2x - 4, w2y - 9 + bobble2, 8, 10);
+
+    // Legs
+    ctx.fillStyle = '#4a4a5a';
+    ctx.fillRect(w2x - 3, w2y + 1, 3, 8);
+    ctx.fillRect(w2x + 1, w2y + 1, 3, 8);
+
+    ctx.restore();
+}
+
+function drawBuilderDialogue() {
+    // Sea Ranch design principles - spoken by the builders
+    const allDialogues = [
+        // Spring - site prep (shorter, punchier)
+        'Live lightly on the land',
+        'Preserve the meadows',
+        'Work with the topography',
+        // Summer - framing
+        'Rural, not suburban',
+        'No flamboyance',
+        'Cluster the buildings',
+        // Fall - siding
+        'Unpainted native wood',
+        'Let it weather naturally',
+        'Blend into the landscape',
+        // Winter - finished
+        'Simplicity and community',
+        'Half the land in common',
+        'A place to belong'
+    ];
+
+    // Calculate which dialogue to show
+    const dialoguesPerSeason = 3;
+    const dialogueDuration = SEASON_DURATION / dialoguesPerSeason;
+
+    const seasonBase = currentSeason * dialoguesPerSeason;
+    const dialogueInSeason = Math.min(dialoguesPerSeason - 1, Math.floor(seasonTimer / dialogueDuration));
+    const dialogueIndex = seasonBase + dialogueInSeason;
+
+    // Fade timing
+    const dialogueTime = seasonTimer % dialogueDuration;
+    const fadeFrames = 50;
+    const showDuration = dialogueDuration - 80;
+
+    if (dialogueTime > showDuration) return;
+
+    let alpha = 1;
+    if (dialogueTime < fadeFrames) {
+        alpha = dialogueTime / fadeFrames;
+    } else if (dialogueTime > showDuration - fadeFrames) {
+        alpha = (showDuration - dialogueTime) / fadeFrames;
+    }
+
+    const text = allDialogues[dialogueIndex];
+    const bubbleX = W - 120;
+    const bubbleY = ROAD_Y * 0.18;
+
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.95;
+
+    // Measure text for bubble sizing
+    ctx.font = '11px Georgia, serif';
+    const textWidth = ctx.measureText(text).width;
+    const bubbleW = textWidth + 24;
+    const bubbleH = 28;
+    const bubbleLeft = bubbleX - bubbleW / 2;
+    const bubbleTop = bubbleY - bubbleH / 2;
+
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    ctx.roundRect(bubbleLeft + 2, bubbleTop + 2, bubbleW, bubbleH, 6);
+    ctx.fill();
+
+    // Bubble background - warm parchment color
+    const bubbleGrad = ctx.createLinearGradient(bubbleLeft, bubbleTop, bubbleLeft, bubbleTop + bubbleH);
+    bubbleGrad.addColorStop(0, '#faf6f0');
+    bubbleGrad.addColorStop(1, '#f0ebe0');
+    ctx.fillStyle = bubbleGrad;
+    ctx.beginPath();
+    ctx.roundRect(bubbleLeft, bubbleTop, bubbleW, bubbleH, 6);
+    ctx.fill();
+
+    // Subtle border
+    ctx.strokeStyle = 'rgba(90,80,70,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Speech tail - pointing down toward house/workers
+    ctx.fillStyle = '#f0ebe0';
+    ctx.beginPath();
+    ctx.moveTo(bubbleX + 15, bubbleTop + bubbleH - 1);
+    ctx.lineTo(bubbleX + 25, bubbleTop + bubbleH + 14);
+    ctx.lineTo(bubbleX + 32, bubbleTop + bubbleH - 1);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tail border
+    ctx.strokeStyle = 'rgba(90,80,70,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(bubbleX + 15, bubbleTop + bubbleH);
+    ctx.lineTo(bubbleX + 25, bubbleTop + bubbleH + 14);
+    ctx.lineTo(bubbleX + 32, bubbleTop + bubbleH);
+    ctx.stroke();
+
+    // Text with slight italic styling
+    ctx.fillStyle = '#4a4540';
+    ctx.font = 'italic 11px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, bubbleX, bubbleY);
+
+    ctx.restore();
+}
+
+function drawRoad() {
+    ctx.fillStyle = '#5a5550';
+    ctx.fillRect(0, ROAD_Y, W, ROAD_H);
+
+    // Lane marking
+    ctx.strokeStyle = '#7a7565';
+    ctx.setLineDash([25, 18]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, ROAD_Y + ROAD_H / 2);
+    ctx.lineTo(W, ROAD_Y + ROAD_H / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Edges
+    ctx.strokeStyle = '#4a4540';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, ROAD_Y);
+    ctx.lineTo(W, ROAD_Y);
+    ctx.moveTo(0, ROAD_Y + ROAD_H);
+    ctx.lineTo(W, ROAD_Y + ROAD_H);
+    ctx.stroke();
+}
+
+function drawMeadow() {
+    const pal = getCurrentPalette();
+    const season = SEASONS[currentSeason];
+
+    // Coastal prairie - tawny, windswept, wild
+    // Sea Ranch meadows are golden-brown most of the year, green only in spring
+    const baseColor = season === 'Spring' ? [140, 155, 110] :
+                      season === 'Summer' ? [175, 160, 110] :
+                      season === 'Fall' ? [165, 145, 100] : [130, 125, 105];
+
+    const grad = ctx.createLinearGradient(0, ROAD_Y + ROAD_H, 0, H);
+    grad.addColorStop(0, `rgb(${baseColor[0] - 15},${baseColor[1] - 10},${baseColor[2] - 5})`);
+    grad.addColorStop(0.4, `rgb(${baseColor[0]},${baseColor[1]},${baseColor[2]})`);
+    grad.addColorStop(1, `rgb(${baseColor[0] - 20},${baseColor[1] - 15},${baseColor[2] - 10})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, ROAD_Y + ROAD_H, W, H - ROAD_Y - ROAD_H);
+
+    // Subtle ground texture - bare patches, variation
+    for (let i = 0; i < 40; i++) {
+        const dx = (i * 47 + 23) % W;
+        const dy = ROAD_Y + ROAD_H + 25 + (i * 31) % (H - ROAD_Y - ROAD_H - 45);
+        ctx.fillStyle = `rgba(${baseColor[0] - 25},${baseColor[1] - 20},${baseColor[2] - 15},0.3)`;
+        ctx.beginPath();
+        ctx.ellipse(dx, dy, 3 + (i % 4), 1.5 + (i % 2), i * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Native bunch grasses - tawny, arching, windswept
+    // These are the dominant feature of Sea Ranch coastal prairie
+    const bunchGrassColor = season === 'Spring' ? '#8a9a70' :
+                            season === 'Summer' ? '#b8a870' :
+                            season === 'Fall' ? '#a89060' : '#908878';
+
+    for (let i = 0; i < 45; i++) {
+        const gx = 15 + (i * 14.3) % (W - 30);
+        const gy = ROAD_Y + ROAD_H + 25 + (i * 11.7) % (H - ROAD_Y - ROAD_H - 40);
+        const windSway = Math.sin(time * 0.015 + i * 0.6) * 3;
+        const height = 8 + (i % 5) * 2.5;
+
+        // Bunch grass - arching blades from central point
+        ctx.strokeStyle = bunchGrassColor;
+        ctx.lineWidth = 0.8;
+
+        for (let j = 0; j < 7; j++) {
+            const spread = (j - 3) * 1.8;
+            const lean = spread * 0.4 + windSway;
+            ctx.beginPath();
+            ctx.moveTo(gx, gy);
+            ctx.quadraticCurveTo(
+                gx + spread + lean * 0.5,
+                gy - height * 0.5,
+                gx + spread * 1.5 + lean,
+                gy - height * (0.7 + (j % 2) * 0.2)
+            );
+            ctx.stroke();
+        }
+    }
+
+    // Seed heads on grasses (tawny plumes)
+    if (season !== 'Spring') {
+        ctx.fillStyle = season === 'Winter' ? '#a09888' : '#c8b888';
+        for (let i = 0; i < 20; i++) {
+            const sx = 30 + (i * 31) % (W - 60);
+            const sy = ROAD_Y + ROAD_H + 20 + (i * 23) % (H - ROAD_Y - ROAD_H - 35);
+            const sway = Math.sin(time * 0.015 + i) * 2;
+            ctx.beginPath();
+            ctx.ellipse(sx + sway, sy - 10, 1.5, 3, 0.2 + sway * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Coyote brush (Baccharis) - THE dominant shrub at Sea Ranch
+    // Silvery-green, rounded, invading the meadows
+    for (let i = 0; i < 10; i++) {
+        const bx = 45 + (i * 67) % (W - 90);
+        const by = ROAD_Y + ROAD_H + 55 + (i * 41) % (H - ROAD_Y - ROAD_H - 90);
+        const size = 8 + (i % 4) * 5;
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.08)';
+        ctx.beginPath();
+        ctx.ellipse(bx + 3, by + size * 0.35, size * 0.9, size * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bush - irregular shape
+        const bushColor = season === 'Winter' ? '#5a6858' :
+                          season === 'Fall' ? '#5a6a50' : '#4a5a45';
+        ctx.fillStyle = bushColor;
+
+        // Multiple overlapping circles for natural look
+        for (let c = 0; c < 4; c++) {
+            const cx = bx + (c - 1.5) * size * 0.25;
+            const cy = by - c * size * 0.08;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, size * 0.5, size * 0.35, c * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Lighter top highlight
+        ctx.fillStyle = season === 'Winter' ? '#6a7868' : '#5a6a55';
+        ctx.beginPath();
+        ctx.ellipse(bx - size * 0.2, by - size * 0.15, size * 0.3, size * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Scattered rocks (coastal)
+    for (let i = 0; i < 4; i++) {
+        const rx = 80 + (i * 157) % (W - 160);
+        const ry = ROAD_Y + ROAD_H + 60 + (i * 83) % (H - ROAD_Y - ROAD_H - 90);
+        ctx.fillStyle = '#7a7568';
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, 5 + (i % 3) * 2, 3, i * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8a8578';
+        ctx.beginPath();
+        ctx.ellipse(rx - 1, ry - 1, 3, 2, i * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Spring only - wildflowers emerge
+    if (season === 'Spring') {
+        // California poppies (golden-orange) - scattered, not rows
+        for (let i = 0; i < 10; i++) {
+            const fx = 25 + (i * 67) % (W - 50);
+            const fy = ROAD_Y + ROAD_H + 30 + (i * 43) % (H - ROAD_Y - ROAD_H - 50);
+            ctx.fillStyle = '#e8b030';
+            ctx.beginPath();
+            ctx.arc(fx, fy, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Lupines - purple patches
+        for (let i = 0; i < 6; i++) {
+            const fx = 70 + (i * 97) % (W - 140);
+            const fy = ROAD_Y + ROAD_H + 35 + (i * 53) % (H - ROAD_Y - ROAD_H - 60);
+            ctx.fillStyle = '#6050a0';
+            ctx.beginPath();
+            ctx.ellipse(fx, fy - 3, 2, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Fall - dried grasses dominate, few late flowers
+    if (season === 'Fall') {
+        // Dried flower stalks
+        for (let i = 0; i < 8; i++) {
+            const fx = 50 + (i * 79) % (W - 100);
+            const fy = ROAD_Y + ROAD_H + 40 + (i * 47) % (H - ROAD_Y - ROAD_H - 60);
+            ctx.strokeStyle = '#a09070';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(fx, fy);
+            ctx.lineTo(fx + 2, fy - 12);
+            ctx.stroke();
+            ctx.fillStyle = '#b8a878';
+            ctx.beginPath();
+            ctx.arc(fx, fy, 1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+}
+
+function drawBushes() {
+    for (const b of bushes) {
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.beginPath();
+        ctx.ellipse(b.x + 3, b.y + b.h / 2, b.w / 2, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Main
+        const season = SEASONS[currentSeason];
+        ctx.fillStyle = season === 'Winter' ? '#4a5a48' : '#3a5a35';
+        ctx.beginPath();
+        ctx.ellipse(b.x, b.y, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Highlights
+        ctx.fillStyle = season === 'Winter' ? '#5a6a58' : '#4a6a45';
+        ctx.beginPath();
+        ctx.ellipse(b.x - 6, b.y - 4, b.w / 3, b.h / 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = season === 'Winter' ? '#6a7a68' : '#5a7a55';
+        ctx.beginPath();
+        ctx.ellipse(b.x + 8, b.y - 2, b.w / 4, b.h / 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function drawFood() {
+    for (const f of food) {
+        if (f.amount <= 0) continue;
+
+        const alpha = 0.5 + f.amount * 0.5;
+        ctx.globalAlpha = alpha;
+
+        // Clover patch
+        ctx.fillStyle = '#4a8a40';
+        for (const leaf of f.leaves) {
+            ctx.save();
+            ctx.translate(f.x, f.y);
+            ctx.rotate(leaf.angle);
+
+            // Heart-shaped leaf
+            ctx.beginPath();
+            ctx.moveTo(0, -f.size * leaf.size * 0.3);
+            ctx.bezierCurveTo(f.size * leaf.size * 0.5, -f.size * leaf.size * 0.8,
+                f.size * leaf.size * 0.5, 0, 0, f.size * leaf.size * 0.4);
+            ctx.bezierCurveTo(-f.size * leaf.size * 0.5, 0,
+                -f.size * leaf.size * 0.5, -f.size * leaf.size * 0.8, 0, -f.size * leaf.size * 0.3);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Center
+        ctx.fillStyle = '#5a9a50';
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = 1;
+    }
+}
+
+function drawVehicles() {
+    for (const v of vehicles) {
+        ctx.save();
+        ctx.translate(v.x, v.y);
+        if (v.vx < 0) ctx.scale(-1, 1);
+
+        if (v.type === 'car') {
+            // Larger car properly sized for the road (road is 45px tall)
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            ctx.ellipse(0, 12, 28, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body
+            ctx.fillStyle = v.color;
+            ctx.beginPath();
+            ctx.roundRect(-28, -4, 56, 16, 3);
+            ctx.fill();
+
+            // Cabin
+            ctx.fillStyle = '#3a3a40';
+            ctx.beginPath();
+            ctx.roundRect(-16, -12, 32, 9, 2);
+            ctx.fill();
+
+            // Windows
+            ctx.fillStyle = '#9ac8d8';
+            ctx.fillRect(-13, -10, 11, 6);
+            ctx.fillRect(4, -10, 11, 6);
+
+            // Wheels
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.arc(-16, 10, 6, 0, Math.PI * 2);
+            ctx.arc(16, 10, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hubcaps
+            ctx.fillStyle = '#555';
+            ctx.beginPath();
+            ctx.arc(-16, 10, 2.5, 0, Math.PI * 2);
+            ctx.arc(16, 10, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Headlight
+            ctx.fillStyle = '#f8f0d0';
+            ctx.fillRect(26, 0, 3, 4);
+
+        } else {
+            // Cyclist - properly sized for road
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(0, 10, 14, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Bike wheels
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(-9, 6, 7, 0, Math.PI * 2);
+            ctx.arc(11, 6, 7, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Bike frame
+            ctx.strokeStyle = '#2a2a2a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-7, 6);
+            ctx.lineTo(1, -6);
+            ctx.lineTo(9, 6);
+            ctx.lineTo(-7, 6);
+            ctx.moveTo(1, -6);
+            ctx.lineTo(-1, -12);
+            ctx.moveTo(9, 6);
+            ctx.lineTo(11, -4);
+            ctx.stroke();
+
+            // Rider body
+            ctx.fillStyle = v.color || '#4a6a8a';
+            ctx.beginPath();
+            ctx.ellipse(2, -12, 4, 6, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Rider head with helmet
+            ctx.fillStyle = '#e0e0e0';
+            ctx.beginPath();
+            ctx.ellipse(5, -19, 4, 3.5, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Face
+            ctx.fillStyle = '#d4a574';
+            ctx.beginPath();
+            ctx.arc(7, -18, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Arms
+            ctx.strokeStyle = v.color || '#4a6a8a';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(4, -10);
+            ctx.lineTo(11, -4);
+            ctx.stroke();
+
+            // Legs
+            const pedalAngle = (time * 0.15) % (Math.PI * 2);
+            ctx.strokeStyle = '#3a3a4a';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(1, -5);
+            ctx.lineTo(-1 + Math.cos(pedalAngle) * 4, 4 + Math.sin(pedalAngle) * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+
+function drawPredators() {
+    for (const p of predators) {
+        ctx.save();
+
+        if (p.type === 'fox') {
+            ctx.translate(p.x, p.y);
+            ctx.scale(p.facing, 1);
+
+            const legMove = Math.sin(p.runPhase) * 5;
+            const runCrouch = Math.abs(Math.sin(p.runPhase * 0.5)) * 2;
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(0, 18, 22, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail - big and bushy, curves up
+            ctx.fillStyle = '#d45820';
+            ctx.beginPath();
+            ctx.moveTo(-12, 2);
+            ctx.bezierCurveTo(-25, -5, -38, -12, -42, -5);
+            ctx.bezierCurveTo(-44, 0, -40, 8, -32, 6);
+            ctx.bezierCurveTo(-24, 4, -18, 6, -12, 4);
+            ctx.closePath();
+            ctx.fill();
+
+            // Tail white tip
+            ctx.fillStyle = '#f8f0e8';
+            ctx.beginPath();
+            ctx.ellipse(-40, -2, 5, 4, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Back legs
+            ctx.fillStyle = '#a84515';
+            ctx.save();
+            ctx.translate(-8, 6);
+            ctx.rotate(Math.sin(p.runPhase + Math.PI) * 0.4);
+            ctx.fillRect(-2, 0, 4, 12);
+            // Paw
+            ctx.fillStyle = '#2a1a0a';
+            ctx.beginPath();
+            ctx.ellipse(0, 12, 3, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Front legs
+            ctx.fillStyle = '#1a1a1a'; // Black "socks"
+            ctx.save();
+            ctx.translate(10, 6);
+            ctx.rotate(Math.sin(p.runPhase) * 0.4);
+            ctx.fillStyle = '#a84515';
+            ctx.fillRect(-2, 0, 4, 10);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(-2, 7, 4, 4);
+            // Paw
+            ctx.beginPath();
+            ctx.ellipse(0, 11, 3, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Body - sleek and low
+            ctx.fillStyle = '#d45820';
+            ctx.beginPath();
+            ctx.ellipse(0, 0 - runCrouch, 18, 8, -0.05, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Belly/chest lighter
+            ctx.fillStyle = '#f0d8c0';
+            ctx.beginPath();
+            ctx.ellipse(6, 4 - runCrouch, 10, 4, 0.1, 0, Math.PI);
+            ctx.fill();
+
+            // Neck/shoulder
+            ctx.fillStyle = '#d45820';
+            ctx.beginPath();
+            ctx.ellipse(14, -3 - runCrouch, 8, 7, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head - pointed snout
+            ctx.fillStyle = '#d45820';
+            ctx.beginPath();
+            ctx.moveTo(18, -6 - runCrouch);
+            ctx.bezierCurveTo(25, -10 - runCrouch, 32, -8 - runCrouch, 38, -4 - runCrouch);
+            ctx.bezierCurveTo(32, 2 - runCrouch, 25, 2 - runCrouch, 18, 0 - runCrouch);
+            ctx.closePath();
+            ctx.fill();
+
+            // White muzzle/cheeks
+            ctx.fillStyle = '#f8f0e8';
+            ctx.beginPath();
+            ctx.ellipse(30, -2 - runCrouch, 6, 4, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ears - tall and pointed
+            ctx.fillStyle = '#d45820';
+            // Left ear
+            ctx.beginPath();
+            ctx.moveTo(20, -8 - runCrouch);
+            ctx.lineTo(17, -20 - runCrouch);
+            ctx.lineTo(24, -10 - runCrouch);
+            ctx.closePath();
+            ctx.fill();
+            // Right ear
+            ctx.beginPath();
+            ctx.moveTo(25, -9 - runCrouch);
+            ctx.lineTo(24, -21 - runCrouch);
+            ctx.lineTo(30, -11 - runCrouch);
+            ctx.closePath();
+            ctx.fill();
+
+            // Inner ears
+            ctx.fillStyle = '#e8c0a0';
+            ctx.beginPath();
+            ctx.moveTo(20, -9 - runCrouch);
+            ctx.lineTo(18, -17 - runCrouch);
+            ctx.lineTo(23, -10 - runCrouch);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(26, -10 - runCrouch);
+            ctx.lineTo(25, -18 - runCrouch);
+            ctx.lineTo(29, -11 - runCrouch);
+            ctx.closePath();
+            ctx.fill();
+
+            // Eye - almond shaped, cunning
+            ctx.fillStyle = '#3a2a10';
+            ctx.beginPath();
+            ctx.ellipse(26, -6 - runCrouch, 3, 2.5, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupil
+            ctx.fillStyle = '#1a1a0a';
+            ctx.beginPath();
+            ctx.ellipse(27, -6 - runCrouch, 1.5, 2, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye highlight
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(25.5, -7 - runCrouch, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.ellipse(38, -3 - runCrouch, 2.5, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+        } else if (p.type === 'hawk') {
+            // Shadow
+            if (p.phase === 'swooping' || p.swoopTimer < 60) {
+                const alpha = p.phase === 'swooping' ? 0.25 : (60 - p.swoopTimer) / 60 * 0.2;
+                ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+                ctx.beginPath();
+                ctx.ellipse(p.targetX || mama.x, (p.targetY || mama.y) + 20, 30, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.translate(p.x, p.y);
+            const flap = Math.sin(p.wingPhase) * 0.35;
+
+            // Body
+            ctx.fillStyle = '#3a2a1a';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 16, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Wings
+            ctx.fillStyle = '#4a3a2a';
+            ctx.beginPath();
+            ctx.moveTo(-4, 0);
+            ctx.quadraticCurveTo(-22, -16 + flap * 14, -34, -2 + flap * 10);
+            ctx.quadraticCurveTo(-22, 5, -4, 0);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(4, 0);
+            ctx.quadraticCurveTo(22, -16 + flap * 14, 34, -2 + flap * 10);
+            ctx.quadraticCurveTo(22, 5, 4, 0);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = '#2a1a0a';
+            ctx.beginPath();
+            ctx.arc(14, -1, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#5a4a20';
+            ctx.beginPath();
+            ctx.moveTo(17, -1);
+            ctx.lineTo(22, 0);
+            ctx.lineTo(17, 1);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+}
+
+function drawQuail(x, y, size, facing, bobPhase, isChick, scared = 0) {
+    ctx.save();
+    ctx.translate(x, y + Math.sin(bobPhase) * (isChick ? 0.8 : 1.2));
+    ctx.scale(facing, 1);
+
+    const s = size;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(0, s * 0.5, s * 0.6, s * 0.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body
+    ctx.fillStyle = isChick ? '#c8b898' : '#4a3a2a';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 0.8, s * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (!isChick) {
+        // Wing detail
+        ctx.fillStyle = '#5a4a3a';
+        ctx.beginPath();
+        ctx.ellipse(-s * 0.1, s * 0.05, s * 0.45, s * 0.25, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Belly
+        ctx.fillStyle = '#b89860';
+        ctx.beginPath();
+        ctx.ellipse(0, s * 0.15, s * 0.4, s * 0.2, 0, 0.2, Math.PI - 0.2);
+        ctx.fill();
+    }
+
+    // Head
+    ctx.fillStyle = isChick ? '#b8a888' : '#2a2a3a';
+    ctx.beginPath();
+    ctx.arc(s * 0.45, -s * 0.2, s * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Topknot (adults)
+    if (!isChick) {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        const wobble = scared > 0.3 ? Math.sin(time * 0.4) * 3 : 0;
+        ctx.moveTo(s * 0.38, -s * 0.4);
+        ctx.bezierCurveTo(s * 0.32 + wobble, -s * 0.75, s * 0.5 + wobble, -s * 1.1, s * 0.44, -s * 1.2);
+        ctx.bezierCurveTo(s * 0.38 + wobble, -s * 1.1, s * 0.28 + wobble, -s * 0.75, s * 0.38, -s * 0.4);
+        ctx.fill();
+    }
+
+    // Eye
+    ctx.fillStyle = scared > 0.3 ? '#5a2a2a' : '#1a1a1a';
+    const eyeSize = isChick ? s * 0.07 : s * 0.05;
+    ctx.beginPath();
+    ctx.arc(s * 0.56, -s * 0.22, eyeSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye highlight
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s * 0.58, -s * 0.24, eyeSize * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Beak
+    ctx.fillStyle = '#4a4030';
+    ctx.beginPath();
+    ctx.moveTo(s * 0.7, -s * 0.16);
+    ctx.lineTo(s * 0.88, -s * 0.1);
+    ctx.lineTo(s * 0.7, -s * 0.04);
+    ctx.closePath();
+    ctx.fill();
+
+    // Legs
+    ctx.strokeStyle = '#5a4a3a';
+    ctx.lineWidth = isChick ? 1 : 1.5;
+    ctx.lineCap = 'round';
+    const legMove = Math.sin(bobPhase * 2) * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.1, s * 0.35);
+    ctx.lineTo(-s * 0.15 + legMove, s * 0.6);
+    ctx.moveTo(s * 0.08, s * 0.35);
+    ctx.lineTo(s * 0.1 - legMove, s * 0.6);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function drawQuails() {
+    const mamaHiding = isHiding(mama.x, mama.y);
+
+    // Chicks first (behind mama)
+    for (const c of chicks) {
+        if (!c.alive) continue;
+        const chickHiding = isHiding(c.x, c.y);
+
+        if (chickHiding) {
+            // Tiny head peeking from bush
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = '#3a3a2a';
+            ctx.beginPath();
+            ctx.arc(c.x, c.y - 3, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        } else {
+            const facing = c.vx > 0.15 ? 1 : c.vx < -0.15 ? -1 : mama.facing;
+            drawQuail(c.x, c.y, c.size, facing, c.bobPhase, true, c.scared);
+        }
+    }
+
+    // Mama
+    if (mamaHiding) {
+        // Just head peeking
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = '#2a2a3a';
+        ctx.beginPath();
+        ctx.arc(mama.x + mama.facing * 5, mama.y - 8, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.arc(mama.x + mama.facing * 7, mama.y - 9, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    } else {
+        drawQuail(mama.x, mama.y, 13, mama.facing, mama.bobPhase, false, 0);
+    }
+}
+
+function drawLeaves() {
+    for (const l of leaves) {
+        ctx.save();
+        ctx.translate(l.x, l.y);
+        ctx.rotate(l.rot);
+        ctx.fillStyle = l.color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, l.size, l.size * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function drawParticles() {
+    for (const p of particles) {
+        ctx.globalAlpha = p.life / 40;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * (p.life / 40), 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawHUD() {
+    const season = SEASONS[currentSeason];
+
+    // Minimal HUD - just season and chick count
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(10, 10, 70, 20);
+    ctx.fillStyle = '#f5f5f0';
+    ctx.font = 'bold 12px Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(season.toUpperCase(), 16, 24);
+
+    // Chick counter
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(W - 75, 10, 65, 20);
+    ctx.fillStyle = chicksAlive >= 4 ? '#f5f5f0' : '#ff8080';
+    ctx.font = 'bold 12px Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${chicksAlive}/8`, W - 16, 24);
+
+    // Subtle hunger warning - only shows when getting hungry
+    if (hunger > 60) {
+        const urgency = (hunger - 60) / 40; // 0 to 1
+        ctx.globalAlpha = 0.3 + urgency * 0.4;
+        ctx.fillStyle = hunger > 80 ? '#c04040' : '#c0a040';
+        ctx.font = '10px Helvetica, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('hungry...', W/2, 22);
+        ctx.globalAlpha = 1;
+    }
+
+    // Season announcement
+    if (seasonAnnounceTimer > 0) {
+        const alpha = seasonAnnounceTimer > 80 ? 1 : seasonAnnounceTimer / 80;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(W/2 - 70, H/2 - 25, 140, 50);
+        ctx.fillStyle = '#f5f5f0';
+        ctx.font = 'bold 22px Helvetica, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(season.toUpperCase(), W/2, H/2 + 5);
+        ctx.globalAlpha = 1;
+    }
+}
+
+function drawWin() {
+    // Warm sunset overlay
+    ctx.fillStyle = 'rgba(40,35,25,0.85)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative border
+    ctx.strokeStyle = '#d4c4a8';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(W/2 - 160, H/2 - 80, 320, 160);
+
+    // Inner panel
+    ctx.fillStyle = 'rgba(212,196,168,0.15)';
+    ctx.fillRect(W/2 - 158, H/2 - 78, 316, 156);
+
+    ctx.fillStyle = '#f5f5f0';
+    ctx.font = 'bold 28px Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('A YEAR WELL LIVED', W/2, H/2 - 35);
+
+    // Draw little quail family silhouette
+    ctx.fillStyle = '#d4c4a8';
+    for (let i = 0; i < chicksAlive; i++) {
+        ctx.beginPath();
+        ctx.arc(W/2 - 50 + i * 14, H/2 + 5, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    // Mama
+    ctx.beginPath();
+    ctx.arc(W/2 - 65, H/2 + 3, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = '14px Helvetica, Arial, sans-serif';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(`${chicksAlive} chicks survived`, W/2, H/2 + 35);
+
+    ctx.fillStyle = '#d4c4a8';
+    ctx.font = '12px Helvetica, Arial, sans-serif';
+    ctx.fillText('Press A to continue', W/2, H/2 + 60);
+}
+
+function drawLose() {
+    // Dark somber overlay
+    ctx.fillStyle = 'rgba(25,20,20,0.9)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Border
+    ctx.strokeStyle = '#664444';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(W/2 - 150, H/2 - 70, 300, 140);
+
+    ctx.fillStyle = '#c88';
+    ctx.font = 'bold 26px Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('THE COVEY IS LOST', W/2, H/2 - 25);
+
+    ctx.font = '14px Helvetica, Arial, sans-serif';
+    ctx.fillStyle = '#888';
+    ctx.fillText('Too many chicks were lost', W/2, H/2 + 10);
+
+    ctx.fillStyle = '#997';
+    ctx.font = '12px Helvetica, Arial, sans-serif';
+    ctx.fillText('Press A to try again', W/2, H/2 + 45);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    drawSky();
+    drawHills();
+    drawHouse();
+    drawRoad();
+    drawMeadow();
+    drawLeaves();
+    drawBushes();
+    drawFood();
+    drawVehicles();
+    drawPredators();
+    drawQuails();
+    drawParticles();
+
+    // Apply weathered effect BEFORE UI overlays
+    if (typeof SeaRanchStyle !== 'undefined' && SeaRanchStyle.applyWeatheredEffect) {
+        SeaRanchStyle.applyWeatheredEffect(ctx);
+    }
+
+    if (gameState === 'playing') {
+        drawHUD();
+    } else if (gameState === 'win') {
+        drawWin();
+    } else if (gameState === 'lose') {
+        drawLose();
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+SeaRanchStyle.setupTouchControls();
+gameLoop();
+</script>
+</body>
+</html>

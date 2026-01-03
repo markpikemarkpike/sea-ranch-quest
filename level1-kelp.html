@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Kelp Forest</title>
+    <script src="sea-ranch-style.js"></script>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* HTML/CSS Title Card */
+        .title-card {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-card .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(139, 115, 85, 0.08) 3px,
+                    rgba(139, 115, 85, 0.08) 4px
+                ),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+
+        .title-card .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+
+        .title-card .supergraphic::before,
+        .title-card .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+
+        .title-card .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+
+        .title-card .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+
+        .title-card .arrow-accent {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 80px;
+            height: 100px;
+            pointer-events: none;
+        }
+
+        .title-card .arrow-accent::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red);
+            top: 0;
+        }
+
+        .title-card .arrow-accent::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 50px;
+            background: var(--red);
+            top: 45px;
+            left: 27px;
+        }
+
+        .title-card .title-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .title-card .level-title {
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .title-card .level-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--wood);
+        }
+
+        .title-card .continue-hint {
+            position: absolute;
+            bottom: 36px;
+            right: 36px;
+            font-size: 12px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .title-card .title-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- HTML/CSS Title Card -->
+        <div class="title-card" id="title-card">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="arrow-accent"></div>
+            <div class="title-content">
+                <div class="level-title">Kelp Forest</div>
+                <div class="level-subtitle">Restore the Balance</div>
+            </div>
+            <div class="continue-hint">A to start · B to menu</div>
+            <div class="title-grain"></div>
+        </div>
+
+        <canvas id="game" width="640" height="480"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        // Sea Ranch palette - calm, natural, aligned with supergraphic colors
+        const COLORS = {
+            // Ocean - calm Pacific, uses muted blue from Sea Ranch palette
+            oceanDeep: '#1a3a4a',
+            oceanMid: '#2a4a5a',
+            oceanLight: '#3a5a6a',
+            shimmer: '#4a6a7a',
+
+            // Foam - soft, natural whites
+            foam: 'rgba(255, 255, 255, 0.12)',
+            foamBright: 'rgba(255, 255, 255, 0.25)',
+
+            // Rock - rich black from palette
+            rock: '#1a1a1a',
+            rockLight: '#2a2a2a',
+
+            // Kelp - based on MEADOW color #7A9B6D
+            kelp: '#5a7b5d',
+            kelpLight: '#7a9b6d',
+
+            // Otter - warm wood tones from WOOD #8B7355
+            otter: '#8b7355',
+            otterLight: '#a89070',
+            otterBelly: '#d4c4b0',
+
+            // Urchin - muted purple-brown
+            urchin: '#4a3a3a',
+            urchinSpine: '#5a4a4a',
+
+            // UI - using palette colors
+            text: 'rgba(255, 255, 255, 0.7)',
+            textDim: 'rgba(255, 255, 255, 0.4)'
+        };
+
+        // Game state
+        let gameState = 'title';
+        let time = 0;
+
+        // Otter - our peaceful protagonist (scaled for 640x480)
+        const otter = {
+            x: 320, y: 390,
+            vx: 0, vy: 0,
+            facing: 0,
+            swimFrame: 0
+        };
+
+        // Rocks - few, simple, organic shapes
+        let rocks = [];
+
+        // Kelp - sparse, elegant
+        let kelpPatches = [];
+        const KELP_COUNT = 10;
+
+        // Urchins - they reproduce! More hectic gameplay
+        let urchins = [];
+        const STARTING_URCHINS = 4;
+        const MAX_URCHINS = 12;
+
+        let urchinsCollected = 0;
+        let kelpRemaining = KELP_COUNT;
+
+        // Win by maintaining balance - survive for 60 seconds with kelp intact
+        const SURVIVAL_TIME = 60 * 60; // 60 seconds at 60fps
+        let survivalTimer = 0;
+
+        // Urchin spawning
+        let urchinSpawnTimer = 0;
+
+        // Gentle ocean currents - subtle ambience, otter should feel in control
+        const currents = [
+            {
+                // Upper left - flows right and down
+                dirX: 0.6,
+                dirY: 0.5,
+                strength: 0.006,
+                zoneX: 133,
+                zoneY: 120
+            },
+            {
+                // Upper right - flows left
+                dirX: -0.7,
+                dirY: 0.3,
+                strength: 0.005,
+                zoneX: 533,
+                zoneY: 150
+            },
+            {
+                // Center left - flows down and right
+                dirX: 0.4,
+                dirY: 0.6,
+                strength: 0.004,
+                zoneX: 107,
+                zoneY: 270
+            },
+            {
+                // Center - swirling, flows up and left
+                dirX: -0.5,
+                dirY: -0.5,
+                strength: 0.004,
+                zoneX: 320,
+                zoneY: 240
+            },
+            {
+                // Center right - flows down
+                dirX: 0.3,
+                dirY: 0.7,
+                strength: 0.004,
+                zoneX: 507,
+                zoneY: 270
+            },
+            {
+                // Bottom left - flows right
+                dirX: 0.8,
+                dirY: -0.2,
+                strength: 0.005,
+                zoneX: 160,
+                zoneY: 390
+            },
+            {
+                // Bottom right - flows left and up
+                dirX: -0.6,
+                dirY: -0.4,
+                strength: 0.004,
+                zoneX: 507,
+                zoneY: 390
+            }
+        ];
+
+        // Input
+        const keys = {};
+        document.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            const isActionKey = e.key === ' ' || e.key === 'Enter' || e.key === 'a' || e.key === 'A';
+            const isBackKey = e.key === 'b' || e.key === 'B' || e.key === 'Escape';
+
+            // B/ESC always returns to menu (from any state)
+            if (isBackKey) {
+                window.location.href = 'level0-menu.html';
+                return;
+            }
+
+            // Title screen: A to start
+            if (isActionKey && gameState === 'title') {
+                document.getElementById('title-card').style.display = 'none';
+                startGame();
+            }
+
+            // Win/Lose screens: A to replay
+            if ((gameState === 'win' || gameState === 'lose') && isActionKey) {
+                document.getElementById('title-card').style.display = 'none';
+                startGame();
+            }
+        });
+        document.addEventListener('keyup', e => keys[e.key] = false);
+
+        // Audio
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+
+            if (type === 'collect') {
+                // Soft water bubble/plop sound - more natural
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'sine';
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.15);
+
+                // Descending tone like a water droplet
+                osc.frequency.setValueAtTime(280, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.12);
+
+                gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+
+            } else if (type === 'kelpEaten') {
+                // Soft, muffled thud - like something sinking
+                const osc = audioCtx.createOscillator();
+                const noise = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const noiseGain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                osc.connect(filter);
+                noise.connect(noiseGain);
+                noiseGain.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'sine';
+                noise.type = 'triangle';
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.25);
+
+                osc.frequency.setValueAtTime(90, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
+                noise.frequency.setValueAtTime(60, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                noiseGain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+
+                osc.start();
+                noise.start();
+                osc.stop(audioCtx.currentTime + 0.25);
+                noise.stop(audioCtx.currentTime + 0.25);
+            }
+        }
+
+        function generateRocks() {
+            rocks = [];
+            // More rocks spread across the play area (scaled for 640x480)
+            const rockPositions = [
+                { x: 80, y: 105 },
+                { x: 240, y: 135 },
+                { x: 533, y: 90 },
+                { x: 133, y: 270 },
+                { x: 373, y: 225 },
+                { x: 560, y: 270 },
+                { x: 80, y: 390 },
+                { x: 267, y: 360 },
+                { x: 467, y: 375 }
+            ];
+
+            for (const pos of rockPositions) {
+                if (Math.random() > 0.15) { // Occasionally skip one for variety
+                    // Generate irregular rock shape (scaled for 640x480)
+                    const baseR = 33 + Math.random() * 27;
+                    const points = [];
+                    const numPoints = 8 + Math.floor(Math.random() * 4);
+                    for (let i = 0; i < numPoints; i++) {
+                        const angle = (i / numPoints) * Math.PI * 2;
+                        const variance = 0.7 + Math.random() * 0.6;
+                        points.push({
+                            x: Math.cos(angle) * baseR * variance,
+                            y: Math.sin(angle) * baseR * variance * 0.7
+                        });
+                    }
+
+                    rocks.push({
+                        x: pos.x + (Math.random() - 0.5) * 53,
+                        y: pos.y + (Math.random() - 0.5) * 45,
+                        r: baseR,
+                        points: points
+                    });
+                }
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            gameState = 'playing';
+            otter.x = 320;
+            otter.y = 390;
+            otter.vx = 0;
+            otter.vy = 0;
+            urchinsCollected = 0;
+            survivalTimer = 0;
+            urchinSpawnTimer = 0;
+
+            generateRocks();
+
+            // Generate kelp - sparse, in open areas (scaled for 640x480)
+            kelpPatches = [];
+            for (let i = 0; i < KELP_COUNT; i++) {
+                let placed = false;
+                let attempts = 0;
+                while (!placed && attempts < 30) {
+                    const x = 67 + Math.random() * 507;
+                    const y = 75 + Math.random() * 300;
+                    let valid = true;
+
+                    for (const rock of rocks) {
+                        const dx = x - rock.x;
+                        const dy = y - rock.y;
+                        if (Math.sqrt(dx*dx + dy*dy) < rock.r + 40) {
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if (valid) {
+                        // Each kelp is unique (scaled for 640x480)
+                        kelpPatches.push({
+                            x, y,
+                            health: 100,
+                            eaten: false,
+                            height: 45 + Math.random() * 30,
+                            swaySpeed: 0.02 + Math.random() * 0.015,
+                            swayAmount: 5 + Math.random() * 5,
+                            thickness: 3 + Math.random() * 3,
+                            numFronds: 2 + Math.floor(Math.random() * 3),
+                            bulbSize: 6 + Math.random() * 4
+                        });
+                        placed = true;
+                    }
+                    attempts++;
+                }
+            }
+            kelpRemaining = kelpPatches.length;
+
+            // Generate starting urchins
+            urchins = [];
+            for (let i = 0; i < STARTING_URCHINS; i++) {
+                spawnUrchin();
+            }
+
+            // Reset spawn timer
+            urchinSpawnTimer = 0;
+        }
+
+        function spawnUrchin() {
+            if (urchins.filter(u => !u.collected).length >= MAX_URCHINS) return;
+            if (kelpPatches.filter(k => !k.eaten).length === 0) return;
+
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 30) {
+                const x = 67 + Math.random() * 507;
+                const y = 75 + Math.random() * 270;
+                let valid = true;
+
+                for (const rock of rocks) {
+                    const dx = x - rock.x;
+                    const dy = y - rock.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < rock.r + 27) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                // Don't spawn too close to otter
+                const dxOtter = x - otter.x;
+                const dyOtter = y - otter.y;
+                if (Math.sqrt(dxOtter*dxOtter + dyOtter*dyOtter) < 107) {
+                    valid = false;
+                }
+
+                if (valid) {
+                    const validKelp = kelpPatches.filter(k => !k.eaten);
+                    const targetKelp = validKelp[Math.floor(Math.random() * validKelp.length)];
+                    urchins.push({
+                        x, y,
+                        targetKelp,
+                        speed: 0.2 + Math.random() * 0.15,
+                        collected: false
+                    });
+                    placed = true;
+                }
+                attempts++;
+            }
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+
+            // Otter movement - graceful and deliberate, not too fast
+            const accel = 0.18;
+            const maxSpeed = 2.4;
+            const friction = 0.95; // Smooth glide
+
+            if (keys['ArrowUp']) otter.vy -= accel;
+            if (keys['ArrowDown']) otter.vy += accel;
+            if (keys['ArrowLeft']) otter.vx -= accel;
+            if (keys['ArrowRight']) otter.vx += accel;
+
+            otter.vx *= friction;
+            otter.vy *= friction;
+
+            // Apply multiple ocean currents (scaled for 640x480)
+            for (const current of currents) {
+                const distFromZone = Math.sqrt(
+                    Math.pow(otter.x - current.zoneX, 2) +
+                    Math.pow(otter.y - current.zoneY, 2)
+                );
+                const currentStrength = current.strength * Math.max(0, 1 - distFromZone / 200);
+                otter.vx += current.dirX * currentStrength;
+                otter.vy += current.dirY * currentStrength;
+            }
+
+            const speed = Math.sqrt(otter.vx * otter.vx + otter.vy * otter.vy);
+            if (speed > maxSpeed) {
+                otter.vx = (otter.vx / speed) * maxSpeed;
+                otter.vy = (otter.vy / speed) * maxSpeed;
+            }
+
+            if (speed > 0.1) {
+                otter.facing = Math.atan2(otter.vy, otter.vx);
+                otter.swimFrame++;
+            }
+
+            // Move with collision
+            let newX = otter.x + otter.vx;
+            let newY = otter.y + otter.vy;
+
+            for (const rock of rocks) {
+                const dx = newX - rock.x;
+                const dy = newY - rock.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < rock.r + 16) {
+                    // Soft push away
+                    const pushX = (dx / dist) * (rock.r + 16 - dist);
+                    const pushY = (dy / dist) * (rock.r + 16 - dist);
+                    newX += pushX * 0.5;
+                    newY += pushY * 0.5;
+                    otter.vx *= 0.5;
+                    otter.vy *= 0.5;
+                }
+            }
+
+            otter.x = Math.max(27, Math.min(613, newX));
+            otter.y = Math.max(30, Math.min(450, newY));
+
+            // Collect urchins (scaled for 640x480)
+            for (const urchin of urchins) {
+                if (urchin.collected) continue;
+                const dx = otter.x - urchin.x;
+                const dy = otter.y - urchin.y;
+                if (Math.sqrt(dx*dx + dy*dy) < 24) {
+                    urchin.collected = true;
+                    urchinsCollected++;
+                    playSound('collect');
+                }
+            }
+
+            // Urchins move toward kelp
+            for (const urchin of urchins) {
+                if (urchin.collected) continue;
+
+                if (urchin.targetKelp.eaten) {
+                    const validKelp = kelpPatches.filter(k => !k.eaten);
+                    if (validKelp.length > 0) {
+                        urchin.targetKelp = validKelp[Math.floor(Math.random() * validKelp.length)];
+                    }
+                }
+
+                const dx = urchin.targetKelp.x - urchin.x;
+                const dy = urchin.targetKelp.y - urchin.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if (dist > 5) {
+                    urchin.x += (dx / dist) * urchin.speed;
+                    urchin.y += (dy / dist) * urchin.speed;
+                } else {
+                    urchin.targetKelp.health -= 0.3;
+                    if (urchin.targetKelp.health <= 0 && !urchin.targetKelp.eaten) {
+                        urchin.targetKelp.eaten = true;
+                        kelpRemaining--;
+                        playSound('kelpEaten');
+                    }
+                }
+            }
+
+            // Spawn new urchins frequently - keeps it hectic!
+            // Spawning continues throughout but slows slightly as you collect
+            urchinSpawnTimer++;
+            const activeUrchins = urchins.filter(u => !u.collected).length;
+            // Urchins spawn continuously - ecosystem is always under pressure
+            // Rate increases slightly as game progresses (more challenging over time)
+            const progressPressure = Math.min(survivalTimer / SURVIVAL_TIME, 1) * 30;
+            const baseInterval = 90 - progressPressure; // Starts slower, speeds up
+            const spawnInterval = baseInterval + Math.random() * 50;
+
+            // Always keep spawning - otter can never fully eliminate urchins
+            if (urchinSpawnTimer > spawnInterval && activeUrchins < MAX_URCHINS) {
+                spawnUrchin();
+                urchinSpawnTimer = 0;
+            }
+
+            // Kelp slowly recovers when not being eaten
+            for (const kelp of kelpPatches) {
+                if (kelp.health < 100 && !kelp.eaten) {
+                    // Check if any urchin is eating this kelp
+                    const beingEaten = urchins.some(u =>
+                        !u.collected && u.targetKelp === kelp &&
+                        Math.sqrt((u.x - kelp.x)**2 + (u.y - kelp.y)**2) < 8
+                    );
+                    if (!beingEaten) {
+                        // Kelp heals slowly
+                        kelp.health = Math.min(100, kelp.health + 0.03);
+                    }
+                }
+            }
+
+            // Eaten kelp can regrow (but slower than urchin damage)
+            for (const kelp of kelpPatches) {
+                if (kelp.eaten) {
+                    // Chance to start regrowing each frame
+                    if (Math.random() < 0.002) {
+                        kelp.eaten = false;
+                        kelp.health = 20; // Starts weak but not too fragile
+                        kelpRemaining++;
+                    }
+                }
+            }
+
+            // Win/lose conditions
+            // Win by maintaining balance - keep the kelp alive for the duration
+            survivalTimer++;
+            if (survivalTimer >= SURVIVAL_TIME && kelpRemaining > 0) {
+                gameState = 'win';
+                // Save completion using shared style (Level 1 in narrative order)
+                SeaRanchStyle.saveCompletion(1);
+            } else if (kelpRemaining === 0) {
+                // All kelp gone - forest collapsed
+                gameState = 'lose';
+            }
+        }
+
+        // Drawing - minimal, beautiful (scaled for 640x480)
+        function drawOcean() {
+            // Deep base
+            ctx.fillStyle = COLORS.oceanDeep;
+            ctx.fillRect(0, 0, 640, 480);
+
+            // Soft vertical gradient - depth
+            const gradient = ctx.createLinearGradient(0, 0, 0, 480);
+            gradient.addColorStop(0, COLORS.oceanLight);
+            gradient.addColorStop(0.5, COLORS.oceanMid);
+            gradient.addColorStop(1, COLORS.oceanDeep);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 640, 480);
+
+            // Gentle horizontal ripple lines - wishy washy
+            ctx.save();
+            for (let y = 30; y < 480; y += 45) {
+                const wavePhase = time * 0.012 + y * 0.02;
+                const alpha = 0.04 + Math.sin(time * 0.008 + y * 0.01) * 0.015;
+
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+
+                for (let x = 0; x <= 640; x += 20) {
+                    const yOff = Math.sin(wavePhase + x * 0.015) * 3;
+                    ctx.lineTo(x, y + yOff);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Subtle light caustics
+            ctx.save();
+            ctx.globalAlpha = 0.02;
+            for (let i = 0; i < 5; i++) {
+                const x = (i * 173 + time * 0.15) % 720 - 40;
+                const y = 90 + i * 105;
+                ctx.fillStyle = COLORS.shimmer;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + 27, y + 75);
+                ctx.lineTo(x - 7, y + 75);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Tiny bubbles that follow current directions
+            ctx.save();
+            for (let i = 0; i < 20; i++) {
+                // Find the nearest current to this bubble's base position
+                const baseX = 40 + (i % 7) * 90;
+                const baseY = 60 + Math.floor(i / 7) * 140;
+
+                // Find closest current
+                let closestCurrent = currents[0];
+                let closestDist = Infinity;
+                for (const current of currents) {
+                    const dx = baseX - current.zoneX;
+                    const dy = baseY - current.zoneY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestCurrent = current;
+                    }
+                }
+
+                // Bubble moves in current direction, looping
+                const speed = 0.4 + (i % 3) * 0.15;
+                const cycleLength = 150 + i * 20;
+                const progress = ((time * speed + i * 40) % cycleLength) / cycleLength;
+
+                const travelDist = 80 + i * 5;
+                const x = baseX + closestCurrent.dirX * travelDist * progress;
+                const y = baseY + closestCurrent.dirY * travelDist * progress;
+
+                // Fade in at start, fade out at end
+                const fadeIn = Math.min(1, progress * 5);
+                const fadeOut = Math.min(1, (1 - progress) * 5);
+                const alpha = (0.12 + Math.sin(time * 0.04 + i) * 0.04) * fadeIn * fadeOut;
+                const size = 1.5 + (i % 3) * 0.8;
+
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Soft foam wisps near top
+            ctx.save();
+            for (let i = 0; i < 5; i++) {
+                const x = (i * 187 + time * 0.1) % 720 - 40;
+                const y = 18 + Math.sin(time * 0.01 + i) * 6;
+                const alpha = 0.05 + Math.sin(time * 0.008 + i * 0.7) * 0.02;
+
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.quadraticCurveTo(x + 33, y + 3, x + 67, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawRocks() {
+            for (const rock of rocks) {
+                ctx.save();
+                ctx.translate(rock.x, rock.y);
+
+                // Soft shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.beginPath();
+                ctx.moveTo(rock.points[0].x + 4, rock.points[0].y + 4);
+                for (let i = 1; i < rock.points.length; i++) {
+                    ctx.lineTo(rock.points[i].x + 4, rock.points[i].y + 4);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // Rock body - irregular shape
+                ctx.fillStyle = COLORS.rock;
+                ctx.beginPath();
+                ctx.moveTo(rock.points[0].x, rock.points[0].y);
+                for (let i = 1; i < rock.points.length; i++) {
+                    ctx.lineTo(rock.points[i].x, rock.points[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // Subtle top highlight
+                ctx.fillStyle = COLORS.rockLight;
+                ctx.beginPath();
+                const hlPoints = rock.points.filter((p, i) => i < rock.points.length / 2);
+                if (hlPoints.length > 0) {
+                    ctx.moveTo(hlPoints[0].x * 0.6, hlPoints[0].y * 0.6);
+                    for (let i = 1; i < hlPoints.length; i++) {
+                        ctx.lineTo(hlPoints[i].x * 0.6, hlPoints[i].y * 0.6);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        function drawKelp() {
+            for (const kelp of kelpPatches) {
+                if (kelp.eaten) continue;
+
+                const healthRatio = kelp.health / 100;
+                const sway = Math.sin(time * kelp.swaySpeed + kelp.x * 0.01) * kelp.swayAmount;
+                const height = kelp.height * healthRatio;
+
+                ctx.save();
+                ctx.translate(kelp.x, kelp.y);
+
+                // Main stalk
+                ctx.strokeStyle = COLORS.kelp;
+                ctx.lineWidth = kelp.thickness;
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(
+                    sway * 0.3, -height * 0.3,
+                    sway * 0.7, -height * 0.6,
+                    sway, -height
+                );
+                ctx.stroke();
+
+                // Side fronds - each kelp has different number
+                for (let f = 0; f < kelp.numFronds; f++) {
+                    const frondY = -height * (0.3 + f * 0.25);
+                    const frondSway = sway * (0.3 + f * 0.2);
+                    const frondLen = 8 + f * 3;
+                    const side = f % 2 === 0 ? 1 : -1;
+                    const frondWave = Math.sin(time * 0.03 + f) * 2;
+
+                    ctx.strokeStyle = COLORS.kelp;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(frondSway, frondY);
+                    ctx.quadraticCurveTo(
+                        frondSway + side * frondLen * 0.5,
+                        frondY - 3 + frondWave,
+                        frondSway + side * frondLen,
+                        frondY + frondWave
+                    );
+                    ctx.stroke();
+                }
+
+                // Bulb at top
+                ctx.fillStyle = COLORS.kelpLight;
+                ctx.beginPath();
+                ctx.ellipse(sway, -height - kelp.bulbSize, kelp.bulbSize, kelp.bulbSize * 1.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tiny highlight on bulb
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.beginPath();
+                ctx.ellipse(sway - kelp.bulbSize * 0.3, -height - kelp.bulbSize - 1, kelp.bulbSize * 0.3, kelp.bulbSize * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        function drawUrchins() {
+            for (const urchin of urchins) {
+                if (urchin.collected) continue;
+
+                ctx.save();
+                ctx.translate(urchin.x, urchin.y);
+
+                const pulse = Math.sin(time * 0.05 + urchin.x) * 0.1 + 1;
+
+                // Simple spines (scaled for 640x480)
+                ctx.strokeStyle = COLORS.urchinSpine;
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 10; i++) {
+                    const angle = (i / 10) * Math.PI * 2 + time * 0.01;
+                    const len = 11 * pulse;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+                    ctx.stroke();
+                }
+
+                // Body
+                ctx.fillStyle = COLORS.urchin;
+                ctx.beginPath();
+                ctx.arc(0, 0, 7, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        function drawOtter() {
+            const speed = Math.sqrt(otter.vx * otter.vx + otter.vy * otter.vy);
+            const bob = Math.sin(otter.swimFrame * 0.1) * 3;
+
+            ctx.save();
+            ctx.translate(otter.x, otter.y + bob);
+            ctx.rotate(otter.facing);
+
+            // Wake when swimming (scaled for 640x480)
+            if (speed > 0.5) {
+                ctx.fillStyle = COLORS.foam;
+                ctx.beginPath();
+                ctx.ellipse(-20, 0, 11, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Tail
+            const tailWave = Math.sin(otter.swimFrame * 0.15) * 4;
+            ctx.fillStyle = COLORS.otter;
+            ctx.beginPath();
+            ctx.ellipse(-19 + tailWave * 0.3, tailWave * 0.5, 8, 4, tailWave * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body
+            ctx.fillStyle = COLORS.otter;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Belly
+            ctx.fillStyle = COLORS.otterBelly;
+            ctx.beginPath();
+            ctx.ellipse(0, 1, 11, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = COLORS.otterLight;
+            ctx.beginPath();
+            ctx.ellipse(13, 0, 8, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.arc(16, -3, 2, 0, Math.PI * 2);
+            ctx.arc(16, 3, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = '#2a1a1a';
+            ctx.beginPath();
+            ctx.ellipse(20, 0, 3, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawUI() {
+            ctx.save();
+
+            // === MOON CYCLE (top left) ===
+            // Progress from new moon (0) to full moon (1)
+            const progress = survivalTimer / SURVIVAL_TIME;
+            const moonX = 28, moonY = 28;
+            const moonRadius = 12;
+
+            // Moon glow (subtle)
+            const glowRadius = moonRadius + 4 + progress * 3;
+            const gradient = ctx.createRadialGradient(moonX, moonY, moonRadius, moonX, moonY, glowRadius);
+            gradient.addColorStop(0, `rgba(255, 255, 220, ${0.1 + progress * 0.15})`);
+            gradient.addColorStop(1, 'rgba(255, 255, 220, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Moon base (dark side)
+            ctx.fillStyle = 'rgba(40, 50, 60, 0.8)';
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Illuminated portion (waxing from right)
+            // At progress=0: new moon (nothing lit)
+            // At progress=0.5: half moon
+            // At progress=1: full moon
+            if (progress > 0) {
+                ctx.fillStyle = 'rgba(240, 238, 220, 0.9)';
+                ctx.beginPath();
+
+                if (progress <= 0.5) {
+                    // Waxing crescent to half: draw arc on right + curve inward
+                    const curveX = moonRadius * (1 - progress * 2); // curves from moonRadius to 0
+                    ctx.arc(moonX, moonY, moonRadius, -Math.PI/2, Math.PI/2, false);
+                    ctx.quadraticCurveTo(moonX + curveX, moonY, moonX, moonY - moonRadius);
+                } else {
+                    // Waxing gibbous to full: arc on right + curve outward on left
+                    const curveX = moonRadius * ((progress - 0.5) * 2); // curves from 0 to moonRadius
+                    ctx.arc(moonX, moonY, moonRadius, -Math.PI/2, Math.PI/2, false);
+                    ctx.quadraticCurveTo(moonX - curveX, moonY, moonX, moonY - moonRadius);
+                }
+                ctx.fill();
+            }
+
+            // Subtle moon surface texture
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = '#666';
+            ctx.beginPath();
+            ctx.arc(moonX - 3, moonY - 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(moonX + 4, moonY + 3, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(moonX + 1, moonY + 5, 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            ctx.restore();
+
+            // Kelp health warning when getting low
+            if (kelpRemaining <= 3 && kelpRemaining > 0) {
+                const pulse = Math.sin(time * 0.08) * 0.5 + 0.5;
+                ctx.fillStyle = `rgba(150, 80, 80, ${0.03 + pulse * 0.04})`;
+                ctx.fillRect(0, 0, 640, 480);
+            }
+        }
+
+        function drawCurrentIndicator() {
+            // Subtle visual hint of current directions - gentle ripples
+            ctx.save();
+            ctx.globalAlpha = 0.06;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 0.5;
+
+            // Draw subtle directional lines for each current zone
+            for (const current of currents) {
+                for (let i = 0; i < 4; i++) {
+                    const baseX = current.zoneX - 50 + (time * 0.2 + i * 30) % 100;
+                    const baseY = current.zoneY - 40 + i * 25;
+                    const len = 12;
+
+                    ctx.beginPath();
+                    ctx.moveTo(baseX, baseY);
+                    ctx.lineTo(baseX + current.dirX * len * 8, baseY + current.dirY * len * 8);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawTitle() {
+            // HTML overlay handles the title card now - just draw nothing
+        }
+
+        function drawWin() {
+            SeaRanchStyle.drawWinScreen(ctx, 'Kelp Forest Thriving', 'Thanks Otter');
+        }
+
+        function drawLose() {
+            SeaRanchStyle.drawLoseScreen(ctx, 'URCHIN BARREN');
+        }
+
+        function gameLoop() {
+            time++;
+
+            if (gameState === 'title') {
+                drawTitle();
+            } else if (gameState === 'win') {
+                drawOcean();
+                drawKelp();
+                drawRocks();
+                drawOtter();
+                drawWin();
+            } else if (gameState === 'lose') {
+                drawOcean();
+                drawRocks();
+                drawUrchins();
+                drawOtter();
+                drawLose();
+            } else {
+                update();
+                drawOcean();
+                drawCurrentIndicator();
+                drawKelp();
+                drawRocks();
+                drawUrchins();
+                drawOtter();
+                drawUI();
+            }
+
+            // Apply weathered film grain effect for consistent Sea Ranch aesthetic
+            if (gameState !== 'title') {
+                SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        generateRocks();
+        SeaRanchStyle.setupTouchControls();
+        gameLoop();
+    </script>
+</body>
+</html>

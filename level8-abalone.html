@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Level 5: Lonely Abalone</title>
+    <script src="sea-ranch-style.js"></script>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* HTML/CSS Title Card */
+        .title-card {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .title-card .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(139, 115, 85, 0.08) 3px, rgba(139, 115, 85, 0.08) 4px),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+        .title-card .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+        .title-card .supergraphic::before,
+        .title-card .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+        .title-card .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+        .title-card .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+        .title-card .arrow-accent {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 80px;
+            height: 100px;
+            pointer-events: none;
+        }
+        .title-card .arrow-accent::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red);
+            top: 0;
+        }
+        .title-card .arrow-accent::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 50px;
+            background: var(--red);
+            top: 45px;
+            left: 27px;
+        }
+        .title-card .title-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+        .title-card .level-title {
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .title-card .level-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--wood);
+        }
+        .title-card .continue-hint {
+            position: absolute;
+            bottom: 36px;
+            right: 36px;
+            font-size: 12px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .title-card .title-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="title-card" id="title-card">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="arrow-accent"></div>
+            <div class="title-content">
+                <div class="level-title">Lonely Abalone</div>
+                <div class="level-subtitle">Leave exactly ONE shell</div>
+            </div>
+            <div class="continue-hint">A to start · B to menu</div>
+            <div class="title-grain"></div>
+        </div>
+        <canvas id="game" width="640" height="480"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const width = 640;
+        const height = 480;
+
+        // Sea Ranch palette - matching hub screen
+        const COLORS = {
+            // Core palette from hub
+            black: '#1a1a1a',
+            white: '#f5f5f0',
+            red: '#C41E3A',
+            blue: '#2E5DA8',
+
+            // Natural/weathered tones
+            wood: '#8b7355',
+            woodLight: '#a89070',
+            sand: '#d4c4a8',
+            fog: '#e8e4dc',
+
+            // Rocks - using wood tones
+            rockDark: '#5a4a3a',
+            rockMid: '#7a6a5a',
+            rockLight: '#9a8a7a',
+
+            // Abalone shells - iridescent!
+            shellBase: '#3a4a4a',
+            shellIridescent1: '#7ab8b8',
+            shellIridescent2: '#b87aaa',
+            shellIridescent3: '#7a9ab8',
+            shellIridescent4: '#aab87a',
+
+            // Oystercatcher - striking black with red beak (matches palette)
+            birdBlack: '#1a1a1a',
+            birdBeak: '#C41E3A',
+            birdEye: '#f5f5f0',
+            birdLeg: '#C41E3A'
+        };
+
+        // Game state
+        let gameState = 'title';
+        let time = 0;
+
+        // Puzzle state
+        let rocks = [];       // Rock positions (nodes)
+        let abalones = [];    // Abalones on rocks (true/false)
+
+        // Bird state - now free-flying with graceful physics
+        let bird = {
+            x: 320,
+            y: 225,
+            vx: 0,
+            vy: 0,
+            facingRight: true,
+            carrying: null, // null or { fromRock, shellHue, shellSize, shellRotation }
+            // Animation state
+            wingPhase: 0,      // Wing flap cycle
+            bankAngle: 0,      // Leaning into turns
+            bobOffset: 0,      // Gentle floating bob
+            glideTime: 0,      // Time since last input (for gliding)
+        };
+
+        // Valid drop zones when carrying a shell
+        let validDrops = []; // [{ rockIdx, overRock }]
+        let collected = 0;
+        let collectedShells = []; // Visual shells in the pile on collection rock
+        let moves = 0;
+
+        // Hint state
+        let showingHint = false;
+        let hintMoves = []; // Array of {from, over, to} for valid moves
+
+        // Collection rock position (in the ocean, top left)
+        const collectionRock = { x: 73, y: 173 };
+        // Bird's perch position (on top of collection rock)
+        const birdPerch = { x: 77, y: 135 };
+
+        // Tide
+        let tideLevel = 0;
+        let tideRising = true;
+        let tideSpeed = 0.0003;
+
+        // Levels - rocks integrated into beach landscape
+        // 15-hole triangle like Cracker Barrel (5 rows)
+        // Numbering from top: 0, then 1-2, then 3-4-5, then 6-7-8-9, then 10-11-12-13-14
+        const LEVELS = [
+            {
+                rocks: [
+                    // Row 1 (top) - in the ocean on rock
+                    { x: 320, y: 143, inWater: true },
+                    // Row 2 - tideline / wet
+                    { x: 267, y: 203, inWater: true }, { x: 373, y: 203, inWater: true },
+                    // Row 3 - wet sand
+                    { x: 213, y: 263, inWater: false }, { x: 320, y: 263, inWater: false }, { x: 427, y: 263, inWater: false },
+                    // Row 4 - wet/dry sand
+                    { x: 160, y: 323, inWater: false }, { x: 267, y: 323, inWater: false }, { x: 373, y: 323, inWater: false }, { x: 480, y: 323, inWater: false },
+                    // Row 5 (bottom) - dry sand
+                    { x: 107, y: 383, inWater: false }, { x: 213, y: 383, inWater: false }, { x: 320, y: 383, inWater: false }, { x: 427, y: 383, inWater: false }, { x: 533, y: 383, inWater: false }
+                ],
+                // All valid jumps - [from, over, to]
+                jumps: [
+                    // Vertical jumps (down-left and down-right diagonals)
+                    [0, 1, 3], [0, 2, 5],
+                    [1, 3, 6], [1, 4, 8],
+                    [2, 4, 7], [2, 5, 9],
+                    [3, 6, 10], [3, 7, 12],
+                    [4, 7, 11], [4, 8, 13],
+                    [5, 8, 12], [5, 9, 14],
+                    // Reverse vertical jumps (up)
+                    [3, 1, 0], [5, 2, 0],
+                    [6, 3, 1], [8, 4, 1],
+                    [7, 4, 2], [9, 5, 2],
+                    [10, 6, 3], [12, 7, 3],
+                    [11, 7, 4], [13, 8, 4],
+                    [12, 8, 5], [14, 9, 5],
+                    // Horizontal jumps (within rows)
+                    [3, 4, 5], [5, 4, 3],
+                    [6, 7, 8], [8, 7, 6], [7, 8, 9], [9, 8, 7],
+                    [10, 11, 12], [12, 11, 10], [11, 12, 13], [13, 12, 11], [12, 13, 14], [14, 13, 12]
+                ],
+                startEmpty: 0  // Top position starts empty (bird starts here) - winnable per strategy doc
+            }
+        ];
+
+        let currentLevel = 0;
+
+        // Input
+        const keys = {};
+
+        document.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            const isActionKey = e.key === ' ' || e.key === 'Enter' || e.key === 'a' || e.key === 'A';
+            const isBackKey = e.key === 'Escape' || e.key === 'b' || e.key === 'B';
+            const isHintKey = e.key === 'y' || e.key === 'Y';
+            const isRestartKey = e.key === 'x' || e.key === 'X';
+
+            // B/ESC always returns to menu (from any state)
+            if (isBackKey) {
+                window.location.href = 'level0-menu.html';
+                return;
+            }
+
+            if (gameState === 'title' && isActionKey) {
+                document.getElementById('title-card').style.display = 'none';
+                startGame();
+            } else if (gameState === 'lose' && isActionKey) {
+                startGame();
+            } else if (gameState === 'win' && isActionKey) {
+                window.location.href = 'level0-menu.html';
+            } else if (gameState === 'playing' && !animState.active) {
+                if (isActionKey) {
+                    handleAction();
+                }
+                // Y key for hint
+                if (isHintKey) {
+                    if (!bird.carrying) {
+                        showingHint = true;
+                        hintMoves = calculateAllValidMoves();
+                    }
+                }
+                // X key for restart
+                if (isRestartKey) {
+                    startGame();
+                }
+            }
+            e.preventDefault();
+        });
+        document.addEventListener('keyup', e => {
+            keys[e.key] = false;
+            // Hide hint when Y released
+            if (e.key === 'y' || e.key === 'Y') {
+                showingHint = false;
+            }
+        });
+
+        // Audio
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+
+            if (type === 'hop') {
+                // Quick chirpy hop sound
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.05);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.12);
+            } else if (type === 'collect') {
+                // Shimmery shell collect - multiple tones
+                for (let i = 0; i < 3; i++) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600 + i * 200, audioCtx.currentTime + i * 0.05);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime + i * 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3 + i * 0.05);
+                    osc.start(audioCtx.currentTime + i * 0.05);
+                    osc.stop(audioCtx.currentTime + 0.3 + i * 0.05);
+                }
+            } else if (type === 'select') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'error') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            }
+        }
+
+        // Animation state machine
+        // Phases: 'hop' -> 'bend' -> 'toss' -> 'arc' -> done
+        let animState = {
+            active: false,
+            phase: '',
+            progress: 0,
+            fromRock: 0,
+            toRock: 0,
+            overRock: -1,
+            shellHue: 0,
+            shellSize: 1,
+            shellRotation: 0,
+            // For shell arc to nest
+            shellX: 0,
+            shellY: 0
+        };
+
+        // Nest position (on the perch rock)
+        const nestPos = { x: 73, y: 143 };
+        let nestShells = []; // Shells that have landed in nest
+
+        // Find which rock the bird is hovering over (if any)
+        function getRockUnderBird() {
+            for (let i = 0; i < rocks.length; i++) {
+                const rock = rocks[i];
+                const dx = bird.x - rock.x;
+                const dy = bird.y - rock.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 65) return i;  // Very generous target area!
+            }
+            return -1;
+        }
+
+        // Calculate all valid moves on the board (for hint system)
+        function calculateAllValidMoves() {
+            const level = LEVELS[currentLevel];
+            const moves = [];
+
+            for (let i = 0; i < rocks.length; i++) {
+                if (!abalones[i]) continue;
+                for (const jump of level.jumps) {
+                    if (jump[0] === i && abalones[jump[1]] && !abalones[jump[2]]) {
+                        moves.push({ from: i, over: jump[1], to: jump[2] });
+                    }
+                }
+            }
+            return moves;
+        }
+
+        // Calculate valid drop zones for a shell picked up from fromRock
+        function calculateValidDrops(fromRock) {
+            const level = LEVELS[currentLevel];
+            const drops = [];
+
+            for (const jump of level.jumps) {
+                // jump = [from, over, to]
+                if (jump[0] === fromRock && abalones[jump[1]] && !abalones[jump[2]]) {
+                    drops.push({ rockIdx: jump[2], overRock: jump[1] });
+                }
+            }
+
+            return drops;
+        }
+
+        function handleAction() {
+            if (animState.active) return;
+
+            if (bird.carrying) {
+                // Try to drop the shell
+                const rockIdx = getRockUnderBird();
+                const validDrop = validDrops.find(d => d.rockIdx === rockIdx);
+
+                if (validDrop) {
+                    // Valid drop! Start the drop animation
+                    executeDrop(validDrop);
+                } else {
+                    playSound('error');
+                }
+            } else {
+                // Try to pick up a shell
+                const rockIdx = getRockUnderBird();
+                if (rockIdx >= 0 && abalones[rockIdx]) {
+                    // Check if this shell can jump anywhere
+                    const drops = calculateValidDrops(rockIdx);
+                    if (drops.length > 0) {
+                        // Pick it up!
+                        bird.carrying = {
+                            fromRock: rockIdx,
+                            shellHue: rocks[rockIdx].abaloneHue,
+                            shellSize: rocks[rockIdx].abaloneSize,
+                            shellRotation: rocks[rockIdx].abaloneRotation
+                        };
+                        abalones[rockIdx] = false;
+                        validDrops = drops;
+                        playSound('select');
+                    } else {
+                        playSound('error');
+                    }
+                } else {
+                    playSound('error');
+                }
+            }
+        }
+
+        function executeDrop(drop) {
+            // Start drop animation
+            animState.active = true;
+            animState.phase = 'drop';
+            animState.progress = 0;
+            animState.toRock = drop.rockIdx;
+            animState.overRock = drop.overRock;
+
+            // Store shell visual properties from what bird is carrying
+            animState.shellHue = bird.carrying.shellHue;
+            animState.shellSize = bird.carrying.shellSize;
+            animState.shellRotation = bird.carrying.shellRotation;
+            animState.fromRock = bird.carrying.fromRock;
+
+            bird.carrying = null;
+            validDrops = [];
+
+            playSound('hop');
+        }
+
+        function updateBirdMovement() {
+            if (animState.active) return;
+
+            // Graceful bird flight physics - very easy controls
+            const accel = 0.7;            // Very responsive acceleration
+            const airResistance = 0.92;   // High friction = easy to stop and control
+            const maxSpeed = 6;           // Fast traversal
+            const turnSpeed = 0.2;        // Quick banking
+
+            // Check if any input
+            const hasInput = keys['ArrowLeft'] || keys['ArrowRight'] || keys['ArrowUp'] || keys['ArrowDown'];
+
+            if (hasInput) {
+                bird.glideTime = 0;
+                // Apply smooth acceleration
+                if (keys['ArrowLeft']) bird.vx -= accel;
+                if (keys['ArrowRight']) bird.vx += accel;
+                if (keys['ArrowUp']) bird.vy -= accel;
+                if (keys['ArrowDown']) bird.vy += accel;
+            } else {
+                bird.glideTime += 1;
+            }
+
+            // Apply air resistance (more when gliding)
+            const resistance = hasInput ? airResistance : airResistance * 0.995;
+            bird.vx *= resistance;
+            bird.vy *= resistance;
+
+            // Soft speed limiting with easing
+            const speed = Math.sqrt(bird.vx * bird.vx + bird.vy * bird.vy);
+            if (speed > maxSpeed) {
+                const factor = maxSpeed / speed;
+                bird.vx = bird.vx * 0.9 + bird.vx * factor * 0.1;
+                bird.vy = bird.vy * 0.9 + bird.vy * factor * 0.1;
+            }
+
+            // Update position
+            bird.x += bird.vx;
+            bird.y += bird.vy;
+
+            // Soft boundary bouncing
+            const margin = 53;
+            const bounce = 0.3;
+            if (bird.x < margin) { bird.x = margin; bird.vx *= -bounce; }
+            if (bird.x > width - margin) { bird.x = width - margin; bird.vx *= -bounce; }
+            if (bird.y < 75) { bird.y = 75; bird.vy *= -bounce; }
+            if (bird.y > height - 38) { bird.y = height - 38; bird.vy *= -bounce; }
+
+            // Smooth facing direction change
+            if (Math.abs(bird.vx) > 0.3) {
+                bird.facingRight = bird.vx > 0;
+            }
+
+            // Calculate bank angle (leaning into turns)
+            const targetBank = -bird.vx * 0.08;
+            bird.bankAngle += (targetBank - bird.bankAngle) * turnSpeed;
+
+            // Wing animation - faster when actively flying, slower glide when coasting
+            const wingSpeed = hasInput ? 0.4 : 0.15;
+            bird.wingPhase += wingSpeed;
+
+            // Gentle bob when hovering/slow
+            bird.bobOffset = Math.sin(time * 0.08) * (speed < 1 ? 3 : 1);
+        }
+
+        function updateAnimation() {
+            if (!animState.active) return;
+
+            const speed = 0.07;
+            animState.progress += speed;
+
+            if (animState.progress >= 1) {
+                animState.progress = 0;
+
+                if (animState.phase === 'drop') {
+                    // Shell has been placed at drop location
+                    abalones[animState.toRock] = true;
+                    rocks[animState.toRock].abaloneHue = animState.shellHue;
+                    rocks[animState.toRock].abaloneSize = animState.shellSize;
+                    rocks[animState.toRock].abaloneRotation = animState.shellRotation;
+
+                    // Store the collected shell's properties BEFORE removing it
+                    animState.collectHue = rocks[animState.overRock].abaloneHue;
+                    animState.collectSize = rocks[animState.overRock].abaloneSize;
+                    animState.collectRotation = rocks[animState.overRock].abaloneRotation;
+                    animState.collectX = rocks[animState.overRock].x;
+                    animState.collectY = rocks[animState.overRock].y;
+
+                    // Store drop position where bird stays
+                    animState.dropX = rocks[animState.toRock].x;
+                    animState.dropY = rocks[animState.toRock].y;
+
+                    // Bird turns to face the jumped shell and grabs it
+                    animState.phase = 'grab';
+                    playSound('collect');
+
+                } else if (animState.phase === 'grab') {
+                    // Bird grabbed it - remove from board, turn to nest
+                    abalones[animState.overRock] = false;
+                    animState.phase = 'toss';
+
+                } else if (animState.phase === 'toss') {
+                    // Bird tosses shell to nest
+                    animState.phase = 'arc';
+
+                } else if (animState.phase === 'arc') {
+                    // Shell landed in nest
+                    nestShells.push({
+                        hue: animState.collectHue,
+                        size: 0.6,
+                        rotation: Math.random() * Math.PI * 2,
+                        x: (Math.random() - 0.5) * 20,
+                        y: (Math.random() - 0.5) * 10
+                    });
+                    collected++;
+                    moves++;
+                    // Juice: sparkles and shake when shell is collected
+                    SeaRanchStyle.spawnSparkles(nestPos.x, nestPos.y, SeaRanchStyle.colors.cream);
+                    SeaRanchStyle.shake(3, 0.8);
+                    animState.active = false;
+                    checkGameState();
+                }
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            gameState = 'playing';
+            currentLevel = 0;
+            setupLevel();
+        }
+
+        function setupLevel() {
+            const level = LEVELS[currentLevel];
+
+            // Copy rock positions with unique visual properties
+            rocks = level.rocks.map((r, i) => ({
+                ...r,
+                // Each rock gets unique abalone appearance
+                abaloneSize: 0.8 + Math.random() * 0.5,
+                abaloneRotation: Math.random() * Math.PI * 2,
+                abaloneHue: Math.floor(Math.random() * 4), // 0-3 for different color combos
+                rockVariant: Math.floor(Math.random() * 3)
+            }));
+
+            // Place abalones on all rocks except the starting empty one
+            abalones = rocks.map((_, i) => i !== level.startEmpty);
+
+            // Bird starts in the middle, flying
+            bird.x = 320;
+            bird.y = 225;
+            bird.vx = 0;
+            bird.vy = 0;
+            bird.facingRight = true;
+            bird.carrying = null;
+
+            // Reset state
+            validDrops = [];
+            animState.active = false;
+            animState.phase = '';
+            nestShells = [];
+
+            // Reset collected shells
+            collected = 0;
+            collectedShells = [];
+            moves = 0;
+            tideLevel = 0;
+            tideRising = true;
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+
+            // Update bird flight
+            updateBirdMovement();
+
+            // Update animation state machine
+            updateAnimation();
+
+            // Tide slowly rises and falls (visual only)
+            if (tideRising) {
+                tideLevel += tideSpeed;
+                if (tideLevel > 1) {
+                    tideLevel = 1;
+                    tideRising = false;
+                }
+            } else {
+                tideLevel -= tideSpeed;
+                if (tideLevel < 0) {
+                    tideLevel = 0;
+                    tideRising = true;
+                }
+            }
+        }
+
+        function checkGameState() {
+            const level = LEVELS[currentLevel];
+            const remainingAbalones = abalones.filter(a => a).length;
+
+            // Check if any valid moves remain on the board
+            let anyJumpPossible = false;
+            for (let i = 0; i < rocks.length; i++) {
+                if (!abalones[i]) continue; // Need an abalone to jump from
+                for (const jump of level.jumps) {
+                    if (jump[0] === i && abalones[jump[1]] && !abalones[jump[2]]) {
+                        anyJumpPossible = true;
+                        break;
+                    }
+                }
+                if (anyJumpPossible) break;
+            }
+
+            // If no more moves possible, check win/lose
+            if (!anyJumpPossible) {
+                if (remainingAbalones <= 3) {
+                    // Win! 3 or fewer remaining (1 is perfect)
+                    gameState = 'win';
+                    // Save completion (Level 8 in narrative order)
+                    SeaRanchStyle.saveCompletion(8);
+                } else {
+                    // Too many left
+                    gameState = 'lose';
+                    // Juice: shake and flash on failure
+                    SeaRanchStyle.shake(8, 0.88);
+                    SeaRanchStyle.flash(SeaRanchStyle.colors.red, 0.25);
+                }
+            }
+        }
+
+        // Drawing - Arcade beach scene
+        function drawBackground() {
+            // Sky gradient - late afternoon
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, 150);
+            skyGrad.addColorStop(0, '#87CEEB');
+            skyGrad.addColorStop(1, '#b8d4e8');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, 150);
+
+            // Ocean - animated waves
+            const oceanGrad = ctx.createLinearGradient(0, 120, 0, 270);
+            oceanGrad.addColorStop(0, '#2a5a7a');
+            oceanGrad.addColorStop(1, '#3a7a9a');
+            ctx.fillStyle = oceanGrad;
+            ctx.fillRect(0, 120, width, 150);
+
+            // Wave lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            for (let w = 0; w < 4; w++) {
+                const waveY = 143 + w * 30;
+                ctx.beginPath();
+                ctx.moveTo(0, waveY);
+                for (let x = 0; x <= width; x += 10) {
+                    const offset = Math.sin((x * 0.02) + (time * 0.03) + w) * 6;
+                    ctx.lineTo(x, waveY + offset);
+                }
+                ctx.stroke();
+            }
+
+            // Foam line where waves meet beach
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.moveTo(0, 263);
+            for (let x = 0; x <= width; x += 15) {
+                const foam = Math.sin((x * 0.03) + (time * 0.05)) * 5;
+                const surge = Math.sin(time * 0.02) * 8;
+                ctx.lineTo(x, 263 + foam + surge);
+            }
+            ctx.lineTo(width, 278);
+            ctx.lineTo(0, 278);
+            ctx.closePath();
+            ctx.fill();
+
+            // Wet sand
+            const wetGrad = ctx.createLinearGradient(0, 263, 0, 315);
+            wetGrad.addColorStop(0, '#8a7a6a');
+            wetGrad.addColorStop(1, '#a09080');
+            ctx.fillStyle = wetGrad;
+            ctx.fillRect(0, 270, width, 53);
+
+            // Dry sand - main play area
+            const sandGrad = ctx.createLinearGradient(0, 315, 0, height);
+            sandGrad.addColorStop(0, '#c4b49a');
+            sandGrad.addColorStop(1, '#d4c4a8');
+            ctx.fillStyle = sandGrad;
+            ctx.fillRect(0, 315, width, height - 315);
+
+            // Beach texture - scattered dots
+            ctx.fillStyle = 'rgba(139, 115, 85, 0.15)';
+            for (let i = 0; i < 120; i++) {
+                const x = (i * 73 + time * 0.1) % width;
+                const y = 323 + (i * 31) % 150;
+                const size = 1 + (i % 3);
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Small shells and pebbles on beach
+            ctx.fillStyle = '#9a8a7a';
+            for (let i = 0; i < 20; i++) {
+                const x = (i * 97 + 30) % width;
+                const y = 330 + (i * 43) % 135;
+                ctx.beginPath();
+                ctx.ellipse(x, y, 3 + i % 3, 2 + i % 2, i * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Distant rocks in water
+            ctx.fillStyle = '#4a5a5a';
+            ctx.beginPath();
+            ctx.ellipse(80, 180, 27, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(560, 158, 20, 12, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawRocks() {
+            for (let i = 0; i < rocks.length; i++) {
+                const rock = rocks[i];
+                const hasAbalone = abalones[i];
+                const variant = rock.rockVariant || 0;
+
+                ctx.save();
+                ctx.translate(rock.x, rock.y);
+
+                if (rock.inWater) {
+                    // Ocean rock - realistic tide pool rock
+                    // Shadow
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+                    ctx.beginPath();
+                    ctx.ellipse(3, 5, 20 + variant * 2, 11, 0.1 * variant, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Main rock body - irregular shape using multiple overlapping ellipses
+                    ctx.fillStyle = '#3d4a4a';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 18 + variant, 10, 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Rock texture bumps
+                    ctx.fillStyle = '#4a5858';
+                    ctx.beginPath();
+                    ctx.ellipse(-5, -2, 8, 6, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(6, 1, 7, 5, -0.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Darker crevices
+                    ctx.fillStyle = '#2a3636';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 3, 10, 3, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Wet highlights
+                    ctx.fillStyle = 'rgba(140, 180, 200, 0.35)';
+                    ctx.beginPath();
+                    ctx.ellipse(-6, -4, 6, 3, 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(180, 210, 230, 0.25)';
+                    ctx.beginPath();
+                    ctx.ellipse(3, -3, 4, 2, -0.3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Barnacles/texture spots
+                    ctx.fillStyle = 'rgba(90, 100, 95, 0.6)';
+                    for (let b = 0; b < 4; b++) {
+                        const bx = -8 + b * 5 + (i % 3);
+                        const by = -1 + (b % 2) * 3;
+                        ctx.beginPath();
+                        ctx.arc(bx, by, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // Water ripples around rock
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 3, 22 + Math.sin(time * 0.04 + i) * 2, 13, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    // Sand depression with small rocks/pebbles
+                    // Slight shadow/depression
+                    ctx.fillStyle = 'rgba(100, 85, 65, 0.12)';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 2, 14, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Scattered pebbles around the spot
+                    const pebbleColors = ['#7a6a5a', '#8a7a6a', '#6a5a4a', '#9a8a7a'];
+                    for (let p = 0; p < 5 + variant; p++) {
+                        const angle = (p / (5 + variant)) * Math.PI * 2 + i * 0.5;
+                        const dist = 10 + (p % 3) * 3;
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist * 0.5 + 3;
+                        const psize = 1 + (p % 3) * 0.5;
+
+                        ctx.fillStyle = pebbleColors[p % pebbleColors.length];
+                        ctx.beginPath();
+                        ctx.ellipse(px, py, psize, psize * 0.7, angle, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // A couple small shell fragments
+                    if (variant > 0) {
+                        ctx.fillStyle = 'rgba(200, 195, 185, 0.4)';
+                        ctx.beginPath();
+                        ctx.ellipse(-8 + variant * 3, 5, 2, 1, 0.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Draw abalone if present - each one unique
+                if (hasAbalone) {
+                    drawAbalone(0, -2, rock.abaloneSize, rock.abaloneRotation, rock.abaloneHue);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        function drawAbalone(x, y, size = 1, rotation = 0, hue = 0) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.scale(size, size);
+
+            // Different color combinations based on hue
+            const colorSets = [
+                ['#7ab8b8', '#b87aaa', '#7a9ab8', '#aab87a'], // Teal/purple
+                ['#88ccaa', '#aa88cc', '#88aacc', '#ccaa88'], // Green/violet
+                ['#99bbdd', '#dd99bb', '#bbdd99', '#ddbb99'], // Blue/pink
+                ['#aaccbb', '#ccaabb', '#bbccaa', '#cbbcaa']  // Muted pastels
+            ];
+            const colors = colorSets[hue % colorSets.length];
+
+            // Outer shell - rough oval with slight irregularity
+            ctx.fillStyle = '#3a4a4a';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 12, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Iridescent shimmer - shifts with time, unique per shell
+            const shimmerPhase = time * 0.025 + rotation * 2;
+
+            // Multiple iridescent layers - varied positions
+            ctx.globalAlpha = 0.6 + Math.sin(shimmerPhase) * 0.25;
+            ctx.fillStyle = colors[0];
+            ctx.beginPath();
+            ctx.ellipse(-2, -1, 7, 4, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 0.5 + Math.sin(shimmerPhase + 1.5) * 0.25;
+            ctx.fillStyle = colors[1];
+            ctx.beginPath();
+            ctx.ellipse(3, 1, 5, 3, -0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 0.5 + Math.sin(shimmerPhase + 3) * 0.2;
+            ctx.fillStyle = colors[2];
+            ctx.beginPath();
+            ctx.ellipse(-1, 2, 4, 3, 0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 0.4 + Math.sin(shimmerPhase + 4.5) * 0.2;
+            ctx.fillStyle = colors[3];
+            ctx.beginPath();
+            ctx.ellipse(2, -2, 4, 2, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 1;
+
+            // Shell edge highlight
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 11, 7, 0, Math.PI * 0.8, Math.PI * 1.5);
+            ctx.stroke();
+
+            // Shell holes (respiratory pores) - characteristic of abalone
+            ctx.fillStyle = '#2a3a3a';
+            for (let i = 0; i < 3 + Math.floor(size); i++) {
+                const hx = 5 - i * 2.5;
+                const hy = -3 + i * 0.3;
+                ctx.beginPath();
+                ctx.arc(hx, hy, 0.8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function drawAnimatedShell() {
+            if (!animState.active) return;
+
+            if (animState.phase === 'arc') {
+                // Shell flying through air to nest
+                const startX = animState.collectX;
+                const startY = animState.collectY - 40;
+                const t = animState.progress;
+
+                // Eased arc trajectory
+                const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                const sx = startX + (nestPos.x - startX) * easeT;
+                const sy = startY + (nestPos.y - startY) * easeT - Math.sin(t * Math.PI) * 80;
+
+                ctx.save();
+                ctx.translate(sx, sy);
+                ctx.rotate(t * Math.PI * 4); // Spin as it flies
+                ctx.scale(0.65 - t * 0.15, 0.65 - t * 0.15); // Shrink as it gets further
+                drawAbalone(0, 0, animState.collectSize || 1, animState.collectRotation || 0, animState.collectHue || 0);
+                ctx.restore();
+            }
+        }
+
+        function drawNest() {
+            // Draw nest on perch rock
+            ctx.save();
+            ctx.translate(nestPos.x, nestPos.y);
+
+            // Nest base - twigs
+            ctx.strokeStyle = '#5a4a3a';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * 18, Math.sin(angle) * 8);
+                ctx.stroke();
+            }
+
+            // Nest bowl
+            ctx.fillStyle = '#4a3a2a';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 15, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Inner nest
+            ctx.fillStyle = '#3a2a1a';
+            ctx.beginPath();
+            ctx.ellipse(0, 2, 10, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw collected shells in nest
+            for (const shell of nestShells) {
+                ctx.save();
+                ctx.translate(shell.x, shell.y);
+                drawAbalone(0, 0, shell.size, shell.rotation, shell.hue);
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+
+        function drawHighlights() {
+            const hoverRock = getRockUnderBird();
+
+            // Draw valid drop zones when carrying
+            if (bird.carrying) {
+                // First pass: draw the "jump over" indicators (shells that will be collected)
+                for (const drop of validDrops) {
+                    const rock = rocks[drop.rockIdx];
+                    const overRock = rocks[drop.overRock];
+                    const isHovered = drop.rockIdx === hoverRock;
+
+                    // Highlight the shell that will be jumped/collected
+                    ctx.save();
+                    ctx.translate(overRock.x, overRock.y);
+
+                    const collectPulse = Math.sin(time * 0.12) * 0.15 + 0.85;
+                    ctx.strokeStyle = isHovered ? 'rgba(194, 80, 60, 0.9)' : 'rgba(194, 80, 60, 0.4)';
+                    ctx.lineWidth = isHovered ? 3 : 1.5;
+                    ctx.beginPath();
+                    ctx.arc(0, -2, 14 * collectPulse, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Small "X" or collection indicator when hovered
+                    if (isHovered) {
+                        ctx.strokeStyle = 'rgba(194, 80, 60, 0.7)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(-5, -7);
+                        ctx.lineTo(5, 3);
+                        ctx.moveTo(5, -7);
+                        ctx.lineTo(-5, 3);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+
+                // Second pass: draw drop zones
+                for (const drop of validDrops) {
+                    const rock = rocks[drop.rockIdx];
+                    const isHovered = drop.rockIdx === hoverRock;
+
+                    ctx.save();
+                    ctx.translate(rock.x, rock.y);
+
+                    // Gentle glowing drop zone
+                    const pulse = Math.sin(time * 0.08) * 0.1 + 1;
+
+                    if (isHovered) {
+                        // Strong glow when hovered
+                        ctx.fillStyle = 'rgba(100, 200, 120, 0.25)';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.strokeStyle = 'rgba(80, 180, 100, 0.9)';
+                        ctx.lineWidth = 3;
+                    } else {
+                        // Subtle indicator
+                        ctx.strokeStyle = 'rgba(80, 160, 100, 0.5)';
+                        ctx.lineWidth = 2;
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 16 * pulse, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Inner ring
+                    if (isHovered) {
+                        ctx.strokeStyle = 'rgba(120, 220, 140, 0.6)';
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+            } else {
+                // Highlight shells that can be picked up (only when hovered)
+                const level = LEVELS[currentLevel];
+                for (let i = 0; i < rocks.length; i++) {
+                    if (!abalones[i]) continue;
+
+                    const canJump = level.jumps.some(j =>
+                        j[0] === i && abalones[j[1]] && !abalones[j[2]]
+                    );
+
+                    if (canJump && i === hoverRock) {
+                        const rock = rocks[i];
+
+                        ctx.save();
+                        ctx.translate(rock.x, rock.y);
+
+                        // Pickup indicator - warm glow
+                        const pulse = Math.sin(time * 0.12) * 0.12 + 1;
+
+                        ctx.fillStyle = 'rgba(220, 180, 100, 0.2)';
+                        ctx.beginPath();
+                        ctx.arc(0, -2, 20, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.strokeStyle = 'rgba(200, 150, 80, 0.8)';
+                        ctx.lineWidth = 2.5;
+                        ctx.beginPath();
+                        ctx.arc(0, -2, 15 * pulse, 0, Math.PI * 2);
+                        ctx.stroke();
+
+                        // Small "grab" arrows pointing inward
+                        ctx.strokeStyle = 'rgba(200, 150, 80, 0.6)';
+                        ctx.lineWidth = 2;
+                        for (let a = 0; a < 4; a++) {
+                            const angle = (a / 4) * Math.PI * 2 + time * 0.02;
+                            ctx.save();
+                            ctx.rotate(angle);
+                            ctx.beginPath();
+                            ctx.moveTo(22, 0);
+                            ctx.lineTo(17, 0);
+                            ctx.moveTo(19, -2);
+                            ctx.lineTo(17, 0);
+                            ctx.lineTo(19, 2);
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // Draw hint highlights when B is held
+            if (showingHint && hintMoves.length > 0 && !bird.carrying) {
+                for (const move of hintMoves) {
+                    const fromRock = rocks[move.from];
+                    const toRock = rocks[move.to];
+                    const overRock = rocks[move.over];
+
+                    // Highlight the shell that can be picked up (from)
+                    ctx.save();
+                    ctx.translate(fromRock.x, fromRock.y);
+                    const pulse = Math.sin(time * 0.15) * 0.15 + 1;
+                    ctx.strokeStyle = 'rgba(255, 200, 50, 0.9)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(0, -2, 18 * pulse, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Draw arrow from source to destination
+                    ctx.strokeStyle = 'rgba(255, 200, 50, 0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(fromRock.x, fromRock.y);
+                    ctx.lineTo(toRock.x, toRock.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Small circle at destination
+                    ctx.strokeStyle = 'rgba(100, 200, 100, 0.7)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(toRock.x, toRock.y, 12, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawBird() {
+            const speed = Math.sqrt(bird.vx * bird.vx + bird.vy * bird.vy);
+            let isFlying = speed > 0.5;
+
+            // Calculate bird position and state during animation
+            let bx = bird.x;
+            let by = bird.y + bird.bobOffset;
+            let showShellInBeak = false;
+            let extraRotation = 0;
+
+            if (animState.active) {
+                const t = animState.progress;
+                // Bird stays at drop location for all phases
+                bx = animState.dropX;
+                by = animState.dropY - 25;
+                isFlying = false;
+
+                if (animState.phase === 'drop') {
+                    // Bird descending to drop shell
+                    by = bird.y + t * 10;
+                    bx = bird.x;
+                    showShellInBeak = t < 0.7; // Drop shell partway through
+                    isFlying = true;
+
+                } else if (animState.phase === 'grab') {
+                    // Bird facing jumped shell, reaching to grab it
+                    bird.facingRight = animState.collectX > bx;
+                    extraRotation = Math.sin(t * Math.PI) * 0.3; // Lean toward shell
+                    showShellInBeak = t > 0.6; // Grab it near end
+
+                } else if (animState.phase === 'toss') {
+                    // Bird turns to nest and tosses
+                    bird.facingRight = nestPos.x > bx;
+                    extraRotation = Math.sin(t * Math.PI) * -0.5; // Head toss back then forward
+                    showShellInBeak = t < 0.4;
+
+                } else if (animState.phase === 'arc') {
+                    // Bird watching shell fly to nest
+                    bird.facingRight = nestPos.x > bx;
+                }
+            }
+
+            ctx.save();
+            ctx.translate(bx, by);
+
+            // Scale
+            ctx.scale(1.4, 1.4);
+
+            // Facing direction
+            const facing = bird.facingRight ? 1 : -1;
+            ctx.scale(facing, 1);
+
+            // Bank angle for graceful turns + slight pitch from vertical movement
+            const pitch = animState.active ? extraRotation : bird.vy * 0.04;
+            ctx.rotate(bird.bankAngle + pitch);
+
+            // Shadow on ground (subtle)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.beginPath();
+            ctx.ellipse(0, 18 - bird.bobOffset * 0.5, 12, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Wings - draw behind body when gliding
+            const wingFlap = Math.sin(bird.wingPhase) * (isFlying ? 0.6 : 0.25);
+            const wingExtend = 0.8 + Math.abs(Math.sin(bird.wingPhase)) * 0.4; // Wings extend more at top/bottom of flap
+
+            // Left wing (top wing when viewed from side)
+            ctx.save();
+            ctx.translate(-2, -1);
+            ctx.rotate(-0.3 + wingFlap);
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.ellipse(-6 * wingExtend, 0, 10 * wingExtend, 4, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Wing feather details
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(-3 - i * 3, 0);
+                ctx.lineTo(-6 - i * 4, -2 + i * 0.5);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Body - black oystercatcher (streamlined oval)
+            ctx.fillStyle = COLORS.birdBlack;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 11, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Chest highlight
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.ellipse(2, 2, 5, 3, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = COLORS.birdBlack;
+            ctx.beginPath();
+            ctx.arc(9, -3, 5.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Beak - long, elegant curve
+            ctx.fillStyle = COLORS.birdBeak;
+            ctx.beginPath();
+            ctx.moveTo(13, -4);
+            ctx.quadraticCurveTo(22, -2, 28, -2);
+            ctx.quadraticCurveTo(22, -1, 13, -1);
+            ctx.closePath();
+            ctx.fill();
+
+            // Beak highlight
+            ctx.fillStyle = '#d64a38';
+            ctx.beginPath();
+            ctx.moveTo(14, -3.5);
+            ctx.quadraticCurveTo(20, -2.5, 24, -2.5);
+            ctx.lineTo(24, -2);
+            ctx.quadraticCurveTo(20, -2, 14, -2.5);
+            ctx.closePath();
+            ctx.fill();
+
+            // Shell in beak when carrying or during animation
+            if (bird.carrying || showShellInBeak) {
+                ctx.save();
+                ctx.translate(19, -2);
+                ctx.scale(0.3, 0.3);
+                ctx.rotate(Math.sin(time * 0.1) * 0.1); // Slight wobble
+                if (bird.carrying) {
+                    drawAbalone(0, 0, bird.carrying.shellSize, bird.carrying.shellRotation, bird.carrying.shellHue);
+                } else if (showShellInBeak) {
+                    drawAbalone(0, 0, animState.collectSize || 1, animState.collectRotation || 0, animState.collectHue || 0);
+                }
+                ctx.restore();
+            }
+
+            // Eye - white ring with dark pupil
+            ctx.fillStyle = COLORS.birdEye;
+            ctx.beginPath();
+            ctx.arc(11, -4, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.arc(11.5, -4, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Eye highlight
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(11, -4.5, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail feathers
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(-16, 1);
+            ctx.lineTo(-15, 3);
+            ctx.lineTo(-10, 2);
+            ctx.closePath();
+            ctx.fill();
+
+            // Legs - tucked when flying fast, extended when slow/hovering
+            const legTuck = Math.min(1, speed * 0.5);
+            ctx.strokeStyle = COLORS.birdLeg;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            // Left leg
+            ctx.moveTo(-2, 5);
+            ctx.lineTo(-2 - legTuck * 3, 5 + (1 - legTuck) * 10);
+            // Right leg
+            ctx.moveTo(2, 5);
+            ctx.lineTo(2 - legTuck * 2, 5 + (1 - legTuck) * 10);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawPerchRock() {
+            // Draw the perch rock where bird starts
+            ctx.save();
+            ctx.translate(collectionRock.x, collectionRock.y);
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(3, 8, 28, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Main rock body - taller for perching
+            ctx.fillStyle = '#3d4a4a';
+            ctx.beginPath();
+            ctx.moveTo(-25, 5);
+            ctx.quadraticCurveTo(-28, -20, -15, -28);
+            ctx.quadraticCurveTo(0, -35, 15, -28);
+            ctx.quadraticCurveTo(28, -18, 25, 5);
+            ctx.quadraticCurveTo(15, 12, 0, 10);
+            ctx.quadraticCurveTo(-15, 12, -25, 5);
+            ctx.fill();
+
+            // Rock texture
+            ctx.fillStyle = '#4a5858';
+            ctx.beginPath();
+            ctx.ellipse(-8, -15, 10, 8, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(8, -10, 8, 6, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Wet highlights
+            ctx.fillStyle = 'rgba(140, 180, 200, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(-10, -22, 6, 4, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(180, 210, 230, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(5, -18, 5, 3, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Water ripples
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(0, 10, 30 + Math.sin(time * 0.04) * 2, 16, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawUI() {
+            // Show hint bar
+            if (moves === 0 || bird.carrying || showingHint) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, 0, width, 32);
+
+                ctx.fillStyle = '#fff';
+                ctx.font = SeaRanchStyle.makeFont(12);
+                ctx.textAlign = 'center';
+                if (showingHint) {
+                    ctx.fillText('Yellow = shells you can pick up | Green = where to drop | Dashed = jump path', width/2, 21);
+                } else if (bird.carrying) {
+                    ctx.fillText('Fly to a green zone and press A to drop | Jump over shell to collect it!', width/2, 21);
+                } else if (moves === 0) {
+                    ctx.fillText('Arrows: fly | A: pick up/drop | Y: hints | X: restart', width/2, 21);
+                }
+                ctx.textAlign = 'left';
+            }
+
+            // Remaining count - always show in corner
+            const remaining = abalones.filter(a => a).length;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(width - 73, 7, 67, 24);
+            ctx.fillStyle = '#fff';
+            ctx.font = SeaRanchStyle.makeFont(13, 'bold');
+            ctx.textAlign = 'right';
+            ctx.fillText(`${remaining} left`, width - 13, 24);
+            ctx.textAlign = 'left';
+        }
+
+        function drawTitle() {
+            // HTML overlay handles the title card now
+        }
+
+        function drawWin() {
+            drawBackground();
+
+            // Subtle supergraphic curves in corner
+            ctx.save();
+            ctx.strokeStyle = COLORS.blue;
+            ctx.lineWidth = 16;
+            ctx.lineCap = 'round';
+            ctx.globalAlpha = 0.12;
+            ctx.beginPath();
+            ctx.arc(width + 40, 260, 180, Math.PI * 0.6, Math.PI);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(width + 20, 280, 130, Math.PI * 0.6, Math.PI);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.restore();
+
+            const remaining = abalones.filter(a => a).length;
+
+            ctx.fillStyle = '#2a4a5a';
+            ctx.font = SeaRanchStyle.makeFont(27, 'bold');
+            ctx.textAlign = 'center';
+
+            // Different messages based on remaining
+            if (remaining === 1) {
+                ctx.fillText('GENIUS!', 320, 330);
+                ctx.font = SeaRanchStyle.makeFont(14);
+                ctx.fillStyle = COLORS.wood;
+                ctx.fillText('You found the lonely abalone - Perfect!', 320, 357);
+            } else if (remaining === 2) {
+                ctx.fillText('GREAT JOB!', 320, 330);
+                ctx.font = SeaRanchStyle.makeFont(14);
+                ctx.fillStyle = COLORS.wood;
+                ctx.fillText(`${remaining} abalones left - So close to perfect!`, 320, 357);
+            } else {
+                ctx.fillText('WELL DONE!', 320, 330);
+                ctx.font = SeaRanchStyle.makeFont(14);
+                ctx.fillStyle = COLORS.wood;
+                ctx.fillText(`${remaining} abalones left - Try for just 1!`, 320, 357);
+            }
+
+            ctx.font = SeaRanchStyle.makeFont(13);
+            ctx.fillStyle = COLORS.wood;
+            ctx.fillText(`collected ${collected} shells in ${moves} moves`, 320, 390);
+
+            // Draw collected shells in two rows - varied
+            for (let i = 0; i < Math.min(collected, 7); i++) {
+                ctx.save();
+                ctx.translate(147 + i * 53, 428);
+                ctx.scale(0.9, 0.9);
+                drawAbalone(0, 0, 0.9 + i * 0.05, i * 0.8, i % 4);
+                ctx.restore();
+            }
+            for (let i = 7; i < Math.min(collected, 14); i++) {
+                ctx.save();
+                ctx.translate(173 + (i - 7) * 53, 462);
+                ctx.scale(0.9, 0.9);
+                drawAbalone(0, 0, 0.9 + i * 0.03, i * 0.6, i % 4);
+                ctx.restore();
+            }
+
+            if (Math.sin(time * 0.05) > 0) {
+                ctx.fillStyle = COLORS.black;
+                ctx.font = SeaRanchStyle.makeFont(12);
+                ctx.fillText('PRESS A', 320, 478);
+            }
+            ctx.textAlign = 'left';
+        }
+
+        function drawLose() {
+            drawBackground();
+
+            // Darken overlay
+            ctx.fillStyle = 'rgba(26, 26, 26, 0.3)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = COLORS.red;
+            ctx.font = SeaRanchStyle.makeFont(32, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText('Stuck', 320, 180);
+
+            ctx.font = SeaRanchStyle.makeFont(13);
+            ctx.fillStyle = COLORS.wood;
+            const remaining = abalones.filter(a => a).length;
+            ctx.fillText(`${remaining} abalones remain`, 320, 225);
+            ctx.fillText('no valid moves left', 320, 252);
+
+            if (Math.sin(time * 0.05) > 0) {
+                ctx.fillStyle = COLORS.black;
+                ctx.font = SeaRanchStyle.makeFont(12);
+                ctx.fillText('PRESS A TO RETRY', 320, 330);
+            }
+            ctx.textAlign = 'left';
+        }
+
+        function gameLoop() {
+            time++;
+            update();
+
+            if (gameState === 'title') {
+                drawTitle();
+            } else if (gameState === 'win') {
+                drawWin();
+            } else if (gameState === 'lose') {
+                drawLose();
+            } else {
+                ctx.save();
+                SeaRanchStyle.applyShake(ctx);
+                drawBackground();
+                drawPerchRock();
+                drawNest();
+                drawRocks();
+                drawHighlights();
+                drawBird();
+                drawAnimatedShell();
+                SeaRanchStyle.updateJuice(ctx);
+                ctx.restore();
+                drawUI();
+            }
+
+            // Apply weathered film grain effect for consistent Sea Ranch aesthetic
+            if (gameState !== 'title') {
+                SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        SeaRanchStyle.setupTouchControls();
+        gameLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Sheep Herding</title>
+    <script src="sea-ranch-style.js"></script>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+            --meadow: #c9b896;
+            --meadow-dark: #a69570;
+            --grass-gold: #d4bc6a;
+            --grass-dry: #b8a050;
+            --sky: #8fb4c9;
+            --cypress: '#2d4a3a';
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+
+        .dialog-overlay {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(139, 115, 85, 0.08) 3px,
+                    rgba(139, 115, 85, 0.08) 4px
+                ),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 100;
+        }
+
+        .dialog-overlay::before {
+            content: '';
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            border: 28px solid var(--blue);
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.6;
+        }
+
+        .dialog-box {
+            background: var(--white);
+            border: 3px solid var(--black);
+            padding: 24px 28px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 4px 4px 0 var(--black);
+            position: relative;
+        }
+
+        .dialog-speaker {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--wood);
+            margin-bottom: 12px;
+        }
+
+        .dialog-text {
+            font-size: 18px;
+            line-height: 1.6;
+            color: var(--black);
+            font-weight: 400;
+        }
+
+        .dialog-continue {
+            font-size: 10px;
+            color: var(--wood);
+            text-align: right;
+            margin-top: 16px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+
+        .hud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .hud-item {
+            background: var(--white);
+            border: 3px solid var(--black);
+            padding: 6px 12px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            box-shadow: 3px 3px 0 var(--black);
+        }
+
+        #game-canvas {
+            display: block;
+        }
+
+        .grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 10;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* HTML/CSS Title Card - matches main menu quality */
+        .title-card {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-card .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(139, 115, 85, 0.08) 3px,
+                    rgba(139, 115, 85, 0.08) 4px
+                ),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+
+        .title-card .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+
+        .title-card .supergraphic::before,
+        .title-card .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+
+        .title-card .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+
+        .title-card .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+
+        .title-card .arrow-accent {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 80px;
+            height: 100px;
+            pointer-events: none;
+        }
+
+        .title-card .arrow-accent::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red);
+            top: 0;
+        }
+
+        .title-card .arrow-accent::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 50px;
+            background: var(--red);
+            top: 45px;
+            left: 27px;
+        }
+
+        .title-card .title-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .title-card .level-title {
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .title-card .level-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--wood);
+        }
+
+        .title-card .continue-hint {
+            position: absolute;
+            bottom: 36px;
+            right: 36px;
+            font-size: 12px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .title-card .title-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- HTML/CSS Title Card -->
+        <div class="title-card" id="title-card">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="arrow-accent"></div>
+            <div class="title-content">
+                <div class="level-title">Sheep Herding</div>
+                <div class="level-subtitle">Poppy the Border Collie</div>
+            </div>
+            <div class="continue-hint">A to start · B to menu</div>
+            <div class="title-grain"></div>
+        </div>
+
+        <div class="hud" id="hud" style="display: none;">
+            <div class="hud-item">SHEEP <span id="sheep-count">0</span>/12</div>
+            <div class="hud-item" style="color: var(--red);">PREDATORS <span id="predator-count">0</span>/3</div>
+        </div>
+        <canvas id="game-canvas" width="640" height="480"></canvas>
+        <div class="grain"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Load sheep logo image
+        const sheepLogoImg = new Image();
+        sheepLogoImg.src = 'reference/sheep-logo.jpg';
+
+        // Audio context for 8-bit sounds
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'bark') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(450, now + 0.05);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'bleat') {
+                // Sheep baa - wavering tone
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(350, now);
+                osc.frequency.setValueAtTime(400, now + 0.05);
+                osc.frequency.setValueAtTime(380, now + 0.1);
+                osc.frequency.setValueAtTime(420, now + 0.15);
+                osc.frequency.exponentialRampToValueAtTime(300, now + 0.25);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'growl') {
+                // Low predator growl
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, now);
+                osc.frequency.setValueAtTime(100, now + 0.1);
+                osc.frequency.setValueAtTime(70, now + 0.2);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } else if (type === 'hiss') {
+                // Bobcat hiss - higher pitch
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'scare') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'success') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(523, now);
+                osc.frequency.setValueAtTime(659, now + 0.1);
+                osc.frequency.setValueAtTime(784, now + 0.2);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+        }
+
+        const COLORS = {
+            black: '#1a1a1a',
+            white: '#f5f5f0',
+            red: '#C41E3A',
+            blue: '#2E5DA8',
+            wood: '#8b7355',
+            woodDark: '#6b5335',
+            sand: '#d4c4a8',
+            meadow: '#c9b896',
+            meadowDark: '#a69570',
+            grassGold: '#d4bc6a',
+            grassDry: '#b8a050',
+            grassTip: '#e8d488',
+            sky: '#8fb4c9',
+            skyLight: '#b8d4e4',
+            fog: '#d8e4ec',
+            cypress: '#2d4a3a',
+            cypressDark: '#1d3a2a',
+            cypressLight: '#3d5a4a',
+            ocean: '#4a7a9a',
+            poppy: '#f0e8dc',
+            poppyDark: '#d4c4a8',
+            sheep: '#e8e0d0',
+            sheepDark: '#c8c0b0',
+            predator: '#8b6914',
+            predatorDark: '#6b4904'
+        };
+
+        // Particles system
+        const particles = [];
+
+        function addParticle(x, y, type) {
+            const count = type === 'dust' ? 4 : type === 'grass' ? 3 : 6;
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+                const speed = type === 'dust' ? 1 + Math.random() * 2 : 2 + Math.random() * 3;
+                particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - (type === 'grass' ? 2 : 0),
+                    life: 1,
+                    decay: 0.03 + Math.random() * 0.02,
+                    size: type === 'dust' ? 2 + Math.random() * 2 : 3 + Math.random() * 2,
+                    color: type === 'dust' ? COLORS.sand : type === 'grass' ? COLORS.grassGold : COLORS.white,
+                    type
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1; // gravity
+                p.vx *= 0.98;
+                p.life -= p.decay;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function renderParticles() {
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        // Game state
+        const state = {
+            phase: 'title',  // Start with title card
+            dialogIndex: 0,
+            keys: {},
+            sheepInPen: 0,
+            predatorsScared: 0,
+            time: 0
+        };
+
+        const dialogs = [
+            { speaker: 'Pablo', text: "Hey Poppy! Heard you're our new sheep herder. Let me show you the ropes. Chase the sheep into the pen. Run at predators to protect the sheep." }
+        ];
+
+        // Player (Poppy) with animation state
+        const player = {
+            x: 67,
+            y: 270,
+            vx: 0,
+            vy: 0,
+            radius: 14,
+            speed: 0.8,           // Increased from 0.5 - faster acceleration
+            maxSpeed: 5.0,        // Slightly faster top speed
+            friction: 0.85,       // Slightly lower - quicker stops for tighter control
+            // Animation
+            squash: 1,
+            stretch: 1,
+            targetSquash: 1,
+            bouncePhase: 0,
+            isMoving: false,
+            facing: 1, // 1 = right, -1 = left
+            // Bounding animation
+            boundHeight: 0,
+            boundVel: 0
+        };
+
+        const sheep = [];
+        const SHEEP_COUNT = 12;
+        const predators = [];
+        const PREDATOR_TYPES = ['bobcat', 'coyote', 'lion'];
+
+        const pen = { x: 513, y: 165, width: 113, height: 165 };
+
+        // Grass blades for the meadow
+        const grassBlades = [];
+        for (let i = 0; i < 300; i++) {
+            grassBlades.push({
+                x: Math.random() * 660 - 10,
+                y: 135 + Math.random() * 345,
+                height: 10 + Math.random() * 16,
+                sway: Math.random() * Math.PI * 2,
+                color: Math.random() > 0.3 ? COLORS.grassGold : (Math.random() > 0.5 ? COLORS.grassDry : COLORS.grassTip)
+            });
+        }
+
+        // Monterey Cypress trees - each one unique and sculptural
+        // Based on the iconic windswept coastal trees
+        const cypressTrees = [
+            // Each tree is hand-crafted for variety - scaled for 640x480
+            { x: 33, y: 117, trunkHeight: 38, canopyWidth: 47, canopyHeight: 27, lean: 0.3, style: 'wide' },
+            { x: 113, y: 114, trunkHeight: 53, canopyWidth: 37, canopyHeight: 33, lean: 0.2, style: 'tall' },
+            { x: 193, y: 117, trunkHeight: 30, canopyWidth: 53, canopyHeight: 23, lean: 0.4, style: 'flat' },
+            { x: 280, y: 113, trunkHeight: 60, canopyWidth: 60, canopyHeight: 38, lean: 0.25, style: 'dramatic' },
+            { x: 373, y: 116, trunkHeight: 42, canopyWidth: 43, canopyHeight: 30, lean: 0.35, style: 'wide' },
+            { x: 467, y: 114, trunkHeight: 48, canopyWidth: 51, canopyHeight: 27, lean: 0.3, style: 'tall' },
+            { x: 560, y: 117, trunkHeight: 33, canopyWidth: 40, canopyHeight: 24, lean: 0.4, style: 'flat' },
+            { x: 627, y: 116, trunkHeight: 45, canopyWidth: 33, canopyHeight: 30, lean: 0.2, style: 'tall' }
+        ];
+
+        // Coastal terrain - hills and cliffs
+        const coastalFeatures = [
+            { type: 'hill', x: 67, width: 160, height: 23 },
+            { type: 'cliff', x: 267, width: 107, height: 30 },
+            { type: 'hill', x: 427, width: 133, height: 18 },
+            { type: 'cliff', x: 560, width: 80, height: 27 }
+        ];
+
+        // Wave data for animated ocean
+        const waves = [];
+        for (let i = 0; i < 16; i++) {
+            waves.push({
+                x: i * 45 - 20,
+                phase: Math.random() * Math.PI * 2,
+                speed: 0.8 + Math.random() * 0.4,
+                height: 3 + Math.random() * 3
+            });
+        }
+
+        function initGame() {
+            // 4 clusters of 3 sheep each, spread far apart across the meadow
+            const clusters = [
+                { x: 80, y: 380, count: 3 },    // Bottom-left corner
+                { x: 80, y: 200, count: 3 },    // Top-left corner
+                { x: 300, y: 420, count: 3 },   // Bottom-center
+                { x: 350, y: 180, count: 3 }    // Top-center (closer to pen)
+            ];
+
+            clusters.forEach((cluster, clusterIndex) => {
+                for (let i = 0; i < cluster.count; i++) {
+                    sheep.push({
+                        x: cluster.x + (Math.random() - 0.5) * 40,
+                        y: cluster.y + (Math.random() - 0.5) * 40,
+                        vx: 0,
+                        vy: 0,
+                        radius: 10,
+                        inPen: false,
+                        fleeTimer: 0,
+                        wobble: Math.random() * Math.PI * 2,
+                        squash: 1,
+                        cluster: clusterIndex  // Track which cluster this sheep belongs to
+                    });
+                }
+            });
+
+            // Predators spawn behind cypress trees and sneak out
+            const treeSpawns = [
+                { tree: cypressTrees[3], offsetX: 0, offsetY: 23 },  // Behind tallest tree
+                { tree: cypressTrees[5], offsetX: -7, offsetY: 30 },
+                { tree: cypressTrees[1], offsetX: 7, offsetY: 27 }
+            ];
+
+            for (let i = 0; i < 3; i++) {
+                const spawn = treeSpawns[i];
+                predators.push({
+                    x: spawn.tree.x + spawn.offsetX,
+                    y: spawn.tree.y + spawn.offsetY,
+                    vx: 0,
+                    vy: 0,
+                    radius: 12,
+                    type: PREDATOR_TYPES[i],
+                    scared: false,
+                    scareTimer: 0,
+                    patrolAngle: Math.random() * Math.PI * 2,
+                    prowlPhase: Math.random() * Math.PI * 2,
+                    sneaking: true,
+                    sneakTimer: 60 + i * 40  // Stagger when they emerge
+                });
+            }
+
+            updateHUD();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            state.keys[e.key] = true;
+            const isActionKey = e.key === ' ' || e.key === 'Enter' || e.key === 'a' || e.key === 'A';
+            const isBackKey = e.key === 'Escape' || e.key === 'b' || e.key === 'B';
+
+            // B/ESC always returns to menu (from any state)
+            if (isBackKey) {
+                window.location.href = 'level0-menu.html';
+                return;
+            }
+
+            // Title screen -> start dialog
+            if (state.phase === 'title' && isActionKey) {
+                state.phase = 'dialog';
+                document.getElementById('title-card').style.display = 'none';
+                showDialog(dialogs[0]);
+                initAudio();
+                return;
+            }
+            if (state.phase === 'dialog' && isActionKey) {
+                advanceDialog();
+            }
+            // Win screen: A to replay
+            if (state.phase === 'win' && isActionKey) {
+                window.location.reload();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            state.keys[e.key] = false;
+        });
+
+        function advanceDialog() {
+            state.dialogIndex++;
+            if (state.dialogIndex >= dialogs.length) {
+                state.phase = 'playing';
+                hideDialog();
+                // Show HUD when game starts
+                document.getElementById('hud').style.display = 'flex';
+            } else {
+                showDialog(dialogs[state.dialogIndex]);
+            }
+        }
+
+        function showDialog(dialog) {
+            let overlay = document.querySelector('.dialog-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'dialog-overlay';
+
+                const box = document.createElement('div');
+                box.className = 'dialog-box';
+
+                const speaker = document.createElement('div');
+                speaker.className = 'dialog-speaker';
+
+                const text = document.createElement('div');
+                text.className = 'dialog-text';
+
+                const cont = document.createElement('div');
+                cont.className = 'dialog-continue';
+                cont.textContent = 'A to continue';
+
+                box.appendChild(speaker);
+                box.appendChild(text);
+                box.appendChild(cont);
+                overlay.appendChild(box);
+                document.getElementById('game-container').appendChild(overlay);
+            }
+
+            overlay.querySelector('.dialog-speaker').textContent = dialog.speaker;
+            overlay.querySelector('.dialog-text').textContent = dialog.text;
+            overlay.style.display = 'flex';
+        }
+
+        function hideDialog() {
+            const overlay = document.querySelector('.dialog-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function showWinScreen() {
+            playSound('success');
+            state.phase = 'win';
+
+            // Save completion (Level 2 in narrative order)
+            SeaRanchStyle.saveCompletion(2);
+
+            const overlay = document.createElement('div');
+            overlay.className = 'dialog-overlay';
+
+            const box = document.createElement('div');
+            box.className = 'dialog-box';
+
+            const speaker = document.createElement('div');
+            speaker.className = 'dialog-speaker';
+            speaker.textContent = 'Pablo';
+
+            const text = document.createElement('div');
+            text.className = 'dialog-text';
+            text.textContent = "Great work, Poppy! The flock is safe. You're a natural!";
+
+            const cont = document.createElement('div');
+            cont.className = 'dialog-continue';
+
+            const replaySpan = document.createElement('span');
+            replaySpan.style.color = 'var(--wood)';
+            replaySpan.textContent = 'A: REPLAY';
+
+            const menuSpan = document.createElement('span');
+            menuSpan.style.color = 'var(--red)';
+            menuSpan.textContent = 'B: MENU';
+
+            cont.appendChild(replaySpan);
+            cont.appendChild(document.createTextNode('    '));
+            cont.appendChild(menuSpan);
+
+            box.appendChild(speaker);
+            box.appendChild(text);
+            box.appendChild(cont);
+            overlay.appendChild(box);
+            document.getElementById('game-container').appendChild(overlay);
+        }
+
+        function updateHUD() {
+            document.getElementById('sheep-count').textContent = state.sheepInPen;
+            document.getElementById('predator-count').textContent = state.predatorsScared;
+        }
+
+        function update() {
+            state.time += 0.016;
+
+            if (state.phase !== 'playing') return;
+
+            // Player input with acceleration
+            let ax = 0, ay = 0;
+            if (state.keys['ArrowLeft'] || state.keys['a']) { ax -= 1; player.facing = -1; }
+            if (state.keys['ArrowRight'] || state.keys['d']) { ax += 1; player.facing = 1; }
+            if (state.keys['ArrowUp'] || state.keys['w']) ay -= 1;
+            if (state.keys['ArrowDown'] || state.keys['s']) ay += 1;
+
+            if (ax !== 0 && ay !== 0) {
+                ax *= 0.707;
+                ay *= 0.707;
+            }
+
+            player.vx += ax * player.speed;
+            player.vy += ay * player.speed;
+            player.vx *= player.friction;
+            player.vy *= player.friction;
+
+            // Clamp speed
+            const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+            if (speed > player.maxSpeed) {
+                player.vx = (player.vx / speed) * player.maxSpeed;
+                player.vy = (player.vy / speed) * player.maxSpeed;
+            }
+
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Bounding animation when moving
+            player.isMoving = speed > 0.5;
+            if (player.isMoving) {
+                player.bouncePhase += 0.3;
+                player.boundHeight = Math.abs(Math.sin(player.bouncePhase)) * 4;
+
+                // Squash and stretch
+                const bounceVal = Math.sin(player.bouncePhase);
+                if (bounceVal > 0.9) {
+                    player.targetSquash = 0.8; // Squash on land
+                    if (Math.sin(player.bouncePhase - 0.3) <= 0.9) {
+                        addParticle(player.x, player.y + player.radius, 'dust');
+                    }
+                } else if (bounceVal < -0.5) {
+                    player.targetSquash = 1.2; // Stretch in air
+                } else {
+                    player.targetSquash = 1;
+                }
+            } else {
+                player.boundHeight *= 0.8;
+                player.targetSquash = 1;
+            }
+
+            player.squash += (player.targetSquash - player.squash) * 0.3;
+
+            // Bounds
+            player.x = Math.max(player.radius, Math.min(640 - player.radius, player.x));
+            player.y = Math.max(105 + player.radius, Math.min(480 - player.radius, player.y));
+
+            // Update sheep
+            sheep.forEach(s => {
+                s.wobble += 0.1;
+
+                // Sheep inside pen - wander peacefully
+                if (s.inPen) {
+                    // Random gentle wandering inside pen
+                    if (Math.random() < 0.02) {
+                        s.vx += (Math.random() - 0.5) * 0.3;
+                        s.vy += (Math.random() - 0.5) * 0.3;
+                    }
+
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.vx *= 0.95;
+                    s.vy *= 0.95;
+
+                    // Keep inside pen bounds
+                    const penPadding = 15;
+                    if (s.x < pen.x + penPadding) { s.x = pen.x + penPadding; s.vx = Math.abs(s.vx) * 0.5; }
+                    if (s.x > pen.x + pen.width - penPadding) { s.x = pen.x + pen.width - penPadding; s.vx = -Math.abs(s.vx) * 0.5; }
+                    if (s.y < pen.y + penPadding) { s.y = pen.y + penPadding; s.vy = Math.abs(s.vy) * 0.5; }
+                    if (s.y > pen.y + pen.height - penPadding) { s.y = pen.y + pen.height - penPadding; s.vy = -Math.abs(s.vy) * 0.5; }
+
+                    // Occasional happy baa
+                    if (Math.random() < 0.002) playSound('bleat');
+                    return;
+                }
+
+                const dxP = s.x - player.x;
+                const dyP = s.y - player.y;
+                const distP = Math.sqrt(dxP * dxP + dyP * dyP);
+
+                if (distP < 50) {
+                    const fleeStrength = (50 - distP) / 50;
+                    s.vx += (dxP / distP) * fleeStrength * 0.6;
+                    s.vy += (dyP / distP) * fleeStrength * 0.6;
+                    s.fleeTimer = 30;
+                    s.squash = 0.7;
+                    if (Math.random() < 0.04) playSound('bleat');
+                }
+
+                // Occasional idle baa
+                if (Math.random() < 0.001 && s.fleeTimer === 0) {
+                    playSound('bleat');
+                }
+
+                predators.forEach(p => {
+                    if (p.scared) return;
+                    const dxPred = s.x - p.x;
+                    const dyPred = s.y - p.y;
+                    const distPred = Math.sqrt(dxPred * dxPred + dyPred * dyPred);
+
+                    if (distPred < 70) {
+                        const fleeStrength = (70 - distPred) / 70;
+                        s.vx += (dxPred / distPred) * fleeStrength * 0.9;
+                        s.vy += (dyPred / distPred) * fleeStrength * 0.9;
+                        s.fleeTimer = 30;
+                    }
+                });
+
+                // Flock only with same cluster (sheep act independently per group)
+                let avgX = 0, avgY = 0, count = 0;
+                sheep.forEach(other => {
+                    if (other !== s && !other.inPen && other.cluster === s.cluster) {
+                        avgX += other.x;
+                        avgY += other.y;
+                        count++;
+                    }
+                });
+
+                if (count > 0) {
+                    avgX /= count;
+                    avgY /= count;
+                    const dxFlock = avgX - s.x;
+                    const dyFlock = avgY - s.y;
+                    const distFlock = Math.sqrt(dxFlock * dxFlock + dyFlock * dyFlock);
+                    if (distFlock > 15 && distFlock < 100) {
+                        // Cohesion force - doubled for better grouping
+                        s.vx += (dxFlock / distFlock) * 0.12;
+                        s.vy += (dyFlock / distFlock) * 0.12;
+                    }
+                    // Separation from cluster-mates to avoid overlap
+                    sheep.forEach(other => {
+                        if (other !== s && !other.inPen) {
+                            const sepX = s.x - other.x;
+                            const sepY = s.y - other.y;
+                            const sepDist = Math.sqrt(sepX * sepX + sepY * sepY);
+                            if (sepDist < 25 && sepDist > 0) {
+                                s.vx += (sepX / sepDist) * (25 - sepDist) * 0.02;
+                                s.vy += (sepY / sepDist) * (25 - sepDist) * 0.02;
+                            }
+                        }
+                    });
+                }
+
+                s.x += s.vx;
+                s.y += s.vy;
+                s.vx *= 0.96;  // Reduced friction - sheep maintain momentum for smoother flock flow
+                s.vy *= 0.96;
+                s.squash += (1 - s.squash) * 0.15;
+
+                // Proper boundary handling with bounce
+                const minX = 27 + s.radius;
+                const maxX = 640 - s.radius - 27;
+                const minY = 150 + s.radius;
+                const maxY = 480 - s.radius - 15;
+
+                if (s.x < minX) { s.x = minX; s.vx = Math.abs(s.vx) * 0.5; }
+                if (s.x > maxX) { s.x = maxX; s.vx = -Math.abs(s.vx) * 0.5; }
+                if (s.y < minY) { s.y = minY; s.vy = Math.abs(s.vy) * 0.5; }
+                if (s.y > maxY) { s.y = maxY; s.vy = -Math.abs(s.vy) * 0.5; }
+
+                // Fence collision - only allow entry through gate
+                const gateTop = pen.y + 60;
+                const gateBottom = gateTop + 85;
+                const fenceThick = 8;
+
+                // If not already in pen, check fence collision
+                if (!s.inPen) {
+                    // Top fence
+                    if (s.y < pen.y + fenceThick && s.y > pen.y - fenceThick &&
+                        s.x > pen.x - fenceThick && s.x < pen.x + pen.width + fenceThick) {
+                        s.y = pen.y - fenceThick;
+                        s.vy = -Math.abs(s.vy) * 0.5;
+                    }
+                    // Bottom fence
+                    if (s.y > pen.y + pen.height - fenceThick && s.y < pen.y + pen.height + fenceThick &&
+                        s.x > pen.x - fenceThick && s.x < pen.x + pen.width + fenceThick) {
+                        s.y = pen.y + pen.height + fenceThick;
+                        s.vy = Math.abs(s.vy) * 0.5;
+                    }
+                    // Right fence
+                    if (s.x > pen.x + pen.width - fenceThick && s.x < pen.x + pen.width + fenceThick &&
+                        s.y > pen.y - fenceThick && s.y < pen.y + pen.height + fenceThick) {
+                        s.x = pen.x + pen.width + fenceThick;
+                        s.vx = Math.abs(s.vx) * 0.5;
+                    }
+                    // Left fence (except gate)
+                    if (s.x > pen.x - fenceThick && s.x < pen.x + fenceThick &&
+                        s.y > pen.y - fenceThick && s.y < pen.y + pen.height + fenceThick) {
+                        // Check if NOT in gate opening
+                        if (s.y < gateTop || s.y > gateBottom) {
+                            s.x = pen.x - fenceThick;
+                            s.vx = -Math.abs(s.vx) * 0.5;
+                        }
+                    }
+                }
+
+                // Add slight random movement when idle to keep them lively
+                if (Math.abs(s.vx) < 0.1 && Math.abs(s.vy) < 0.1 && Math.random() < 0.02) {
+                    s.vx += (Math.random() - 0.5) * 0.5;
+                    s.vy += (Math.random() - 0.5) * 0.5;
+                }
+
+                // When sheep are near the gate opening, strongly pull them deep into the pen
+                const gateOpeningX = pen.x;
+                const gateOpeningY = pen.y + 60 + 42; // Center of gate
+                const distToGate = Math.sqrt((s.x - gateOpeningX) ** 2 + (s.y - gateOpeningY) ** 2);
+
+                // Strong attraction when near gate
+                if (distToGate < 100) {
+                    // Pull toward center of pen, not just past the gate
+                    const penCenterX = pen.x + pen.width / 2;
+                    const penCenterY = pen.y + pen.height / 2;
+                    const pullStrength = 0.5 * (1 - distToGate / 100); // Stronger when closer
+                    s.vx += (penCenterX - s.x) * pullStrength * 0.1;
+                    s.vy += (penCenterY - s.y) * pullStrength * 0.05;
+                }
+
+                // Check if sheep entered the pen (must be well inside)
+                if (!s.inPen && s.x > pen.x + 25 && s.x < pen.x + pen.width - 10 &&
+                    s.y > pen.y + 10 && s.y < pen.y + pen.height - 10) {
+                    s.inPen = true;
+                    state.sheepInPen++;
+                    updateHUD();
+                    playSound('success');
+                    addParticle(s.x, s.y, 'celebrate');
+
+                    // JUICE: Sparkles, shake, and flash on sheep capture
+                    SeaRanchStyle.spawnSparkles(s.x, s.y, SeaRanchStyle.colors.cream);
+                    SeaRanchStyle.shake(4, 0.85);
+                    SeaRanchStyle.flash(SeaRanchStyle.colors.cream, 0.15);
+
+                    // Give sheep a push toward center of pen when entering
+                    const penCenterX = pen.x + pen.width / 2;
+                    const penCenterY = pen.y + pen.height / 2;
+                    s.vx = (penCenterX - s.x) * 0.1;
+                    s.vy = (penCenterY - s.y) * 0.1;
+                }
+
+                if (s.fleeTimer > 0) s.fleeTimer--;
+            });
+
+            // Update predators
+            predators.forEach(p => {
+                p.prowlPhase += 0.08;
+
+                // Sneaking out from behind trees
+                if (p.sneaking) {
+                    p.sneakTimer--;
+                    if (p.sneakTimer <= 0) {
+                        p.sneaking = false;
+                        // Start moving down into the field
+                        p.vy = 1.5;
+                        // Growl when emerging
+                        if (p.type === 'bobcat') playSound('hiss');
+                        else playSound('growl');
+                    }
+                    return; // Don't move while sneaking
+                }
+
+                if (p.scared) {
+                    p.scareTimer--;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vx *= 0.95;
+                    p.vy *= 0.95;
+                    if (p.scareTimer <= 0) p.x = -100;
+                    return;
+                }
+
+                const dxP = p.x - player.x;
+                const dyP = p.y - player.y;
+                const distP = Math.sqrt(dxP * dxP + dyP * dyP);
+
+                if (distP < 25) {
+                    p.scared = true;
+                    p.scareTimer = 60;
+                    state.predatorsScared++;
+                    updateHUD();
+                    playSound('scare');
+                    playSound('bark');
+                    addParticle(p.x, p.y, 'dust');
+
+                    // JUICE: Bigger shake and red flash when scaring predator
+                    SeaRanchStyle.shake(10, 0.88);
+                    SeaRanchStyle.flash(SeaRanchStyle.colors.red, 0.2);
+                    SeaRanchStyle.spawnParticles(p.x, p.y, {
+                        count: 10,
+                        color: SeaRanchStyle.colors.sand,
+                        speed: 5,
+                        size: 4,
+                        life: 20
+                    });
+
+                    p.vx = (dxP / distP) * 6;
+                    p.vy = (dyP / distP) * 6;
+                } else {
+                    // Different behavior per predator type
+                    let aggressiveness = 0.06;
+                    let speed = 0.08;
+
+                    if (p.type === 'lion') {
+                        aggressiveness = 0.08; // Most aggressive
+                        speed = 0.1;
+                    } else if (p.type === 'coyote') {
+                        aggressiveness = 0.07;
+                        speed = 0.12; // Fastest
+                    } else { // bobcat
+                        aggressiveness = 0.05;
+                        speed = 0.06; // Sneakier, slower
+                    }
+
+                    p.patrolAngle += (Math.random() - 0.5) * 0.15;
+                    p.vx += Math.cos(p.patrolAngle) * speed;
+                    p.vy += Math.sin(p.patrolAngle) * speed;
+
+                    let nearestSheep = null;
+                    let nearestDist = Infinity;
+                    sheep.forEach(s => {
+                        if (s.inPen) return;
+                        const d = Math.sqrt((s.x - p.x) ** 2 + (s.y - p.y) ** 2);
+                        if (d < nearestDist) {
+                            nearestDist = d;
+                            nearestSheep = s;
+                        }
+                    });
+
+                    if (nearestSheep && nearestDist < 150) {
+                        const dxS = nearestSheep.x - p.x;
+                        const dyS = nearestSheep.y - p.y;
+                        p.vx += (dxS / nearestDist) * aggressiveness;
+                        p.vy += (dyS / nearestDist) * aggressiveness;
+
+                        // Occasional growl when hunting
+                        if (Math.random() < 0.005) {
+                            if (p.type === 'bobcat') playSound('hiss');
+                            else playSound('growl');
+                        }
+                    }
+                }
+
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= 0.96;
+                p.vy *= 0.96;
+
+                if (!p.scared) {
+                    p.x = Math.max(p.radius + 27, Math.min(640 - p.radius - 27, p.x));
+                    p.y = Math.max(150 + p.radius, Math.min(480 - p.radius - 15, p.y));
+
+                    // Keep predators OUT of the pen - they can't enter at all
+                    const penBuffer = 20;
+                    const penLeft = pen.x - penBuffer;
+                    const penRight = pen.x + pen.width + penBuffer;
+                    const penTop = pen.y - penBuffer;
+                    const penBottom = pen.y + pen.height + penBuffer;
+
+                    // If predator is near pen, push them away
+                    if (p.x > penLeft && p.x < penRight && p.y > penTop && p.y < penBottom) {
+                        // Find closest edge and push out
+                        const distLeft = p.x - penLeft;
+                        const distRight = penRight - p.x;
+                        const distTop = p.y - penTop;
+                        const distBottom = penBottom - p.y;
+                        const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+
+                        if (minDist === distLeft) {
+                            p.x = penLeft;
+                            p.vx = -Math.abs(p.vx) - 0.5;
+                        } else if (minDist === distRight) {
+                            p.x = penRight;
+                            p.vx = Math.abs(p.vx) + 0.5;
+                        } else if (minDist === distTop) {
+                            p.y = penTop;
+                            p.vy = -Math.abs(p.vy) - 0.5;
+                        } else {
+                            p.y = penBottom;
+                            p.vy = Math.abs(p.vy) + 0.5;
+                        }
+                    }
+                }
+            });
+
+            updateParticles();
+
+            if (state.sheepInPen >= SHEEP_COUNT && state.predatorsScared >= 3) {
+                state.phase = 'won';
+                showWinScreen();
+            }
+        }
+
+        function drawCypress(tree) {
+            const { x, y: baseY, trunkHeight, canopyWidth, canopyHeight, lean, style } = tree;
+            // Almost no sway - these are sculpted by decades of wind
+            const sway = Math.sin(state.time * 0.2 + x * 0.01) * 0.3;
+
+            const trunkTopX = x + lean * trunkHeight;
+            const trunkTopY = baseY - trunkHeight;
+
+            // Draw trunk first - gnarled, twisted, VISIBLE
+            ctx.strokeStyle = '#2a1a0a';
+            ctx.lineCap = 'round';
+
+            // Main trunk - thick, curved
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x, baseY);
+            ctx.bezierCurveTo(
+                x + lean * trunkHeight * 0.3,
+                baseY - trunkHeight * 0.3,
+                x + lean * trunkHeight * 0.5,
+                baseY - trunkHeight * 0.6,
+                trunkTopX,
+                trunkTopY
+            );
+            ctx.stroke();
+
+            // Major branches spreading horizontally
+            ctx.lineWidth = 2.5;
+
+            // Left branch (shorter, wind-pruned side)
+            ctx.beginPath();
+            ctx.moveTo(x + lean * trunkHeight * 0.4, baseY - trunkHeight * 0.5);
+            ctx.quadraticCurveTo(
+                trunkTopX - canopyWidth * 0.3,
+                trunkTopY + 5,
+                trunkTopX - canopyWidth * 0.5,
+                trunkTopY - canopyHeight * 0.3
+            );
+            ctx.stroke();
+
+            // Right branches (longer, leeward side)
+            ctx.beginPath();
+            ctx.moveTo(trunkTopX, trunkTopY);
+            ctx.quadraticCurveTo(
+                trunkTopX + canopyWidth * 0.3,
+                trunkTopY - 5,
+                trunkTopX + canopyWidth * 0.6,
+                trunkTopY - canopyHeight * 0.2
+            );
+            ctx.stroke();
+
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + lean * trunkHeight * 0.6, baseY - trunkHeight * 0.7);
+            ctx.quadraticCurveTo(
+                trunkTopX + canopyWidth * 0.2,
+                trunkTopY + 3,
+                trunkTopX + canopyWidth * 0.4,
+                trunkTopY - canopyHeight * 0.5
+            );
+            ctx.stroke();
+
+            // Foliage - irregular clumps, not smooth ellipses
+            // Different patterns based on style
+            ctx.fillStyle = COLORS.cypressDark;
+
+            if (style === 'dramatic' || style === 'tall') {
+                // More vertical, asymmetric
+                // Main mass on leeward (right) side
+                ctx.beginPath();
+                ctx.moveTo(trunkTopX - canopyWidth * 0.3, trunkTopY);
+                ctx.bezierCurveTo(
+                    trunkTopX - canopyWidth * 0.2, trunkTopY - canopyHeight * 0.8,
+                    trunkTopX + canopyWidth * 0.3, trunkTopY - canopyHeight,
+                    trunkTopX + canopyWidth * 0.6, trunkTopY - canopyHeight * 0.3
+                );
+                ctx.bezierCurveTo(
+                    trunkTopX + canopyWidth * 0.5, trunkTopY + 5,
+                    trunkTopX, trunkTopY + 3,
+                    trunkTopX - canopyWidth * 0.3, trunkTopY
+                );
+                ctx.fill();
+
+                // Secondary clump
+                ctx.beginPath();
+                ctx.ellipse(
+                    trunkTopX + canopyWidth * 0.2 + sway,
+                    trunkTopY - canopyHeight * 0.6,
+                    canopyWidth * 0.35,
+                    canopyHeight * 0.4,
+                    0.2, 0, Math.PI * 2
+                );
+                ctx.fill();
+            } else if (style === 'flat' || style === 'wide') {
+                // Flat-topped, spread out
+                ctx.beginPath();
+                ctx.moveTo(trunkTopX - canopyWidth * 0.5, trunkTopY - canopyHeight * 0.3);
+                ctx.bezierCurveTo(
+                    trunkTopX - canopyWidth * 0.3, trunkTopY - canopyHeight * 0.9,
+                    trunkTopX + canopyWidth * 0.4, trunkTopY - canopyHeight * 0.9,
+                    trunkTopX + canopyWidth * 0.7, trunkTopY - canopyHeight * 0.4
+                );
+                ctx.bezierCurveTo(
+                    trunkTopX + canopyWidth * 0.5, trunkTopY,
+                    trunkTopX - canopyWidth * 0.2, trunkTopY,
+                    trunkTopX - canopyWidth * 0.5, trunkTopY - canopyHeight * 0.3
+                );
+                ctx.fill();
+            }
+
+            // Lighter highlight patches on top
+            ctx.fillStyle = COLORS.cypress;
+            ctx.beginPath();
+            ctx.ellipse(
+                trunkTopX + canopyWidth * 0.15 + sway,
+                trunkTopY - canopyHeight * 0.7,
+                canopyWidth * 0.25,
+                canopyHeight * 0.25,
+                lean * 0.3, 0, Math.PI * 2
+            );
+            ctx.fill();
+
+            // Small accent clumps for texture
+            ctx.fillStyle = '#3d5a4a';
+            ctx.beginPath();
+            ctx.ellipse(
+                trunkTopX + canopyWidth * 0.4 + sway,
+                trunkTopY - canopyHeight * 0.4,
+                canopyWidth * 0.15,
+                canopyHeight * 0.2,
+                0, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+
+        function drawSheep(s) {
+            const wobbleX = Math.sin(s.wobble) * 0.5;
+            const wobbleY = Math.cos(s.wobble * 1.3) * 0.3;
+
+            ctx.save();
+            ctx.translate(s.x + wobbleX, s.y + wobbleY);
+            ctx.scale(s.squash, 2 - s.squash);
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.beginPath();
+            ctx.ellipse(0, s.radius + 2, s.radius * 0.8, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Legs (simple)
+            ctx.fillStyle = COLORS.black;
+            ctx.fillRect(-s.radius * 0.5, s.radius * 0.3, 2, 4);
+            ctx.fillRect(s.radius * 0.3, s.radius * 0.3, 2, 4);
+
+            // Body fluff - more natural wool texture
+            ctx.fillStyle = s.inPen ? COLORS.white : COLORS.sheep;
+            for (let i = 0; i < 7; i++) {
+                const angle = (i / 7) * Math.PI * 2 + s.wobble * 0.1;
+                const dist = s.radius * (0.5 + Math.sin(i * 2.3) * 0.15);
+                const bx = Math.cos(angle) * dist;
+                const by = Math.sin(angle) * dist * 0.8;
+                const size = s.radius * (0.45 + Math.sin(i * 1.7) * 0.1);
+                ctx.beginPath();
+                ctx.arc(bx, by, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Main body
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s.radius * 1.1, s.radius * 0.9, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head - darker face like real sheep
+            ctx.fillStyle = '#4a3a2a';
+            ctx.beginPath();
+            ctx.ellipse(s.radius * 0.4, s.radius * 0.1, 4, 5, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ears
+            ctx.beginPath();
+            ctx.ellipse(s.radius * 0.2, -s.radius * 0.3, 2.5, 4, -0.5, 0, Math.PI * 2);
+            ctx.ellipse(s.radius * 0.7, -s.radius * 0.2, 2.5, 4, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = COLORS.black;
+            ctx.beginPath();
+            ctx.arc(s.radius * 0.25, s.radius * 0.05, 1.2, 0, Math.PI * 2);
+            ctx.arc(s.radius * 0.55, s.radius * 0.1, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.ellipse(s.radius * 0.65, s.radius * 0.25, 1.5, 1, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawPredator(p) {
+            if (p.x < 0) return;
+            if (p.sneaking) return; // Hidden behind tree
+
+            const prowl = Math.sin(p.prowlPhase) * 3;
+
+            ctx.save();
+            ctx.translate(p.x, p.y + prowl);
+
+            // Different colors and shapes per species
+            let bodyColor, accentColor, tailLength, earSize;
+
+            if (p.type === 'lion') {
+                bodyColor = '#a08040'; // Tawny
+                accentColor = '#806020';
+                tailLength = 2.2;
+                earSize = 0.5;
+            } else if (p.type === 'coyote') {
+                bodyColor = '#8b7355'; // Gray-brown
+                accentColor = '#6b5335';
+                tailLength = 1.8;
+                earSize = 0.8; // Big ears
+            } else { // bobcat
+                bodyColor = '#b08050'; // Reddish-brown
+                accentColor = '#906030';
+                tailLength = 0.8; // Short tail
+                earSize = 0.7;
+            }
+
+            if (p.scared) {
+                bodyColor = COLORS.sand;
+                accentColor = COLORS.sand;
+            }
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(0, p.radius + 2, p.radius, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail
+            ctx.strokeStyle = accentColor;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-p.radius * 0.8, 0);
+            const tailWag = Math.sin(p.prowlPhase * 2) * 3;
+            ctx.quadraticCurveTo(
+                -p.radius * tailLength, -3 + tailWag,
+                -p.radius * tailLength * 0.9, 3 + tailWag
+            );
+            ctx.stroke();
+
+            // Body
+            ctx.fillStyle = bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.radius * 1.4, p.radius * 0.9, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Legs (animated)
+            const legPhase = p.prowlPhase * 2;
+            ctx.fillStyle = accentColor;
+            [-0.4, 0.3].forEach((offset, i) => {
+                const legMove = Math.sin(legPhase + i * Math.PI) * 2;
+                ctx.fillRect(p.radius * offset - 1.5, p.radius * 0.5, 3, 5 + legMove);
+            });
+
+            // Head
+            ctx.fillStyle = bodyColor;
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.9, -p.radius * 0.3, p.radius * 0.65, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ears
+            ctx.fillStyle = accentColor;
+            const earH = p.radius * earSize;
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 0.5, -p.radius * 0.6);
+            ctx.lineTo(p.radius * 0.4, -p.radius * 0.6 - earH);
+            ctx.lineTo(p.radius * 0.8, -p.radius * 0.5);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 1.1, -p.radius * 0.5);
+            ctx.lineTo(p.radius * 1.2, -p.radius * 0.5 - earH);
+            ctx.lineTo(p.radius * 1.4, -p.radius * 0.4);
+            ctx.fill();
+
+            // Snout
+            ctx.fillStyle = bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(p.radius * 1.3, -p.radius * 0.15, p.radius * 0.35, p.radius * 0.25, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes - fierce!
+            ctx.fillStyle = p.scared ? COLORS.white : '#ffcc00';
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.7, -p.radius * 0.35, 2, 0, Math.PI * 2);
+            ctx.arc(p.radius * 1.05, -p.radius * 0.3, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupils
+            ctx.fillStyle = COLORS.black;
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.72, -p.radius * 0.35, 1, 0, Math.PI * 2);
+            ctx.arc(p.radius * 1.07, -p.radius * 0.3, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = COLORS.black;
+            ctx.beginPath();
+            ctx.arc(p.radius * 1.5, -p.radius * 0.1, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Spots for bobcat
+            if (p.type === 'bobcat' && !p.scared) {
+                ctx.fillStyle = accentColor;
+                for (let i = 0; i < 4; i++) {
+                    ctx.beginPath();
+                    ctx.arc(
+                        (Math.random() - 0.5) * p.radius * 1.5,
+                        (Math.random() - 0.5) * p.radius * 0.8,
+                        1.5, 0, Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+
+            // Label
+            if (!p.scared) {
+                ctx.fillStyle = COLORS.black;
+                ctx.font = SeaRanchStyle.makeFont(10, 'bold');
+                ctx.textAlign = 'center';
+                ctx.fillText(p.type.toUpperCase(), p.x, p.y + p.radius + 18);
+            }
+        }
+
+        function drawPoppy() {
+            ctx.save();
+            ctx.translate(player.x, player.y - player.boundHeight);
+
+            // Apply squash/stretch
+            const scaleX = player.squash;
+            const scaleY = 2 - player.squash;
+            ctx.scale(player.facing * scaleX, scaleY);
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(0, player.radius + player.boundHeight / scaleY, player.radius * 1.2, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body
+            ctx.fillStyle = COLORS.poppy;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, player.radius * 1.1, player.radius, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Chest fluff
+            ctx.fillStyle = COLORS.white;
+            ctx.beginPath();
+            ctx.ellipse(player.radius * 0.3, player.radius * 0.3, player.radius * 0.5, player.radius * 0.6, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = COLORS.poppy;
+            ctx.beginPath();
+            ctx.arc(player.radius * 0.5, -player.radius * 0.5, player.radius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ears (floppy Great Pyrenees ears)
+            ctx.fillStyle = COLORS.poppyDark;
+            ctx.beginPath();
+            ctx.ellipse(player.radius * 0.1, -player.radius * 0.9, player.radius * 0.4, player.radius * 0.6, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(player.radius * 0.9, -player.radius * 0.8, player.radius * 0.4, player.radius * 0.6, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Snout
+            ctx.fillStyle = COLORS.poppy;
+            ctx.beginPath();
+            ctx.ellipse(player.radius * 1, -player.radius * 0.3, player.radius * 0.5, player.radius * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = COLORS.black;
+            ctx.beginPath();
+            ctx.arc(player.radius * 1.3, -player.radius * 0.25, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = COLORS.black;
+            ctx.beginPath();
+            ctx.arc(player.radius * 0.4, -player.radius * 0.6, 2.5, 0, Math.PI * 2);
+            ctx.arc(player.radius * 0.85, -player.radius * 0.55, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye shine
+            ctx.fillStyle = COLORS.white;
+            ctx.beginPath();
+            ctx.arc(player.radius * 0.35, -player.radius * 0.65, 1, 0, Math.PI * 2);
+            ctx.arc(player.radius * 0.8, -player.radius * 0.6, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail (wagging when moving)
+            const wagAngle = player.isMoving ? Math.sin(state.time * 15) * 0.5 : 0;
+            ctx.strokeStyle = COLORS.poppy;
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-player.radius * 0.8, 0);
+            ctx.quadraticCurveTo(
+                -player.radius * 1.5,
+                -player.radius * 0.5 + wagAngle * 10,
+                -player.radius * 1.3,
+                -player.radius * 1 + wagAngle * 5
+            );
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function render() {
+            // Title screen - HTML overlay handles this now
+            if (state.phase === 'title') {
+                return;
+            }
+
+            // Screen shake - use SeaRanchStyle system
+            ctx.save();
+            SeaRanchStyle.applyShake(ctx);
+
+            // Sky gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, 150);
+            skyGrad.addColorStop(0, COLORS.skyLight);
+            skyGrad.addColorStop(0.7, COLORS.sky);
+            skyGrad.addColorStop(1, COLORS.fog);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, 640, 150);
+
+            // Ocean with animated waves
+            ctx.fillStyle = COLORS.ocean;
+            ctx.fillRect(0, 54, 640, 18);
+
+            // Animated wave crests
+            ctx.fillStyle = '#6a9aba';
+            waves.forEach(wave => {
+                const waveX = (wave.x + state.time * 20 * wave.speed) % 680 - 20;
+                const waveY = 57 + Math.sin(state.time * wave.speed + wave.phase) * wave.height;
+                ctx.beginPath();
+                ctx.moveTo(waveX, waveY + 6);
+                ctx.quadraticCurveTo(waveX + 20, waveY - 3, waveX + 40, waveY + 6);
+                ctx.fill();
+            });
+
+            // White foam caps
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            waves.forEach((wave, i) => {
+                if (i % 2 === 0) {
+                    const waveX = (wave.x + state.time * 20 * wave.speed) % 680 - 20;
+                    const waveY = 56 + Math.sin(state.time * wave.speed + wave.phase) * wave.height;
+                    ctx.beginPath();
+                    ctx.arc(waveX + 16, waveY, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Distant bluff with hills and cliffs
+            ctx.fillStyle = COLORS.meadowDark;
+            ctx.fillRect(0, 72, 640, 33);
+
+            // Add coastal terrain variation
+            coastalFeatures.forEach(feature => {
+                if (feature.type === 'hill') {
+                    ctx.fillStyle = '#8a7a5a';
+                    ctx.beginPath();
+                    ctx.moveTo(feature.x, 105);
+                    ctx.quadraticCurveTo(
+                        feature.x + feature.width / 2, 105 - feature.height,
+                        feature.x + feature.width, 105
+                    );
+                    ctx.fill();
+                } else { // cliff
+                    ctx.fillStyle = '#6a5a4a';
+                    ctx.beginPath();
+                    ctx.moveTo(feature.x, 105);
+                    ctx.lineTo(feature.x + 7, 75);
+                    ctx.lineTo(feature.x + feature.width - 7, 75);
+                    ctx.lineTo(feature.x + feature.width, 105);
+                    ctx.fill();
+                    // Cliff face
+                    ctx.fillStyle = '#5a4a3a';
+                    ctx.fillRect(feature.x + 7, 75, feature.width - 14, feature.height * 0.4);
+                }
+            });
+
+            // Meadow
+            const meadowGrad = ctx.createLinearGradient(0, 98, 0, 480);
+            meadowGrad.addColorStop(0, COLORS.meadow);
+            meadowGrad.addColorStop(0.5, COLORS.grassGold);
+            meadowGrad.addColorStop(1, COLORS.grassDry);
+            ctx.fillStyle = meadowGrad;
+            ctx.fillRect(0, 98, 640, 382);
+
+            // Cypress trees
+            cypressTrees.forEach(tree => {
+                drawCypress(tree);
+            });
+
+            // Grass blades
+            grassBlades.forEach(blade => {
+                const sway = Math.sin(state.time * 2 + blade.sway) * 3;
+                ctx.strokeStyle = blade.color;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(blade.x, blade.y);
+                ctx.quadraticCurveTo(
+                    blade.x + sway,
+                    blade.y - blade.height * 0.6,
+                    blade.x + sway * 1.5,
+                    blade.y - blade.height
+                );
+                ctx.stroke();
+            });
+
+            // Fence - all pickets point UP (slight isometric view)
+            const wood = '#8B7355';
+            const woodDark = '#6a5a4a';
+            const picketH = 18;
+            const picketW = 4;
+            const gap = 5;
+            const rail = 6;
+            const gateSize = 85;
+            const gateStart = pen.y + 60;
+
+            // Draw pickets pointing up, then rail below
+            function drawFenceH(x, y, width) {
+                ctx.fillStyle = woodDark;
+                ctx.fillRect(x, y, width, rail);
+                for (let px = x; px < x + width; px += picketW + gap) {
+                    ctx.fillStyle = wood;
+                    ctx.fillRect(px, y - picketH, picketW, picketH + rail);
+                    ctx.beginPath();
+                    ctx.moveTo(px, y - picketH);
+                    ctx.lineTo(px + picketW/2, y - picketH - 3);
+                    ctx.lineTo(px + picketW, y - picketH);
+                    ctx.fill();
+                }
+            }
+
+            // Vertical wall - rail runs vertical, pickets still point UP
+            function drawFenceV(x, y, height) {
+                ctx.fillStyle = woodDark;
+                ctx.fillRect(x, y, rail, height);
+                for (let py = y; py < y + height; py += picketW + gap) {
+                    ctx.fillStyle = wood;
+                    ctx.fillRect(x, py - picketH, rail, picketH + picketW);
+                    // pointed top
+                    ctx.beginPath();
+                    ctx.moveTo(x, py - picketH);
+                    ctx.lineTo(x + rail/2, py - picketH - 3);
+                    ctx.lineTo(x + rail, py - picketH);
+                    ctx.fill();
+                }
+            }
+
+            // TOP wall
+            drawFenceH(pen.x, pen.y, pen.width);
+
+            // BOTTOM wall
+            drawFenceH(pen.x, pen.y + pen.height, pen.width);
+
+            // LEFT wall (with gate)
+            drawFenceV(pen.x - rail, pen.y, gateStart - pen.y);
+            drawFenceV(pen.x - rail, gateStart + gateSize, pen.y + pen.height - gateStart - gateSize + rail);
+
+            // RIGHT wall
+            drawFenceV(pen.x + pen.width, pen.y, pen.height + rail);
+
+            // Sign - outside the pen, toward the top
+            const signX = pen.x - 30;
+            const signY = pen.y - 10;
+            ctx.fillStyle = '#5a4a3a';
+            ctx.fillRect(signX - 2, signY + 18, 4, 45);
+            ctx.fillStyle = '#f5f5f0';
+            ctx.fillRect(signX - 19, signY - 15, 37, 36);
+            if (sheepLogoImg.complete && sheepLogoImg.naturalWidth > 0) {
+                ctx.drawImage(sheepLogoImg, signX - 15, signY - 10, 29, 27);
+            }
+
+            // Draw predators
+            predators.forEach(p => drawPredator(p));
+
+            // Draw sheep
+            sheep.forEach(s => drawSheep(s));
+
+            // Draw player
+            drawPoppy();
+
+            // Particles on top
+            renderParticles();
+
+            // JUICE: Update SeaRanchStyle effects (particles, trails, flash)
+            SeaRanchStyle.updateJuice(ctx);
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            update();
+            render();
+
+            // Apply weathered film grain effect for consistent Sea Ranch aesthetic
+            if (state.phase !== 'title') {
+                SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        initGame();
+        SeaRanchStyle.setupTouchControls();
+        // Dialog will be shown when player presses Enter from title
+        gameLoop();
+    </script>
+</body>
+</html>

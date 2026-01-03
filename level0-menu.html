@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Hub</title>
+    <style>
+        /* Sea Ranch Design System - Barbara Stauffacher Solomon */
+        :root {
+            /* Supergraphic accents (use sparingly, boldly) */
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+
+            /* Neutrals */
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --cream: #f5f5f0;
+            --fog: #e8e4dc;
+
+            /* Natural/weathered tones */
+            --wood: #8b7355;
+            --wood-light: #a89070;
+            --sand: #d4c4a8;
+            --meadow: #7A9B6D;
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        .game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: var(--fog);
+        }
+
+        /* Weathered wood texture background */
+        .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                /* Wood grain lines */
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(139, 115, 85, 0.08) 3px,
+                    rgba(139, 115, 85, 0.08) 4px
+                ),
+                /* Weathering/age spots */
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+                /* Base weathered wood color */
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+
+        /* Bold supergraphic - sweeping blue curves like the pool ceiling */
+        .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+
+        .supergraphic::before,
+        .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+
+        .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+
+        .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+
+        /* Red accent arrow - like the one on weathered wood */
+        .arrow-accent {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 80px;
+            height: 100px;
+            pointer-events: none;
+        }
+
+        .arrow-accent::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red);
+            top: 0;
+        }
+
+        .arrow-accent::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 50px;
+            background: var(--red);
+            top: 45px;
+            left: 27px;
+        }
+
+        /* Title - bold Helvetica like the signage */
+        .title {
+            position: absolute;
+            top: 36px;
+            left: 36px;
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+
+        .title span {
+            display: block;
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 6px;
+            color: var(--wood);
+        }
+
+        /* Level grid - simple, functional */
+        .levels {
+            position: absolute;
+            top: 140px;
+            left: 36px;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            width: 372px;
+        }
+
+        .level {
+            width: 52px;
+            height: 52px;
+            background: var(--white);
+            border: 3px solid var(--black);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--black);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .level:hover {
+            background: var(--black);
+            color: var(--white);
+        }
+
+        .level.selected {
+            background: var(--red);
+            border-color: var(--red);
+            color: var(--white);
+            transform: scale(1.1);
+        }
+
+        .level.completed {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: var(--white);
+        }
+
+        .level.completed.selected {
+            background: var(--red);
+            border-color: var(--red);
+        }
+
+        /* Abalone indicator - small shell icon */
+        .level .abalone {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: var(--red);
+            border-radius: 50%;
+            border: 2px solid var(--white);
+        }
+
+        /* Level name display */
+        .level-info {
+            position: absolute;
+            bottom: 36px;
+            left: 140px;
+            right: 36px;
+        }
+
+        .level-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--black);
+            margin-bottom: 6px;
+        }
+
+        .level-desc {
+            font-size: 14px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Progress indicator */
+        .progress {
+            position: absolute;
+            top: 36px;
+            right: 36px;
+            text-align: right;
+        }
+
+        .progress-count {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--black);
+        }
+
+        .progress-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--wood);
+        }
+
+        /* Controls hint */
+        .controls {
+            position: absolute;
+            bottom: 12px;
+            right: 36px;
+            font-size: 11px;
+            color: var(--wood-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Grain overlay for weathered feel */
+        .grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Weathered background -->
+        <div class="wood-bg"></div>
+
+        <!-- Bold supergraphic curves -->
+        <div class="supergraphic"></div>
+
+        <!-- Red arrow accent -->
+        <div class="arrow-accent"></div>
+
+        <!-- Title -->
+        <div class="title">
+            Sea Ranch
+            <span>Quest</span>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress">
+            <div class="progress-count">0/12</div>
+            <div class="progress-label">Complete</div>
+        </div>
+
+        <!-- Level grid -->
+        <div class="levels">
+            <div class="level" data-level="1">1</div>
+            <div class="level" data-level="2">2</div>
+            <div class="level" data-level="3">3</div>
+            <div class="level" data-level="4">4</div>
+            <div class="level" data-level="5">5</div>
+            <div class="level" data-level="6">6</div>
+            <div class="level" data-level="7">7</div>
+            <div class="level" data-level="8">8</div>
+            <div class="level" data-level="9">9</div>
+            <div class="level" data-level="10">10</div>
+            <div class="level" data-level="11">11</div>
+            <div class="level" data-level="12">12</div>
+        </div>
+
+        <!-- Level info -->
+        <div class="level-info">
+            <div class="level-name">Swimming Race</div>
+            <div class="level-desc">Race as a sea otter</div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">D-pad: Select · A: Play</div>
+
+        <!-- Grain overlay -->
+        <div class="grain"></div>
+    </div>
+
+    <script>
+        // Level data
+        const levels = [
+            { name: 'Kelp Forest', desc: 'Keep balance before urchins overrun the kelp' },
+            { name: 'Sheep Herding', desc: 'Guard the flock' },
+            { name: 'Highway 1', desc: 'The family arrives' },
+            { name: 'Bike Trail', desc: 'Explore the trails' },
+            { name: 'Driftwood Fort', desc: 'Build on the beach' },
+            { name: 'Hardware Store', desc: 'Match the hardware' },
+            { name: 'Paddle Ball', desc: 'Play at Moonraker' },
+            { name: 'Abalone Puzzle', desc: 'Quiet tidepools' },
+            { name: 'Covey Survival', desc: 'Protect the quail family' },
+            { name: 'Woodblock Print', desc: 'Carve a whale memory' },
+            { name: 'Sauna', desc: 'Escape the supergraphics' },
+            { name: 'Chapel Meditation', desc: 'A peaceful meditation' }
+        ];
+
+        // Map to actual files (order matches menu)
+        const levelFiles = [
+            'level1-kelp.html',         // 1: Kelp Forest
+            'level2-sheep.html',        // 2: Sheep Herding
+            'level3-highway.html',      // 3: Highway 1
+            'level4-biketrail.html',    // 4: Bike Trail
+            'level5-driftwood.html',    // 5: Driftwood Fort
+            'level6-hardware.html',     // 6: Hardware Store
+            'level7-paddleball.html',   // 7: Paddle Ball
+            'level8-abalone.html',      // 8: Abalone Puzzle
+            'level9-covey.html',        // 9: Covey Survival
+            'level10-woodblock.html',   // 10: Woodblock Print
+            'level11-sauna.html',       // 11: Sauna
+            'level12-chapel.html'       // 12: Chapel Meditation
+        ];
+
+        let selectedIndex = 0; // Start on level 1
+        const levelElements = document.querySelectorAll('.level');
+        const levelName = document.querySelector('.level-name');
+        const levelDesc = document.querySelector('.level-desc');
+        const progressCount = document.querySelector('.progress-count');
+
+        // Load completed levels from localStorage
+        function getCompletedLevels() {
+            try {
+                const saved = localStorage.getItem('seaRanchQuestCompleted');
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        // Reset progress
+        function resetProgress() {
+            if (confirm('Reset all progress? This will clear all completed levels.')) {
+                localStorage.removeItem('seaRanchQuestCompleted');
+                updateCompletedDisplay();
+            }
+        }
+
+        // Update the display based on completed levels
+        function updateCompletedDisplay() {
+            const completed = getCompletedLevels();
+            levelElements.forEach((el, i) => {
+                const levelNum = i + 1;
+                if (completed.includes(levelNum)) {
+                    el.classList.add('completed');
+                } else {
+                    el.classList.remove('completed');
+                }
+            });
+
+            // Show reset hint if all 12 complete
+            if (completed.length === 12) {
+                progressCount.textContent = `12/12 ✓`;
+                progressCount.title = 'Press R to reset progress';
+            } else {
+                progressCount.textContent = `${completed.length}/12`;
+                progressCount.title = '';
+            }
+        }
+
+        function launchLevel(num) {
+            if (levelFiles[num - 1]) {
+                window.location.href = levelFiles[num - 1];
+            }
+        }
+
+        function updateSelection() {
+            levelElements.forEach((el, i) => {
+                el.classList.toggle('selected', i === selectedIndex);
+            });
+            levelName.textContent = levels[selectedIndex].name;
+            levelDesc.textContent = levels[selectedIndex].desc;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const cols = 6;
+            let newIndex = selectedIndex;
+
+            switch(e.key) {
+                case 'ArrowRight':
+                    newIndex = Math.min(11, selectedIndex + 1);
+                    break;
+                case 'ArrowLeft':
+                    newIndex = Math.max(0, selectedIndex - 1);
+                    break;
+                case 'ArrowDown':
+                    newIndex = Math.min(11, selectedIndex + cols);
+                    break;
+                case 'ArrowUp':
+                    newIndex = Math.max(0, selectedIndex - cols);
+                    break;
+                case ' ':
+                case 'Enter':
+                case 'a':
+                case 'A':
+                    launchLevel(selectedIndex + 1);
+                    break;
+                case 'r':
+                case 'R':
+                    // Only allow reset if all 12 complete
+                    if (getCompletedLevels().length === 12) {
+                        resetProgress();
+                    }
+                    break;
+            }
+
+            if (newIndex !== selectedIndex) {
+                selectedIndex = newIndex;
+                updateSelection();
+            }
+        });
+
+        // Click selection and double-click to launch
+        levelElements.forEach((el, i) => {
+            el.addEventListener('click', () => {
+                if (selectedIndex === i) {
+                    // Double click - launch
+                    launchLevel(i + 1);
+                } else {
+                    selectedIndex = i;
+                    updateSelection();
+                }
+            });
+        });
+
+        // Initialize
+        updateCompletedDisplay();
+        updateSelection();
+    </script>
+    <script src="sea-ranch-style.js"></script>
+    <script>
+        // Initialize touch controls for mobile
+        SeaRanchStyle.setupTouchControls({ showMenu: false });
+    </script>
+</body>
+</html>

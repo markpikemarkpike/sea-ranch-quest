@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Paddle Ball</title>
+    <script src="sea-ranch-style.js"></script>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* HTML/CSS Title Card */
+        .title-card {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .title-card .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(139, 115, 85, 0.08) 3px, rgba(139, 115, 85, 0.08) 4px),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+        .title-card .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+        .title-card .supergraphic::before,
+        .title-card .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+        .title-card .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+        .title-card .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+        .title-card .arrow-accent {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 80px;
+            height: 100px;
+            pointer-events: none;
+        }
+        .title-card .arrow-accent::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red);
+            top: 0;
+        }
+        .title-card .arrow-accent::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 50px;
+            background: var(--red);
+            top: 45px;
+            left: 27px;
+        }
+        .title-card .title-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+        .title-card .level-title {
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+        .title-card .level-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--wood);
+        }
+        .title-card .continue-hint {
+            position: absolute;
+            bottom: 36px;
+            right: 36px;
+            font-size: 12px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .title-card .title-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="title-card" id="title-card">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="arrow-accent"></div>
+            <div class="title-content">
+                <div class="level-title">Paddle Ball</div>
+                <div class="level-subtitle">Dad & Kid vs Raccoons</div>
+            </div>
+            <div class="continue-hint">A to start · B to menu</div>
+            <div class="title-grain"></div>
+        </div>
+        <canvas id="game" width="640" height="480"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        // Sea Ranch palette - Barbara Stauffacher Solomon
+        const COLORS = {
+            // Supergraphic accents
+            black: '#1a1a1a',
+            white: '#f5f5f0',
+            cream: '#f5f5f0',
+            red: '#C41E3A',
+            blue: '#2E5DA8',
+            // Natural tones
+            wood: '#8b7355',
+            woodDark: '#5c4a3a',
+            meadow: '#7A9B6D',
+            grass: '#7A9B6D',
+            grassDark: '#5a7b5d',
+            grassLight: '#8aab7d',
+            court: '#5a7b5d',
+            courtLight: '#7A9B6D',
+            courtDark: '#4a6b4d',
+            sky: '#87CEEB',
+            skyLight: '#a7e0f0',
+            fog: '#e8e4dc',
+            cloudLight: '#f5f5f0',
+            cloudDark: '#d4c4a8',
+            cypress: '#2d4a3a',
+            pool: '#2E5DA8',
+            stairs: '#8b7355'
+        };
+
+        // Animation time
+        let time = 0;
+
+        // Game state
+        let gameState = 'title'; // title, serving, playing, point, gameOver
+        let playerScore = 0;
+        let raccoonScore = 0;
+        let servingTeam = 'player'; // player or raccoon
+        let serverIndex = 0; // 0 = first server, 1 = second server
+        let rallyCount = 0;
+
+        // Court dimensions - ZOOMED IN, MINIMAL TILT (scaled for 640x480)
+        const COURT = {
+            nearY: 458,      // baseline closer to bottom
+            farY: 248,       // far baseline - very minimal tilt
+            leftX: 93,       // wider court (zoomed in)
+            rightX: 547,     // wider court (zoomed in)
+            kitchenNear: 368, // kitchen line near side
+            kitchenFar: 293,  // kitchen line far side
+            netY: 330,        // net position
+            centerX: 320
+        };
+
+        // Players - LARGER for visibility (scaled for 640x480)
+        const dad = {
+            x: 213, y: 420, targetX: 213, targetY: 420,
+            width: 43, height: 72, color: '#4a6741',
+            swingFrame: 0, name: 'Dad'
+        };
+
+        const kid = {
+            x: 427, y: 420, targetX: 427, targetY: 420,
+            width: 35, height: 60, color: '#f5f5f0',
+            swingFrame: 0, name: 'Kid'
+        };
+
+        // Raccoons - LARGER (scaled for 640x480)
+        const raccoon1 = {
+            x: 240, y: 270, targetX: 240, targetY: 270,
+            width: 37, height: 51,
+            swingFrame: 0, name: 'Rocky'
+        };
+
+        const raccoon2 = {
+            x: 400, y: 270, targetX: 400, targetY: 270,
+            width: 37, height: 51,
+            swingFrame: 0, name: 'Ricky'
+        };
+
+        // Ball - clear, readable (scaled for 640x480)
+        const ball = {
+            x: 320, y: 375, z: 0,
+            vx: 0, vy: 0, vz: 0,
+            radius: 11,
+            inPlay: false,
+            lastHitBy: null,
+            speed: 2.0 // Current speed - increases each volley (scaled)
+        };
+
+        // Visual feedback
+        let hitFlash = 0;
+        let screenShake = 0;
+
+        // Input
+        const keys = {};
+        document.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            const isActionKey = e.key === ' ' || e.key === 'Enter' || e.key === 'a' || e.key === 'A';
+            const isBackKey = e.key === 'Escape' || e.key === 'b' || e.key === 'B';
+
+            // B/ESC always returns to menu (from any state)
+            if (isBackKey) {
+                window.location.href = 'level0-menu.html';
+                return;
+            }
+
+            if (isActionKey && gameState === 'serving') {
+                serve();
+            }
+            if (isActionKey && gameState === 'title') {
+                document.getElementById('title-card').style.display = 'none';
+                startGame();
+            }
+            // Action key on game over to replay or go to menu
+            if (isActionKey && gameState === 'gameOver') {
+                window.location.href = 'level0-menu.html';
+            }
+        });
+        document.addEventListener('keyup', e => keys[e.key] = false);
+
+        // Auto-hit cooldown to prevent double hits
+        let playerHitCooldown = 0;
+
+        // Audio context
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            switch(type) {
+                case 'hit':
+                    osc.frequency.value = 400;
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.1);
+                    break;
+                case 'bounce':
+                    osc.frequency.value = 200;
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.05);
+                    break;
+                case 'point':
+                    osc.frequency.value = 600;
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                    break;
+                case 'score':
+                    osc.type = 'square';
+                    osc.frequency.value = 440;
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(550, audioCtx.currentTime + 0.1);
+                    osc.frequency.setValueAtTime(660, audioCtx.currentTime + 0.2);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                    break;
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            gameState = 'serving';
+            playerScore = 0;
+            raccoonScore = 0;
+            servingTeam = 'player';
+            serverIndex = 0;
+            resetPositions();
+        }
+
+        function resetPositions() {
+            // Position players at their intercept lines (scaled for 640x480)
+            const playerY = COURT.kitchenNear + 45;
+            const raccoonY = COURT.kitchenFar - 15;
+
+            // KID starts center
+            kid.x = 320;
+            kid.y = playerY;
+            kid.targetX = kid.x;
+            kid.targetY = kid.y;
+
+            // DAD on opposite side
+            dad.x = 213;
+            dad.y = playerY;
+            dad.targetX = dad.x;
+            dad.targetY = dad.y;
+
+            // Raccoons at their positions
+            raccoon1.x = COURT.leftX + 107;
+            raccoon1.y = raccoonY;
+            raccoon1.targetX = raccoon1.x;
+            raccoon1.targetY = raccoon1.y;
+
+            raccoon2.x = COURT.rightX - 107;
+            raccoon2.y = raccoonY;
+            raccoon2.targetX = raccoon2.x;
+            raccoon2.targetY = raccoon2.y;
+
+            // Ball with server - visible and ready
+            if (servingTeam === 'player') {
+                ball.x = kid.x;
+                ball.y = kid.y - 38;
+            } else {
+                ball.x = raccoon1.x;
+                ball.y = raccoon1.y + 38;
+            }
+            ball.z = 23;
+            ball.vx = 0;
+            ball.vy = 0;
+            ball.vz = 0;
+            ball.inPlay = false;
+            ball.speed = 1.1;
+            ball.lastHitBy = null;
+            rallyCount = 0;
+        }
+
+        function serve() {
+            ball.inPlay = true;
+            ball.speed = 1.1; // Scaled for larger court
+            ball.z = 30;
+            ball.vz = 0;
+
+            // Simple lob serve - ball goes straight to other side
+            if (servingTeam === 'player') {
+                ball.x = kid.x;
+                ball.y = kid.y - 23;
+                ball.vx = 0;
+                ball.vy = -ball.speed;
+                ball.lastHitBy = 'player';
+            } else {
+                ball.x = raccoon1.x;
+                ball.y = raccoon1.y + 23;
+                ball.vx = 0;
+                ball.vy = ball.speed;
+                ball.lastHitBy = 'raccoon';
+            }
+
+            playSound('hit');
+            gameState = 'playing';
+        }
+
+        // ========================================
+        // CORE GAME LOOP - Pong/Wii Tennis style
+        //
+        // 1. Ball travels toward you in a straight line
+        // 2. When ball crosses into your zone, if you're
+        //    in the right X position, you auto-hit it back
+        // 3. Ball angle depends on where you intercepted
+        // 4. Speed increases each volley
+        // 5. Miss = point for other team
+        // ========================================
+
+        function updateBall() {
+            if (!ball.inPlay) return;
+
+            // Move ball
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Gentle floating motion (cosmetic only)
+            ball.z = 15 + Math.sin(Date.now() * 0.005) * 5;
+
+            // Bounce off side walls
+            if (ball.x < COURT.leftX + 13) {
+                ball.x = COURT.leftX + 13;
+                ball.vx = Math.abs(ball.vx) * 0.9;
+                playSound('bounce');
+            }
+            if (ball.x > COURT.rightX - 13) {
+                ball.x = COURT.rightX - 13;
+                ball.vx = -Math.abs(ball.vx) * 0.9;
+                playSound('bounce');
+            }
+
+            // ========================================
+            // PLAYER INTERCEPT ZONE
+            // When ball enters player's court and is
+            // heading toward baseline, check for intercept
+            // ========================================
+            if (ball.lastHitBy === 'raccoon' && ball.vy > 0) {
+                // Ball is coming toward player side
+                const interceptY = COURT.kitchenNear + 45; // Where interception happens (scaled)
+
+                if (ball.y >= interceptY && ball.y < interceptY + 15) {
+                    // Check if Kid or Dad can intercept
+                    // Kid has longer reach - easier to hit!
+                    const kidCanHit = Math.abs(ball.x - kid.x) < 67;
+                    const dadCanHit = Math.abs(ball.x - dad.x) < 53;
+
+                    if (kidCanHit || dadCanHit) {
+                        // SUCCESSFUL INTERCEPT!
+                        const hitter = kidCanHit ? kid : dad;
+                        hitter.swingFrame = 8;
+                        ball.lastHitBy = 'player';
+                        rallyCount++;
+                        hitFlash = 8;
+                        screenShake = 3;
+
+                        // Juice effects for paddle hit
+                        SeaRanchStyle.shake(3, 0.8);
+                        SeaRanchStyle.spawnParticles(ball.x, ball.y, { count: 5, color: SeaRanchStyle.colors.cream, speed: 2, size: 2, life: 15 });
+
+                        // Angle based on where ball hit the paddle
+                        // Smaller divisor = sharper angles possible
+                        const hitOffset = (ball.x - hitter.x) / 40;
+
+                        // Add tiny random variance to prevent perfect volleys
+                        const variance = (Math.random() - 0.5) * 0.4;
+
+                        // Speed up for next volley - gradual increase (scaled)
+                        ball.speed = Math.min(ball.speed + 0.11, 3.5);
+
+                        // More lateral movement for angled shots
+                        ball.vx = (hitOffset + variance) * ball.speed * 1.0;
+                        ball.vy = -ball.speed;
+
+                        playSound('hit');
+                    }
+                }
+
+                // Ball passed the baseline - raccoons score!
+                if (ball.y > COURT.nearY + 30) {
+                    endPoint();
+                }
+            }
+
+            // ========================================
+            // RACCOON INTERCEPT ZONE
+            // Raccoons CAN MISS if:
+            // - Ball is too far from them (sharp angle)
+            // - Ball is moving too fast
+            // ========================================
+            if (ball.lastHitBy === 'player' && ball.vy < 0) {
+                // Ball is heading toward raccoon side
+                const interceptY = COURT.kitchenFar - 15;
+
+                if (ball.y <= interceptY && ball.y > interceptY - 15) {
+                    // Check which raccoon can intercept
+                    const r1Dist = Math.abs(ball.x - raccoon1.x);
+                    const r2Dist = Math.abs(ball.x - raccoon2.x);
+
+                    // Raccoons have limited reach - harder to hit at edges
+                    // Base reach is 40 (scaled), decreases as ball gets faster
+                    const reachPenalty = Math.max(0, (ball.speed - 1.4) * 24);
+                    const raccoonReach = 40 - reachPenalty;
+
+                    const r1CanHit = r1Dist < raccoonReach;
+                    const r2CanHit = r2Dist < raccoonReach;
+
+                    if (r1CanHit || r2CanHit) {
+                        // Raccoon intercepts!
+                        const hitter = r1CanHit ? raccoon1 : raccoon2;
+                        hitter.swingFrame = 6;
+                        ball.lastHitBy = 'raccoon';
+                        rallyCount++;
+
+                        // Angle based on intercept position
+                        const hitOffset = (ball.x - hitter.x) / 47;
+
+                        // Add tiny random variance to prevent perfect volleys
+                        const variance = (Math.random() - 0.5) * 0.4;
+
+                        // Speed up - gradual (scaled)
+                        ball.speed = Math.min(ball.speed + 0.11, 3.5);
+
+                        // Raccoons can also angle shots, but less aggressively
+                        ball.vx = (hitOffset + variance) * ball.speed * 0.9;
+                        ball.vy = ball.speed;
+
+                        playSound('hit');
+                    } else {
+                        // RACCOONS MISSED! Show them flailing
+                        const closer = r1Dist < r2Dist ? raccoon1 : raccoon2;
+                        closer.swingFrame = 10; // Desperate swing and miss
+                        screenShake = 5;
+                        hitFlash = 10;
+                    }
+                }
+
+                // Ball passed raccoon baseline - player scores!
+                if (ball.y < COURT.farY - 30) {
+                    endPoint();
+                }
+            }
+        }
+
+        function endPoint() {
+            ball.inPlay = false;
+
+            // Determine who won the point - simple rally scoring
+            let playerWon = false;
+
+            if (ball.y < COURT.netY) {
+                // Ball ended on raccoon side - player wins!
+                playerWon = true;
+            } else {
+                // Ball ended on player side - raccoons win!
+                playerWon = false;
+            }
+
+            // Rally scoring: whoever wins the point gets a point AND serves next
+            if (playerWon) {
+                playerScore++;
+                servingTeam = 'player';
+                playSound('score');
+                // Juice effects for scoring
+                SeaRanchStyle.shake(6, 0.85);
+                SeaRanchStyle.flash(SeaRanchStyle.colors.cream, 0.2);
+            } else {
+                raccoonScore++;
+                servingTeam = 'raccoon';
+                playSound('score');
+                // Juice effects for scoring
+                SeaRanchStyle.shake(6, 0.85);
+                SeaRanchStyle.flash(SeaRanchStyle.colors.cream, 0.2);
+            }
+
+            // Check for game over (first to 5)
+            if (playerScore >= 5 || raccoonScore >= 5) {
+                gameState = 'gameOver';
+                // Save completion if player won (Level 7 in narrative order)
+                if (playerScore >= 5) {
+                    SeaRanchStyle.saveCompletion(7);
+                }
+            } else {
+                gameState = 'serving';
+                resetPositions();
+                // If raccoons should serve, do it automatically after a delay
+                if (servingTeam === 'raccoon') {
+                    setTimeout(() => {
+                        if (gameState === 'serving' && servingTeam === 'raccoon') {
+                            serve();
+                        }
+                    }, 800);
+                }
+            }
+        }
+
+        function updatePlayers() {
+            // ========================================
+            // KID - Player controlled (like a Pong paddle)
+            // Moves LEFT/RIGHT to intercept the ball
+            // Fixed Y position at the intercept line
+            // ========================================
+            const speed = 8; // Faster, more responsive movement
+            if (keys['ArrowLeft']) kid.targetX -= speed;
+            if (keys['ArrowRight']) kid.targetX += speed;
+
+            // Constrain to court width
+            kid.targetX = Math.max(COURT.leftX + 27, Math.min(COURT.rightX - 27, kid.targetX));
+
+            // Kid stays at the intercept line (like Pong paddle)
+            kid.targetY = COURT.kitchenNear + 45;
+
+            // Much snappier movement - reduced lerp delay for immediate response
+            kid.x += (kid.targetX - kid.x) * 0.45;
+            kid.y += (kid.targetY - kid.y) * 0.45;
+
+            // ========================================
+            // DAD - AI partner, covers opposite side
+            // Moves to intercept if ball is on his side
+            // ========================================
+            if (ball.inPlay && ball.lastHitBy === 'raccoon' && ball.vy > 0) {
+                // Ball coming toward our side
+                // Dad covers the opposite half from Kid
+                if (kid.x > COURT.centerX) {
+                    // Kid is on right, Dad covers left
+                    if (ball.x < COURT.centerX) {
+                        dad.targetX = ball.x; // Move to intercept
+                    } else {
+                        dad.targetX = COURT.leftX + 80; // Default left position
+                    }
+                } else {
+                    // Kid is on left, Dad covers right
+                    if (ball.x > COURT.centerX) {
+                        dad.targetX = ball.x;
+                    } else {
+                        dad.targetX = COURT.rightX - 80;
+                    }
+                }
+            } else {
+                // Default: opposite side from kid
+                dad.targetX = kid.x > COURT.centerX ? COURT.leftX + 107 : COURT.rightX - 107;
+            }
+
+            dad.targetX = Math.max(COURT.leftX + 27, Math.min(COURT.rightX - 27, dad.targetX));
+            dad.targetY = COURT.kitchenNear + 45; // Same line as kid
+
+            // Dad is now more responsive - reliable partner
+            dad.x += (dad.targetX - dad.x) * 0.25;
+            dad.y += (dad.targetY - dad.y) * 0.25;
+
+            // ========================================
+            // RACCOONS - AI paddles at the far end
+            // They position to intercept the ball
+            // ========================================
+
+            // Raccoons stay at their intercept line
+            const raccoonY = COURT.kitchenFar - 15;
+            raccoon1.targetY = raccoonY;
+            raccoon2.targetY = raccoonY;
+
+            if (ball.inPlay && ball.lastHitBy === 'player' && ball.vy < 0) {
+                // Ball coming toward raccoons - move to intercept
+                // Predict where ball will be
+                const timeToIntercept = (raccoonY - ball.y) / Math.abs(ball.vy);
+                const predictedX = ball.x + ball.vx * timeToIntercept;
+
+                // Raccoon 1 covers left half, Raccoon 2 covers right half
+                if (predictedX < COURT.centerX) {
+                    raccoon1.targetX = predictedX;
+                    raccoon2.targetX = COURT.rightX - 107; // Stay on right
+                } else {
+                    raccoon2.targetX = predictedX;
+                    raccoon1.targetX = COURT.leftX + 107; // Stay on left
+                }
+            } else {
+                // Default positions - cover their halves
+                raccoon1.targetX = COURT.leftX + 107;
+                raccoon2.targetX = COURT.rightX - 107;
+            }
+
+            // Constrain raccoons
+            raccoon1.targetX = Math.max(COURT.leftX + 40, Math.min(COURT.centerX - 27, raccoon1.targetX));
+            raccoon2.targetX = Math.max(COURT.centerX + 27, Math.min(COURT.rightX - 40, raccoon2.targetX));
+
+            // Raccoons are a bit slow - gives player an edge
+            raccoon1.x += (raccoon1.targetX - raccoon1.x) * 0.12;
+            raccoon1.y += (raccoon1.targetY - raccoon1.y) * 0.12;
+            raccoon2.x += (raccoon2.targetX - raccoon2.x) * 0.12;
+            raccoon2.y += (raccoon2.targetY - raccoon2.y) * 0.12;
+
+            // Update swing animations
+            if (dad.swingFrame > 0) dad.swingFrame--;
+            if (kid.swingFrame > 0) kid.swingFrame--;
+            if (raccoon1.swingFrame > 0) raccoon1.swingFrame--;
+            if (raccoon2.swingFrame > 0) raccoon2.swingFrame--;
+        }
+
+        // Drawing functions
+        function drawBackground() {
+            // Overcast sky gradient (scaled for 640x480)
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, 180);
+            skyGrad.addColorStop(0, COLORS.skyLight);
+            skyGrad.addColorStop(0.5, COLORS.sky);
+            skyGrad.addColorStop(1, '#8a9aa8');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, 640, 180);
+
+            // Overcast clouds - soft, layered
+            drawClouds();
+
+            // Distant cypress trees
+            drawCypressTrees();
+
+            // Sunken Moonraker Rec Center with pool
+            drawRecCenter();
+
+            // Golden grass berms on ALL sides
+            drawBerms();
+
+            // Stairs going over berm to pool area
+            drawStairs();
+        }
+
+        function drawClouds() {
+            // Soft overcast cloud layers (scaled for 640x480)
+            ctx.fillStyle = COLORS.cloudLight;
+
+            // Cloud bank 1
+            ctx.beginPath();
+            ctx.moveTo(0, 38);
+            ctx.bezierCurveTo(107, 23, 213, 45, 320, 33);
+            ctx.bezierCurveTo(427, 21, 533, 42, 640, 30);
+            ctx.lineTo(640, 60);
+            ctx.bezierCurveTo(507, 72, 373, 53, 240, 68);
+            ctx.bezierCurveTo(107, 83, 53, 63, 0, 75);
+            ctx.closePath();
+            ctx.fill();
+
+            // Cloud bank 2 - slightly darker
+            ctx.fillStyle = COLORS.cloudDark;
+            ctx.beginPath();
+            ctx.moveTo(0, 68);
+            ctx.bezierCurveTo(160, 57, 267, 78, 400, 63);
+            ctx.bezierCurveTo(533, 48, 587, 72, 640, 60);
+            ctx.lineTo(640, 90);
+            ctx.bezierCurveTo(480, 102, 320, 83, 160, 98);
+            ctx.bezierCurveTo(80, 105, 40, 93, 0, 102);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawCypressTrees() {
+            // Monterey Cypress - wide, windswept, flat-topped (scaled for 640x480)
+            const trees = [
+                { x: 40, size: 0.7, lean: -0.15 },
+                { x: 113, size: 0.9, lean: 0.1 },
+                { x: 527, size: 0.85, lean: 0.12 },
+                { x: 600, size: 0.65, lean: 0.18 }
+            ];
+
+            trees.forEach(tree => {
+                const baseY = 143;
+                const height = 45 * tree.size;
+                const width = 55 * tree.size;
+
+                // Gnarled trunk
+                ctx.fillStyle = '#3a2a1a';
+                ctx.beginPath();
+                ctx.moveTo(tree.x - 2, baseY);
+                ctx.quadraticCurveTo(
+                    tree.x + tree.lean * 8, baseY - height * 0.4,
+                    tree.x + tree.lean * 12, baseY - height * 0.6
+                );
+                ctx.lineTo(tree.x + tree.lean * 12 + 3, baseY - height * 0.6);
+                ctx.quadraticCurveTo(
+                    tree.x + tree.lean * 8 + 3, baseY - height * 0.4,
+                    tree.x + 2, baseY
+                );
+                ctx.fill();
+
+                // Windswept flat-topped foliage
+                ctx.fillStyle = COLORS.cypress;
+                ctx.beginPath();
+                const foliageX = tree.x + tree.lean * 15;
+                const foliageY = baseY - height * 0.7;
+
+                // Irregular windswept shape
+                ctx.moveTo(foliageX - width/2, foliageY + 8);
+                ctx.bezierCurveTo(
+                    foliageX - width/3, foliageY - 12,
+                    foliageX + width/3, foliageY - 12,
+                    foliageX + width/2 + tree.lean * 15, foliageY
+                );
+                ctx.bezierCurveTo(
+                    foliageX + width/2, foliageY + 18,
+                    foliageX - width/3, foliageY + 22,
+                    foliageX - width/2, foliageY + 8
+                );
+                ctx.fill();
+            });
+        }
+
+        function drawRecCenter() {
+            // Moonraker Rec Center - shown at ANGLE with 3D perspective (scaled for 640x480)
+            // Building extends toward horizon (perpendicular to us)
+            // We see front face AND side receding into distance
+
+            const bldgX = 440;
+            const bldgY = 75;
+
+            // SIDE FACE (receding into distance) - draw first (scaled for 640x480)
+            ctx.fillStyle = '#4a3a2a'; // Darker side
+            ctx.beginPath();
+            ctx.moveTo(bldgX + 53, bldgY);        // Front top-right
+            ctx.lineTo(bldgX + 87, bldgY - 18);   // Back top (toward horizon)
+            ctx.lineTo(bldgX + 87, bldgY + 75);   // Back bottom
+            ctx.lineTo(bldgX + 53, bldgY + 98);   // Front bottom-right
+            ctx.closePath();
+            ctx.fill();
+
+            // Side face planks
+            ctx.strokeStyle = '#3a2a1a';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < 5; i++) {
+                const t = i / 5;
+                ctx.beginPath();
+                ctx.moveTo(bldgX + 53 + t * 34, bldgY + t * -18);
+                ctx.lineTo(bldgX + 53 + t * 34, bldgY + 98 - t * 23);
+                ctx.stroke();
+            }
+
+            // FRONT FACE (facing us) with window
+            ctx.fillStyle = COLORS.woodDark;
+            ctx.fillRect(bldgX, bldgY, 53, 98);
+
+            // Front face vertical planks
+            ctx.strokeStyle = '#4a3a2a';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 53; i += 8) {
+                ctx.beginPath();
+                ctx.moveTo(bldgX + i, bldgY);
+                ctx.lineTo(bldgX + i, bldgY + 98);
+                ctx.stroke();
+            }
+
+            // THE BIG WINDOW with RED ARROW SUPERGRAPHIC (as seen in photo)
+            const winX = bldgX + 8;
+            const winY = bldgY + 15;
+            const winW = 37;
+            const winH = 60;
+
+            // Window background - cream
+            ctx.fillStyle = '#f5f0e8';
+            ctx.fillRect(winX, winY, winW, winH);
+
+            // Red arrow supergraphic - simple diagonal arrow
+            ctx.fillStyle = COLORS.red;
+
+            // Arrow shaft - diagonal from bottom-left to top-right
+            const shaftW = 7;
+            ctx.save();
+            ctx.translate(winX + winW/2, winY + winH/2);
+            ctx.rotate(-Math.PI / 4);
+
+            // Shaft
+            ctx.fillRect(-18, -shaftW/2, 30, shaftW);
+
+            // Arrow head
+            ctx.beginPath();
+            ctx.moveTo(10, -10);
+            ctx.lineTo(18, 0);
+            ctx.lineTo(10, 10);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+
+            // Window frame - dark wood
+            ctx.strokeStyle = '#3a2a1a';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(winX, winY, winW, winH);
+
+            // Roof overhang (3D angled) (scaled for 640x480)
+            ctx.fillStyle = '#3a2a1a';
+            ctx.beginPath();
+            ctx.moveTo(bldgX - 5, bldgY - 3);
+            ctx.lineTo(bldgX + 59, bldgY - 3);
+            ctx.lineTo(bldgX + 91, bldgY - 21);
+            ctx.lineTo(bldgX + 91, bldgY - 15);
+            ctx.lineTo(bldgX + 59, bldgY + 3);
+            ctx.lineTo(bldgX - 5, bldgY + 3);
+            ctx.closePath();
+            ctx.fill();
+
+            // ========================================
+            // POOL & HOT TUB - Based on actual photo (scaled for 640x480)
+            // Pool is rectangular, hot tub is small square beside it
+            // Wide concrete deck surrounds both
+            // Area is sunken below grass level
+            // ========================================
+            const poolX = 233;
+            const poolY = 138;
+            const poolW = 60;
+            const poolH = 30;
+
+            // Wide concrete deck surrounding pool area - textured
+            const deckGrad = ctx.createLinearGradient(poolX - 11, poolY - 9, poolX - 11, poolY + poolH + 12);
+            deckGrad.addColorStop(0, '#a8a098');
+            deckGrad.addColorStop(0.3, '#c8c0b8');
+            deckGrad.addColorStop(1, '#b8b0a8');
+            ctx.fillStyle = deckGrad;
+            ctx.fillRect(poolX - 11, poolY - 9, poolW + 40, poolH + 21);
+
+            // Deck shadow at back (shows sunken) - darker coping
+            ctx.fillStyle = '#6a6258';
+            ctx.fillRect(poolX - 11, poolY - 9, poolW + 40, 4);
+
+            // Pool coping (edge trim)
+            ctx.fillStyle = '#e8e0d8';
+            ctx.fillRect(poolX - 2, poolY - 2, poolW + 4, 2);
+            ctx.fillRect(poolX - 2, poolY + poolH, poolW + 4, 2);
+            ctx.fillRect(poolX - 2, poolY, 2, poolH);
+            ctx.fillRect(poolX + poolW, poolY, 2, poolH);
+
+            // Main pool - deep blue with gradient for depth
+            const poolGrad = ctx.createLinearGradient(poolX, poolY, poolX, poolY + poolH);
+            poolGrad.addColorStop(0, '#3a7090');
+            poolGrad.addColorStop(0.4, '#4a8aaa');
+            poolGrad.addColorStop(1, '#5a9aba');
+            ctx.fillStyle = poolGrad;
+            ctx.fillRect(poolX, poolY, poolW, poolH);
+
+            // Pool water caustics/shimmer - animated ripples
+            const poolTime = Date.now() * 0.002;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            for (let i = 0; i < 5; i++) {
+                const rx = poolX + 5 + Math.sin(poolTime + i * 1.3) * 8 + i * 10;
+                const ry = poolY + 5 + Math.cos(poolTime * 0.7 + i) * 4 + (i % 2) * 8;
+                const rw = 8 + Math.sin(poolTime + i) * 3;
+                ctx.beginPath();
+                ctx.ellipse(rx, ry, rw, 2, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Pool lane line (subtle)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(poolX + poolW/2, poolY + 3);
+            ctx.lineTo(poolX + poolW/2, poolY + poolH - 3);
+            ctx.stroke();
+
+            // Raised wooden planter/bench (as seen in photo - to the left of pool)
+            const planterX = poolX - 30;
+            const planterY = poolY + 5;
+            const planterW = 18;
+            const planterH = 22;
+
+            // Planter shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(planterX + 2, planterY + planterH - 2, planterW, 4);
+
+            // Planter sides - weathered wood
+            const planterGrad = ctx.createLinearGradient(planterX, 0, planterX + planterW, 0);
+            planterGrad.addColorStop(0, '#5a4a3a');
+            planterGrad.addColorStop(0.3, '#6a5a4a');
+            planterGrad.addColorStop(0.7, '#5a4a3a');
+            planterGrad.addColorStop(1, '#4a3a2a');
+            ctx.fillStyle = planterGrad;
+            ctx.fillRect(planterX, planterY, planterW, planterH);
+
+            // Wood grain lines
+            ctx.strokeStyle = 'rgba(40, 30, 20, 0.3)';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < 4; i++) {
+                const lx = planterX + 3 + i * 4;
+                ctx.beginPath();
+                ctx.moveTo(lx, planterY + 2);
+                ctx.lineTo(lx, planterY + planterH - 2);
+                ctx.stroke();
+            }
+
+            // Top edge highlight
+            ctx.fillStyle = '#7a6a5a';
+            ctx.fillRect(planterX, planterY, planterW, 2);
+
+            // Lounge chairs on deck (tiny details)
+            ctx.fillStyle = '#8a7a6a';
+            ctx.fillRect(poolX + poolW + 8, poolY + 8, 8, 14);
+            ctx.fillRect(poolX + poolW + 18, poolY + 8, 8, 14);
+
+        }
+
+        // Draw stairs separately so they appear on TOP of the berm
+        function drawStairs() {
+            // ========================================
+            // STAIRS - Going diagonally from court down to pool area
+            // Visible wooden boardwalk cutting through grass
+            // ========================================
+
+            const stairsStartX = 373;   // Right side of scene (near court)
+            const stairsStartY = 210;   // At top of berm
+            const stairsEndX = 353;     // Goes left toward pool
+            const stairsEndY = 150;     // At pool level (in distance)
+            const stairCount = 10;
+
+            // Draw stairs going UP into the scene (away from viewer)
+            for (let i = 0; i < stairCount; i++) {
+                const t = i / (stairCount - 1);
+                const y = stairsStartY - t * (stairsStartY - stairsEndY);
+                const x = stairsStartX - t * (stairsStartX - stairsEndX);
+                const w = 40 - t * 13; // Gets narrower in distance
+
+                // Shadow beneath step
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fillRect(x, y + 5, w, 4);
+
+                // Wooden plank - weathered grey-brown
+                const treadGrad = ctx.createLinearGradient(x, y, x + w, y);
+                treadGrad.addColorStop(0, '#6a5a4a');
+                treadGrad.addColorStop(0.5, '#7a6a5a');
+                treadGrad.addColorStop(1, '#5a4a3a');
+                ctx.fillStyle = treadGrad;
+                ctx.fillRect(x, y, w, 6);
+
+                // Highlight on top edge
+                ctx.fillStyle = '#8a7a6a';
+                ctx.fillRect(x + 1, y, w - 2, 2);
+            }
+
+            // Railing on right side
+            ctx.strokeStyle = '#5a4a3a';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(stairsStartX + 37, stairsStartY);
+            ctx.lineTo(stairsEndX + 27, stairsEndY);
+            ctx.stroke();
+
+            // Posts
+            ctx.fillStyle = '#5a4a3a';
+            ctx.fillRect(stairsStartX + 35, stairsStartY - 9, 4, 18);
+            ctx.fillRect(stairsEndX + 24, stairsEndY - 9, 4, 15);
+        }
+
+        function drawBerms() {
+            // GREEN grassy knolls surrounding the SUNKEN court (scaled for 640x480)
+            // Think about it as slopes going DOWN to the court
+
+            // FAR berm - slope with shadow showing depth
+            // Dark shadow at bottom (where it meets court)
+            ctx.fillStyle = COLORS.grassDark;
+            ctx.beginPath();
+            ctx.moveTo(80, 240);
+            ctx.quadraticCurveTo(320, 252, 560, 240);
+            ctx.lineTo(553, 248);
+            ctx.quadraticCurveTo(320, 255, 87, 248);
+            ctx.closePath();
+            ctx.fill();
+
+            // Main far berm slope
+            ctx.fillStyle = COLORS.grass;
+            ctx.beginPath();
+            ctx.moveTo(0, 150);
+            ctx.quadraticCurveTo(160, 173, 320, 165);
+            ctx.quadraticCurveTo(480, 173, 640, 150);
+            ctx.lineTo(560, 240);
+            ctx.quadraticCurveTo(320, 252, 80, 240);
+            ctx.lineTo(0, 195);
+            ctx.closePath();
+            ctx.fill();
+
+            // Far berm crest highlight (top of slope catches light)
+            ctx.fillStyle = COLORS.grassLight;
+            ctx.beginPath();
+            ctx.moveTo(107, 162);
+            ctx.quadraticCurveTo(240, 153, 347, 159);
+            ctx.quadraticCurveTo(453, 165, 533, 159);
+            ctx.lineTo(527, 173);
+            ctx.quadraticCurveTo(427, 177, 320, 171);
+            ctx.quadraticCurveTo(213, 165, 113, 174);
+            ctx.closePath();
+            ctx.fill();
+
+            // LEFT berm - slope down to court with shadow
+            // Shadow along court edge
+            ctx.fillStyle = COLORS.grassDark;
+            ctx.beginPath();
+            ctx.moveTo(87, 248);
+            ctx.quadraticCurveTo(91, 360, 87, 462);
+            ctx.lineTo(93, 462);
+            ctx.quadraticCurveTo(97, 360, 93, 248);
+            ctx.closePath();
+            ctx.fill();
+
+            // Main left slope
+            ctx.fillStyle = COLORS.grass;
+            ctx.beginPath();
+            ctx.moveTo(0, 195);
+            ctx.lineTo(80, 240);
+            ctx.quadraticCurveTo(84, 353, 80, 462);
+            ctx.lineTo(0, 480);
+            ctx.closePath();
+            ctx.fill();
+
+            // Left berm highlight on crest
+            ctx.fillStyle = COLORS.grassHighlight;
+            ctx.beginPath();
+            ctx.moveTo(0, 203);
+            ctx.quadraticCurveTo(20, 240, 33, 300);
+            ctx.lineTo(24, 308);
+            ctx.quadraticCurveTo(13, 248, 0, 218);
+            ctx.closePath();
+            ctx.fill();
+
+            // RIGHT berm - slope down to court with shadow
+            // Shadow along court edge
+            ctx.fillStyle = COLORS.grassDark;
+            ctx.beginPath();
+            ctx.moveTo(553, 248);
+            ctx.quadraticCurveTo(549, 360, 553, 462);
+            ctx.lineTo(547, 462);
+            ctx.quadraticCurveTo(543, 360, 547, 248);
+            ctx.closePath();
+            ctx.fill();
+
+            // Main right slope
+            ctx.fillStyle = COLORS.grass;
+            ctx.beginPath();
+            ctx.moveTo(640, 150);
+            ctx.lineTo(560, 240);
+            ctx.quadraticCurveTo(556, 353, 560, 462);
+            ctx.lineTo(640, 480);
+            ctx.closePath();
+            ctx.fill();
+
+            // Right berm highlight on crest
+            ctx.fillStyle = COLORS.grassHighlight;
+            ctx.beginPath();
+            ctx.moveTo(640, 158);
+            ctx.quadraticCurveTo(620, 203, 607, 263);
+            ctx.lineTo(616, 267);
+            ctx.quadraticCurveTo(627, 210, 640, 173);
+            ctx.closePath();
+            ctx.fill();
+
+            // NEAR berm (bottom) - we're looking slightly down at it
+            // Shadow at top edge (where it meets court)
+            ctx.fillStyle = COLORS.grassDark;
+            ctx.beginPath();
+            ctx.moveTo(87, 459);
+            ctx.quadraticCurveTo(320, 465, 553, 459);
+            ctx.lineTo(553, 462);
+            ctx.quadraticCurveTo(320, 468, 87, 462);
+            ctx.closePath();
+            ctx.fill();
+
+            // Main near berm
+            ctx.fillStyle = COLORS.grass;
+            ctx.beginPath();
+            ctx.moveTo(80, 462);
+            ctx.quadraticCurveTo(320, 468, 560, 462);
+            ctx.lineTo(640, 480);
+            ctx.lineTo(0, 480);
+            ctx.closePath();
+            ctx.fill();
+
+            // Grass blade textures (scaled for 640x480)
+            const grassSeeds = [
+                // Left slope
+                {x: 27, y: 263}, {x: 40, y: 308}, {x: 33, y: 353}, {x: 47, y: 398}, {x: 60, y: 435},
+                {x: 20, y: 293}, {x: 53, y: 338}, {x: 67, y: 383},
+                // Right slope
+                {x: 580, y: 263}, {x: 593, y: 308}, {x: 607, y: 353}, {x: 587, y: 398}, {x: 600, y: 435},
+                {x: 613, y: 293}, {x: 573, y: 338}, {x: 620, y: 383},
+                // Far berm face
+                {x: 133, y: 210}, {x: 240, y: 218}, {x: 347, y: 213}, {x: 453, y: 222}, {x: 187, y: 225},
+                {x: 400, y: 218}, {x: 293, y: 228},
+                // Near berm
+                {x: 160, y: 471}, {x: 267, y: 474}, {x: 373, y: 471}, {x: 480, y: 473}
+            ];
+
+            ctx.strokeStyle = COLORS.grassDark;
+            ctx.lineWidth = 1;
+            grassSeeds.forEach(seed => {
+                ctx.beginPath();
+                ctx.moveTo(seed.x, seed.y);
+                ctx.lineTo(seed.x + 1, seed.y - 6);
+                ctx.stroke();
+            });
+
+            // Highlight blades
+            ctx.strokeStyle = COLORS.grassHighlight;
+            ctx.lineWidth = 0.5;
+            grassSeeds.slice(0, 12).forEach(seed => {
+                ctx.beginPath();
+                ctx.moveTo(seed.x + 3, seed.y - 1);
+                ctx.lineTo(seed.x + 4, seed.y - 7);
+                ctx.stroke();
+            });
+        }
+
+        function drawCourt() {
+            // Court surface - ZOOMED IN, MINIMAL PERSPECTIVE
+            const perspOffset = 8; // Very minimal perspective tilt
+
+            // Court base
+            ctx.fillStyle = COLORS.court;
+            ctx.beginPath();
+            ctx.moveTo(COURT.leftX, COURT.nearY);
+            ctx.lineTo(COURT.rightX, COURT.nearY);
+            ctx.lineTo(COURT.rightX - perspOffset, COURT.farY);
+            ctx.lineTo(COURT.leftX + perspOffset, COURT.farY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Subtle court texture
+            ctx.fillStyle = COLORS.courtDark;
+            for (let i = 0; i < 8; i++) {
+                const y = COURT.farY + (COURT.nearY - COURT.farY) * (i / 8);
+                const xOffset = perspOffset * (1 - i / 8);
+                ctx.fillRect(COURT.leftX + xOffset + 5, y, 3, 1);
+                ctx.fillRect(COURT.rightX - xOffset - 8, y + 5, 3, 1);
+            }
+
+            // Court lines
+            ctx.strokeStyle = COLORS.white;
+            ctx.lineWidth = 2;
+
+            // Baselines
+            ctx.beginPath();
+            ctx.moveTo(COURT.leftX, COURT.nearY);
+            ctx.lineTo(COURT.rightX, COURT.nearY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(COURT.leftX + perspOffset, COURT.farY);
+            ctx.lineTo(COURT.rightX - perspOffset, COURT.farY);
+            ctx.stroke();
+
+            // Sidelines
+            ctx.beginPath();
+            ctx.moveTo(COURT.leftX, COURT.nearY);
+            ctx.lineTo(COURT.leftX + perspOffset, COURT.farY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(COURT.rightX, COURT.nearY);
+            ctx.lineTo(COURT.rightX - perspOffset, COURT.farY);
+            ctx.stroke();
+
+            // Center line
+            ctx.beginPath();
+            ctx.moveTo(COURT.centerX, COURT.nearY);
+            ctx.lineTo(COURT.centerX, COURT.farY);
+            ctx.stroke();
+
+            // Kitchen lines (no-volley zone) - with proper perspective interpolation
+            const kitchenNearOffset = perspOffset * ((COURT.nearY - COURT.kitchenNear) / (COURT.nearY - COURT.farY));
+            const kitchenFarOffset = perspOffset * ((COURT.nearY - COURT.kitchenFar) / (COURT.nearY - COURT.farY));
+
+            ctx.setLineDash([4, 4]);
+
+            // Near kitchen
+            ctx.beginPath();
+            ctx.moveTo(COURT.leftX + kitchenNearOffset, COURT.kitchenNear);
+            ctx.lineTo(COURT.rightX - kitchenNearOffset, COURT.kitchenNear);
+            ctx.stroke();
+
+            // Far kitchen
+            ctx.beginPath();
+            ctx.moveTo(COURT.leftX + kitchenFarOffset, COURT.kitchenFar);
+            ctx.lineTo(COURT.rightX - kitchenFarOffset, COURT.kitchenFar);
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+
+            // Net with better definition
+            const netLeftX = COURT.leftX + perspOffset * 0.5 + 5;
+            const netRightX = COURT.rightX - perspOffset * 0.5 - 5;
+
+            // Net shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(netLeftX, COURT.netY + 2, netRightX - netLeftX, 2);
+
+            // Net
+            ctx.fillStyle = COLORS.black;
+            ctx.fillRect(netLeftX, COURT.netY - 1, netRightX - netLeftX, 3);
+
+            // Net tape (white top)
+            ctx.fillStyle = COLORS.white;
+            ctx.fillRect(netLeftX, COURT.netY - 2, netRightX - netLeftX, 1);
+
+            // Net posts
+            ctx.fillStyle = '#555';
+            ctx.fillRect(netLeftX - 2, COURT.netY - 10, 4, 16);
+            ctx.fillRect(netRightX - 2, COURT.netY - 10, 4, 16);
+        }
+
+        function drawPerson(p, isKid = false) {
+            const swinging = p.swingFrame > 0;
+            const scale = isKid ? 0.75 : 1;
+            const baseX = p.x;
+            const baseY = p.y;
+
+            // Shadow - larger, more realistic
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.beginPath();
+            ctx.ellipse(baseX, baseY + 2, 12 * scale, 5 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // LEGS - shorts and legs visible
+            // Left leg
+            ctx.fillStyle = '#a8846a'; // Skin tone
+            ctx.fillRect(baseX - 6 * scale, baseY - 16 * scale, 4 * scale, 12 * scale);
+            // Right leg
+            ctx.fillRect(baseX + 2 * scale, baseY - 16 * scale, 4 * scale, 12 * scale);
+
+            // Shorts
+            ctx.fillStyle = isKid ? '#4a5568' : '#6b7280';
+            ctx.fillRect(baseX - 8 * scale, baseY - 24 * scale, 16 * scale, 10 * scale);
+
+            // TORSO - green hoodie/sweater (like in photos)
+            ctx.fillStyle = isKid ? '#f5f5f0' : '#4a6741'; // Kid in white, Dad in green
+            // Main torso
+            ctx.fillRect(baseX - 10 * scale, baseY - 38 * scale, 20 * scale, 18 * scale);
+
+            // Hood/collar detail
+            ctx.fillStyle = isKid ? '#e5e3df' : '#3d5636';
+            ctx.beginPath();
+            ctx.arc(baseX, baseY - 38 * scale, 6 * scale, Math.PI, 0);
+            ctx.fill();
+
+            // ARMS
+            ctx.fillStyle = isKid ? '#f5f5f0' : '#4a6741';
+            if (swinging) {
+                // Swinging arm extended
+                ctx.save();
+                ctx.translate(baseX + 8 * scale, baseY - 32 * scale);
+                ctx.rotate(-0.8);
+                ctx.fillRect(0, 0, 14 * scale, 5 * scale);
+                ctx.restore();
+                // Other arm
+                ctx.fillRect(baseX - 12 * scale, baseY - 34 * scale, 5 * scale, 10 * scale);
+            } else {
+                // Both arms at ready position
+                ctx.fillRect(baseX + 7 * scale, baseY - 34 * scale, 5 * scale, 10 * scale);
+                ctx.fillRect(baseX - 12 * scale, baseY - 34 * scale, 5 * scale, 10 * scale);
+            }
+
+            // HEAD
+            ctx.fillStyle = '#e8d4c4';
+            ctx.beginPath();
+            ctx.arc(baseX, baseY - 44 * scale, 7 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hair
+            ctx.fillStyle = isKid ? '#8b6914' : '#5a4a3a'; // Lighter for kid
+            ctx.beginPath();
+            ctx.arc(baseX, baseY - 47 * scale, 6 * scale, Math.PI, 0);
+            ctx.fill();
+
+            // Baseball cap for dad
+            if (!isKid) {
+                ctx.fillStyle = COLORS.white;
+                ctx.beginPath();
+                ctx.ellipse(baseX, baseY - 50 * scale, 8 * scale, 3 * scale, 0, Math.PI, 0);
+                ctx.fill();
+                // Cap brim
+                ctx.fillRect(baseX - 2 * scale, baseY - 48 * scale, 10 * scale, 3 * scale);
+            }
+
+            // Eyes - simple dots
+            ctx.fillStyle = '#333';
+            ctx.fillRect(baseX - 3 * scale, baseY - 44 * scale, 2 * scale, 2 * scale);
+            ctx.fillRect(baseX + 1 * scale, baseY - 44 * scale, 2 * scale, 2 * scale);
+
+            // PADDLE - more detailed
+            ctx.save();
+            if (swinging) {
+                ctx.translate(baseX + 18 * scale, baseY - 36 * scale);
+                ctx.rotate(-0.6);
+            } else {
+                ctx.translate(baseX + 14 * scale, baseY - 28 * scale);
+                ctx.rotate(0.2);
+            }
+            // Paddle face
+            ctx.fillStyle = COLORS.red;
+            ctx.beginPath();
+            ctx.ellipse(8 * scale, 0, 7 * scale, 5 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Paddle edge
+            ctx.fillStyle = '#a32a1a';
+            ctx.beginPath();
+            ctx.ellipse(8 * scale, 0, 7 * scale, 5 * scale, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // Handle
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(-2 * scale, -2 * scale, 6 * scale, 4 * scale);
+            ctx.restore();
+        }
+
+        function drawRaccoon(r) {
+            const swinging = r.swingFrame > 0;
+            const baseX = r.x;
+            const baseY = r.y;
+            const scale = 0.9; // Slightly smaller than humans since they're animals
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.beginPath();
+            ctx.ellipse(baseX, baseY + 2, 10 * scale, 4 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // STRIPED TAIL - prominent, curving up
+            ctx.save();
+            ctx.translate(baseX - 10 * scale, baseY - 12 * scale);
+            ctx.rotate(-0.4);
+            for (let i = 0; i < 6; i++) {
+                ctx.fillStyle = i % 2 === 0 ? '#9a9a9a' : '#3a3a3a';
+                ctx.beginPath();
+                ctx.ellipse(0, -i * 4 * scale, 4 * scale, 3 * scale, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // HIND LEGS - small paws
+            ctx.fillStyle = '#5a5a5a';
+            ctx.fillRect(baseX - 7 * scale, baseY - 8 * scale, 5 * scale, 8 * scale);
+            ctx.fillRect(baseX + 2 * scale, baseY - 8 * scale, 5 * scale, 8 * scale);
+
+            // BODY - chunky raccoon body
+            ctx.fillStyle = '#7a7a7a';
+            ctx.beginPath();
+            ctx.ellipse(baseX, baseY - 18 * scale, 12 * scale, 10 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Belly lighter
+            ctx.fillStyle = '#9a9a9a';
+            ctx.beginPath();
+            ctx.ellipse(baseX, baseY - 16 * scale, 8 * scale, 6 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // FRONT PAWS/ARMS
+            ctx.fillStyle = '#5a5a5a';
+            if (swinging) {
+                // Swing pose
+                ctx.save();
+                ctx.translate(baseX + 8 * scale, baseY - 22 * scale);
+                ctx.rotate(-0.7);
+                ctx.fillRect(0, 0, 10 * scale, 4 * scale);
+                ctx.restore();
+            } else {
+                ctx.fillRect(baseX + 8 * scale, baseY - 22 * scale, 4 * scale, 8 * scale);
+            }
+            ctx.fillRect(baseX - 12 * scale, baseY - 22 * scale, 4 * scale, 8 * scale);
+
+            // Little hand paws
+            ctx.fillStyle = '#4a4a4a';
+            ctx.beginPath();
+            ctx.arc(baseX - 10 * scale, baseY - 14 * scale, 3 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // HEAD
+            ctx.fillStyle = '#8a8a8a';
+            ctx.beginPath();
+            ctx.arc(baseX, baseY - 32 * scale, 9 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Snout - pointed nose
+            ctx.fillStyle = '#9a9a9a';
+            ctx.beginPath();
+            ctx.ellipse(baseX, baseY - 28 * scale, 5 * scale, 4 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Black nose
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.arc(baseX, baseY - 26 * scale, 2 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // MASK - the distinctive raccoon mask
+            ctx.fillStyle = '#2a2a2a';
+            // Left mask
+            ctx.beginPath();
+            ctx.ellipse(baseX - 5 * scale, baseY - 33 * scale, 4 * scale, 3 * scale, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Right mask
+            ctx.beginPath();
+            ctx.ellipse(baseX + 5 * scale, baseY - 33 * scale, 4 * scale, 3 * scale, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes - bright and mischievous
+            ctx.fillStyle = '#ffff88';
+            ctx.beginPath();
+            ctx.arc(baseX - 4 * scale, baseY - 33 * scale, 2 * scale, 0, Math.PI * 2);
+            ctx.arc(baseX + 4 * scale, baseY - 33 * scale, 2 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            // Pupils
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.arc(baseX - 4 * scale, baseY - 33 * scale, 1 * scale, 0, Math.PI * 2);
+            ctx.arc(baseX + 4 * scale, baseY - 33 * scale, 1 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // EARS - rounded with white edges
+            ctx.fillStyle = '#6a6a6a';
+            ctx.beginPath();
+            ctx.arc(baseX - 7 * scale, baseY - 40 * scale, 4 * scale, 0, Math.PI * 2);
+            ctx.arc(baseX + 7 * scale, baseY - 40 * scale, 4 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            // White ear edges
+            ctx.fillStyle = '#d0d0d0';
+            ctx.beginPath();
+            ctx.arc(baseX - 7 * scale, baseY - 41 * scale, 2 * scale, Math.PI, 0);
+            ctx.arc(baseX + 7 * scale, baseY - 41 * scale, 2 * scale, Math.PI, 0);
+            ctx.fill();
+
+            // PADDLE - held awkwardly in paw
+            ctx.save();
+            if (swinging) {
+                ctx.translate(baseX + 16 * scale, baseY - 26 * scale);
+                ctx.rotate(-0.5);
+            } else {
+                ctx.translate(baseX + 12 * scale, baseY - 18 * scale);
+                ctx.rotate(0.4);
+            }
+            // Paddle face - blue for raccoons
+            ctx.fillStyle = COLORS.blue;
+            ctx.beginPath();
+            ctx.ellipse(6 * scale, 0, 6 * scale, 4 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Handle
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(-2 * scale, -2 * scale, 5 * scale, 4 * scale);
+            ctx.restore();
+        }
+
+        function drawBall() {
+            // Show ball during serving AND playing
+            if (gameState !== 'serving' && gameState !== 'playing') return;
+
+            // Hit flash effect - burst of light on successful hit
+            if (hitFlash > 0) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${hitFlash / 10})`;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y - ball.z * 0.3, 30 + (8 - hitFlash) * 3, 0, Math.PI * 2);
+                ctx.fill();
+                hitFlash--;
+            }
+
+            // Ball shadow on court
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(ball.x, ball.y + 4, ball.radius * 1.2, ball.radius * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ball position (slight lift for visual)
+            const ballScreenY = ball.y - ball.z * 0.3;
+
+            // Ball outer glow
+            ctx.fillStyle = '#d4d400';
+            ctx.beginPath();
+            ctx.arc(ball.x, ballScreenY, ball.radius + 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Main ball - bright yellow
+            ctx.fillStyle = '#f0e000';
+            ctx.beginPath();
+            ctx.arc(ball.x, ballScreenY, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Highlight
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(ball.x - 2, ballScreenY - 2, ball.radius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawUI() {
+            // Score panel - player side with blue accent (scaled for 640x480)
+            ctx.fillStyle = 'rgba(26, 26, 26, 0.85)';
+            ctx.fillRect(7, 7, 120, 48);
+            ctx.fillStyle = COLORS.blue;
+            ctx.fillRect(7, 7, 4, 48);
+
+            ctx.fillStyle = COLORS.white;
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.textAlign = 'left';
+            ctx.fillText('DAD & KID', 16, 24);
+            ctx.font = SeaRanchStyle.makeFont(24, 'bold');
+            ctx.fillText(playerScore.toString().padStart(2, '0'), 16, 48);
+
+            // Score panel - raccoon side with red accent
+            ctx.fillStyle = 'rgba(26, 26, 26, 0.85)';
+            ctx.fillRect(513, 7, 120, 48);
+            ctx.fillStyle = COLORS.red;
+            ctx.fillRect(629, 7, 4, 48);
+
+            ctx.fillStyle = COLORS.white;
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.textAlign = 'right';
+            ctx.fillText('RACCOONS', 624, 24);
+            ctx.font = SeaRanchStyle.makeFont(24, 'bold');
+            ctx.fillText(raccoonScore.toString().padStart(2, '0'), 624, 48);
+
+            // Serving indicator
+            if (gameState === 'serving') {
+                const server = servingTeam === 'player' ? 'YOUR SERVE' : 'THEIR SERVE';
+                const boxWidth = 200;
+
+                ctx.fillStyle = 'rgba(26, 26, 26, 0.9)';
+                ctx.fillRect(320 - boxWidth/2, 435, boxWidth, 39);
+
+                // Accent bar
+                ctx.fillStyle = servingTeam === 'player' ? COLORS.blue : COLORS.red;
+                ctx.fillRect(320 - boxWidth/2, 435, boxWidth, 4);
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = COLORS.white;
+                ctx.font = SeaRanchStyle.makeFont(16, 'bold');
+                ctx.fillText(server, 320, 458);
+                ctx.font = SeaRanchStyle.makeFont(12);
+                ctx.fillStyle = '#aaa';
+                ctx.fillText('PRESS A TO SERVE', 320, 471);
+            }
+
+            // Rally count - more prominent for longer rallies
+            if (gameState === 'playing' && rallyCount > 0) {
+                const rallyColor = rallyCount >= 10 ? COLORS.red : rallyCount >= 5 ? '#d4a747' : COLORS.white;
+
+                ctx.fillStyle = 'rgba(26, 26, 26, 0.7)';
+                ctx.fillRect(267, 5, 106, 27);
+
+                ctx.textAlign = 'center';
+                ctx.font = SeaRanchStyle.makeFont(15, 'bold');
+                ctx.fillStyle = rallyColor;
+                ctx.fillText(`RALLY ${rallyCount}`, 320, 23);
+            }
+        }
+
+        function drawTitle() {
+            // HTML overlay handles the title card now
+        }
+
+        function drawGameOver() {
+            // Cream background (scaled for 640x480)
+            ctx.fillStyle = COLORS.cream;
+            ctx.fillRect(0, 0, 640, 480);
+
+            // Blue curves
+            ctx.strokeStyle = COLORS.blue;
+            ctx.lineWidth = 27;
+            ctx.lineCap = 'round';
+            for (let i = 0; i < 2; i++) {
+                ctx.beginPath();
+                ctx.arc(-67, 555, 267 + i * 47, -Math.PI * 0.5, 0);
+                ctx.stroke();
+            }
+
+            ctx.textAlign = 'center';
+
+            if (playerScore >= 5) {
+                ctx.fillStyle = COLORS.black;
+                ctx.font = SeaRanchStyle.makeFont(37, 'bold');
+                ctx.fillText('GAME, SET, MATCH', 320, 218);
+            } else {
+                ctx.fillStyle = COLORS.black;
+                ctx.font = SeaRanchStyle.makeFont(37, 'bold');
+                ctx.fillText('RACCOONS WIN', 320, 218);
+            }
+
+            // Prompt
+            if (Math.floor(Date.now() / 500) % 2) {
+                ctx.fillStyle = COLORS.wood;
+                ctx.font = SeaRanchStyle.makeFont(12, 'bold');
+                ctx.fillText('PRESS A', 320, 420);
+            }
+            ctx.textAlign = 'left';
+        }
+
+        // Main game loop
+        function gameLoop() {
+            // Clear (scaled for 640x480)
+            ctx.fillStyle = COLORS.black;
+            ctx.fillRect(0, 0, 640, 480);
+
+            // Apply juice effects
+            ctx.save();
+            SeaRanchStyle.applyShake(ctx);
+
+            if (gameState === 'title') {
+                drawTitle();
+            } else if (gameState === 'gameOver') {
+                drawBackground();
+                drawCourt();
+                drawGameOver();
+            } else {
+                // Update
+                updatePlayers();
+                updateBall();
+                if (screenShake > 0) screenShake--;
+
+                // Draw
+                drawBackground();
+                drawCourt();
+
+                // Draw characters sorted by Y for depth
+                const chars = [
+                    { type: 'raccoon', obj: raccoon1 },
+                    { type: 'raccoon', obj: raccoon2 },
+                    { type: 'dad', obj: dad },
+                    { type: 'kid', obj: kid }
+                ].sort((a, b) => a.obj.y - b.obj.y);
+
+                chars.forEach(c => {
+                    if (c.type === 'raccoon') drawRaccoon(c.obj);
+                    else if (c.type === 'kid') drawPerson(c.obj, true);
+                    else drawPerson(c.obj);
+                });
+
+                drawBall();
+
+                // Update juice effects before UI
+                SeaRanchStyle.updateJuice(ctx);
+
+                drawUI();
+            }
+
+            ctx.restore();
+
+            // Apply weathered film grain effect for consistent Sea Ranch aesthetic
+            if (gameState !== 'title') {
+                SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start
+        SeaRanchStyle.setupTouchControls();
+        gameLoop();
+    </script>
+</body>
+</html>

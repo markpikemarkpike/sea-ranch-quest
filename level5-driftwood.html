@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Level 7: Driftwood Fort</title>
+    <script src="sea-ranch-style.js"></script>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+        #gameCanvas {
+            display: block;
+        }
+
+        /* HTML/CSS Title Card */
+        .title-card {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .title-card .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(139, 115, 85, 0.08) 3px, rgba(139, 115, 85, 0.08) 4px),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+        .title-card .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+        .title-card .supergraphic::before,
+        .title-card .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+        .title-card .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+        .title-card .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+        .title-card .arrow-accent {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 80px;
+            height: 100px;
+            pointer-events: none;
+        }
+        .title-card .arrow-accent::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red);
+            top: 0;
+        }
+        .title-card .arrow-accent::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 50px;
+            background: var(--red);
+            top: 45px;
+            left: 27px;
+        }
+        .title-card .title-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+        .title-card .level-title {
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .title-card .level-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--wood);
+        }
+        .title-card .continue-hint {
+            position: absolute;
+            bottom: 36px;
+            right: 36px;
+            font-size: 12px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .title-card .title-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="title-card" id="title-card">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="arrow-accent"></div>
+            <div class="title-content">
+                <div class="level-title">Driftwood Fort</div>
+                <div class="level-subtitle">Build Beach Shelters</div>
+            </div>
+            <div class="continue-hint">A to start · B to menu</div>
+            <div class="title-grain"></div>
+        </div>
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // ============== BACKGROUND ==============
+        const backgroundImg = new Image();
+        let backgroundLoaded = false;
+        backgroundImg.onload = () => { backgroundLoaded = true; };
+        backgroundImg.src = 'level-7/background.jpg';
+
+        // ============== STARFISH SPRITE ==============
+        const starfishImg = new Image();
+        let starfishLoaded = false;
+        starfishImg.onload = () => { starfishLoaded = true; };
+        starfishImg.src = 'level-7/starfish.png';
+
+        // ============== DRIFTWOOD SPRITES ==============
+        // Actual dimensions from sips - will use sprite.naturalWidth/Height
+        const PIECE_NAMES = [
+            'wood-long',    // 160x30
+            'wood-short',   // 100x28
+            'wood-z',       // 170x40
+            'wood-L',       // 65x90
+            'wood-T',       // 90x75
+            'wood-branch',  // 75x85
+            'wood-chunk',   // 110x65
+            'wood-square',  // 75x85
+            'wood-fork',    // 125x105
+            'wood-twist'    // 120x90
+        ];
+
+        const woodSprites = {};
+        let spritesLoaded = 0;
+
+        function loadSprites() {
+            PIECE_NAMES.forEach(name => {
+                const img = new Image();
+                img.onload = () => {
+                    woodSprites[name] = img;
+                    spritesLoaded++;
+                    console.log(`Loaded ${name}: ${img.naturalWidth}x${img.naturalHeight}`);
+                };
+                img.onerror = () => { spritesLoaded++; console.log(`Failed to load ${name}`); };
+                img.src = `level-7/${name}.png`;
+            });
+        }
+        loadSprites();
+
+        // ============== PALETTE ==============
+        const PALETTE = {
+            bluff: '#8B7355',
+            superRed: '#C41E3A',
+            superCream: '#FAF8F0',
+            starfish: '#E07850'
+        };
+
+        // ============== GAME CONSTANTS ==============
+        const GROUND_Y = 440;  // Lower ground - more beach visible
+        const FORT_LEFT = 120;  // Wider build area
+        const FORT_RIGHT = 520;
+        const FORT_CENTER = 320;
+        const DROP_SPEED = 0.5;  // Gentle falling
+        const MAX_PIECES = 10;
+        const MOVE_SPEED = 10;  // Responsive movement
+
+        // Fort outline - wide and low, uses the beach
+        const FORT_HEIGHT = 120;  // Shorter - lean-to shelter style
+        const FORT_OUTLINE = {
+            x: FORT_LEFT,
+            y: GROUND_Y - FORT_HEIGHT,
+            width: FORT_RIGHT - FORT_LEFT,
+            height: FORT_HEIGHT
+        };
+
+        // ============== LEVEL DEFINITIONS ==============
+        // Beach shelter shapes - wide, low, natural
+        const LEVELS = [
+            {
+                name: 'Lean-To Shelter',
+                // Wide triangular lean-to against the wind
+                drawOutline: (ctx, ox, oy, ow, oh) => {
+                    ctx.beginPath();
+                    ctx.moveTo(ox, oy + oh);  // bottom left
+                    ctx.lineTo(ox + ow * 0.3, oy);  // peak (offset left)
+                    ctx.lineTo(ox + ow, oy + oh);  // bottom right
+                    ctx.closePath();
+                }
+            },
+            {
+                name: 'Driftwood Den',
+                // Low wide dome shape
+                drawOutline: (ctx, ox, oy, ow, oh) => {
+                    ctx.beginPath();
+                    ctx.moveTo(ox, oy + oh);
+                    ctx.quadraticCurveTo(ox + ow / 2, oy - oh * 0.2, ox + ow, oy + oh);
+                    ctx.closePath();
+                }
+            },
+            {
+                name: 'Beach Barrier',
+                // Long low windbreak
+                drawOutline: (ctx, ox, oy, ow, oh) => {
+                    const wallH = oh * 0.5;
+                    ctx.beginPath();
+                    ctx.rect(ox, oy + oh - wallH, ow, wallH);
+                }
+            }
+        ];
+
+        // ============== GAME STATE ==============
+        let gameState = 'title';
+        let currentLevel = 0;
+        let totalStarfish = 0;
+        let placedPieces = [];
+        let currentPiece = null;
+        let nextPieceName = null;
+        let piecesPlaced = 0;
+        let starfish = 0;
+
+        // Key state for smooth movement
+        const keys = {};
+
+        // ============== PIECE CLASS ==============
+        const PIECE_SCALE = 0.75;  // Larger pieces for better stacking
+
+        class DriftwoodPiece {
+            constructor(name, x, y) {
+                this.name = name;
+                this.sprite = woodSprites[name];
+                this.x = x;
+                this.y = y;
+                // Use sprite's natural dimensions
+                this.baseWidth = this.sprite ? this.sprite.naturalWidth * PIECE_SCALE : 60;
+                this.baseHeight = this.sprite ? this.sprite.naturalHeight * PIECE_SCALE : 40;
+                this.width = this.baseWidth;
+                this.height = this.baseHeight;
+                this.rotation = 0;
+                this.settled = false;
+            }
+
+            // Get effective dimensions considering rotation
+            getEffectiveDims() {
+                const cos = Math.abs(Math.cos(this.rotation));
+                const sin = Math.abs(Math.sin(this.rotation));
+                return {
+                    w: this.baseWidth * cos + this.baseHeight * sin,
+                    h: this.baseWidth * sin + this.baseHeight * cos
+                };
+            }
+
+            update() {
+                if (this.settled) return;
+
+                this.y += DROP_SPEED;
+                const dims = this.getEffectiveDims();
+
+                // Check ground
+                if (this.y + dims.h / 2 >= GROUND_Y) {
+                    this.y = GROUND_Y - dims.h / 2;
+                    this.settle();
+                    return;
+                }
+
+                // Check collision with placed pieces
+                for (const other of placedPieces) {
+                    if (other === this || !other.settled) continue;
+                    if (this.wouldLandOn(other)) {
+                        const otherDims = other.getEffectiveDims();
+                        this.y = other.y - otherDims.h / 2 - dims.h / 2 + 8;
+                        this.settle();
+                        return;
+                    }
+                }
+            }
+
+            wouldLandOn(other) {
+                const dims = this.getEffectiveDims();
+                const otherDims = other.getEffectiveDims();
+                const dx = Math.abs(this.x - other.x);
+                // Tighter overlap - pieces need to actually overlap to stack
+                const overlapX = (dims.w + otherDims.w) / 2 * 0.5;
+                if (dx >= overlapX) return false;
+
+                const thisBottom = this.y + dims.h / 2;
+                const otherTop = other.y - otherDims.h / 2;
+                return thisBottom >= otherTop - 3 && thisBottom <= otherTop + 12;
+            }
+
+            settle() {
+                this.settled = true;
+                piecesPlaced++;
+                SeaRanchStyle.spawnSparkles(this.x, this.y, SeaRanchStyle.colors.wood);
+                spawnPiece();
+            }
+
+            draw(alpha = 1) {
+                if (!this.sprite) return;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.drawImage(this.sprite, -this.baseWidth / 2, -this.baseHeight / 2, this.baseWidth, this.baseHeight);
+                ctx.restore();
+            }
+
+            getGhostY() {
+                const dims = this.getEffectiveDims();
+                let testY = this.y;
+                while (testY + dims.h / 2 < GROUND_Y) {
+                    testY += 4;
+                    for (const other of placedPieces) {
+                        if (other === this || !other.settled) continue;
+                        const otherDims = other.getEffectiveDims();
+                        const dx = Math.abs(this.x - other.x);
+                        const overlapX = (dims.w + otherDims.w) / 2 * 0.5;
+                        if (dx < overlapX) {
+                            const otherTop = other.y - otherDims.h / 2;
+                            if (testY + dims.h / 2 >= otherTop - 3) {
+                                return otherTop - dims.h / 2;
+                            }
+                        }
+                    }
+                }
+                return GROUND_Y - dims.h / 2;
+            }
+        }
+
+        // ============== GAME FUNCTIONS ==============
+        function initGame() {
+            console.log('initGame called');
+            placedPieces = [];
+            piecesPlaced = 0;
+            starfish = 0;
+            currentPiece = null;
+            nextPieceName = getRandomPiece();
+            gameState = 'playing';
+            console.log('gameState set to playing, spawning piece');
+            spawnPiece();
+            console.log('initGame complete, currentPiece:', currentPiece ? currentPiece.name : 'null');
+        }
+
+        function startNewGame() {
+            currentLevel = 0;
+            totalStarfish = 0;
+            initGame();
+        }
+
+        function nextLevel() {
+            console.log('nextLevel called. currentLevel:', currentLevel, '-> ', currentLevel + 1);
+            currentLevel++;
+            if (currentLevel >= LEVELS.length) {
+                console.log('All levels complete, going to gameover');
+                gameState = 'gameover';
+            } else {
+                console.log('Starting level', currentLevel + 1);
+                initGame();
+            }
+        }
+
+        function getRandomPiece() {
+            return PIECE_NAMES[Math.floor(Math.random() * PIECE_NAMES.length)];
+        }
+
+        function spawnPiece() {
+            console.log('spawnPiece called, gameState:', gameState, 'piecesPlaced:', piecesPlaced);
+            // Don't spawn if game state changed (e.g., level transition)
+            if (gameState !== 'playing') {
+                console.log('Not spawning - game state is not playing');
+                return;
+            }
+            if (piecesPlaced >= MAX_PIECES) {
+                console.log('All pieces placed, ending game');
+                endGame();
+                return;
+            }
+            const name = nextPieceName;
+            nextPieceName = getRandomPiece();
+            currentPiece = new DriftwoodPiece(name, FORT_CENTER, 50);
+            currentPiece.rotation = (Math.random() - 0.5) * 0.2; // Slight random tilt
+            placedPieces.push(currentPiece);
+            console.log('Spawned piece:', name, 'dims:', currentPiece.width, 'x', currentPiece.height);
+        }
+
+        function hardDrop() {
+            if (!currentPiece || currentPiece.settled) return;
+            currentPiece.y = currentPiece.getGhostY();
+            SeaRanchStyle.shake(6, 0.85);
+            SeaRanchStyle.flash(SeaRanchStyle.colors.blue, 0.2);
+            currentPiece.settle();
+        }
+
+        function calculateCoverage() {
+            // Calculate coverage using geometry (no getImageData needed)
+            // Estimate total fort area and how much pieces cover
+            const fortArea = FORT_OUTLINE.width * FORT_OUTLINE.height * 0.7; // ~70% is fillable (minus door)
+
+            let totalPieceArea = 0;
+            for (const piece of placedPieces) {
+                // Check if piece is within fort bounds
+                const inFortX = piece.x >= FORT_OUTLINE.x && piece.x <= FORT_OUTLINE.x + FORT_OUTLINE.width;
+                const inFortY = piece.y >= FORT_OUTLINE.y && piece.y <= FORT_OUTLINE.y + FORT_OUTLINE.height;
+
+                if (inFortX && inFortY) {
+                    // Add piece area (accounting for rotation making it roughly same coverage)
+                    totalPieceArea += piece.width * piece.height * 0.8; // 80% effective coverage
+                } else if (inFortX || inFortY) {
+                    // Partially in fort
+                    totalPieceArea += piece.width * piece.height * 0.3;
+                }
+            }
+
+            // Cap at 100% and return ratio
+            const coverage = Math.min(1.0, totalPieceArea / fortArea);
+            console.log('Coverage:', (coverage * 100).toFixed(1) + '%');
+            return coverage;
+        }
+
+        function endGame() {
+            if (gameState !== 'playing') return; // Prevent double-calling
+            gameState = 'complete'; // Set state first to prevent re-entry
+            currentPiece = null;
+            const coverage = calculateCoverage();
+            console.log('Level complete! Coverage:', (coverage * 100).toFixed(1) + '%');
+            if (coverage >= 0.6) starfish = 3;
+            else if (coverage >= 0.4) starfish = 2;
+            else if (coverage >= 0.25) starfish = 1;
+            else starfish = 0;
+            totalStarfish += starfish;
+            // Save completion (Level 5 in narrative order)
+            SeaRanchStyle.saveCompletion(5);
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+            if (currentPiece && !currentPiece.settled) {
+                // Continuous movement from held keys
+                const dims = currentPiece.getEffectiveDims();
+                if (keys['ArrowLeft']) {
+                    currentPiece.x = Math.max(FORT_LEFT + dims.w / 2, currentPiece.x - MOVE_SPEED * 0.4);
+                }
+                if (keys['ArrowRight']) {
+                    currentPiece.x = Math.min(FORT_RIGHT - dims.w / 2, currentPiece.x + MOVE_SPEED * 0.4);
+                }
+                currentPiece.update();
+            }
+        }
+
+        // ============== DRAWING ==============
+        function drawBackground() {
+            if (backgroundLoaded) {
+                ctx.drawImage(backgroundImg, 0, 0, width, height);
+            } else {
+                ctx.fillStyle = '#B8C8D8';
+                ctx.fillRect(0, 0, width, height);
+            }
+        }
+
+        function drawFortOutline() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(139, 115, 85, 0.6)';
+            ctx.fillStyle = 'rgba(139, 115, 85, 0.12)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 8]);
+
+            const ox = FORT_OUTLINE.x;
+            const oy = FORT_OUTLINE.y;
+            const ow = FORT_OUTLINE.width;
+            const oh = FORT_OUTLINE.height;
+
+            // Use current level's outline
+            LEVELS[currentLevel].drawOutline(ctx, ox, oy, ow, oh);
+
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+
+            // Level shape name hint
+            ctx.fillStyle = 'rgba(139, 115, 85, 0.4)';
+            ctx.font = SeaRanchStyle.makeFont(11, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText('Fill the ' + LEVELS[currentLevel].name.toLowerCase(), FORT_CENTER, oy - 10);
+        }
+
+        function drawPieces() {
+            for (const piece of placedPieces) {
+                if (piece !== currentPiece) {
+                    piece.draw();
+                }
+            }
+            // Draw current piece last (on top) with ghost
+            if (currentPiece && !currentPiece.settled) {
+                // Ghost
+                const ghostY = currentPiece.getGhostY();
+                ctx.save();
+                ctx.globalAlpha = 0.3;
+                ctx.translate(currentPiece.x, ghostY);
+                ctx.rotate(currentPiece.rotation);
+                if (currentPiece.sprite) {
+                    ctx.drawImage(currentPiece.sprite, -currentPiece.width / 2, -currentPiece.height / 2, currentPiece.width, currentPiece.height);
+                }
+                ctx.restore();
+                // Actual
+                currentPiece.draw();
+            }
+        }
+
+        function drawStarfish(x, y, size, filled) {
+            ctx.save();
+            ctx.translate(x, y);
+            if (starfishLoaded) {
+                // Use real starfish sprite
+                const spriteSize = size * 2.2; // Scale to match desired size
+                ctx.globalAlpha = filled ? 1 : 0.25;
+                ctx.drawImage(starfishImg, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
+            } else {
+                // Fallback to drawn star
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 72 - 90) * Math.PI / 180;
+                    const innerAngle = ((i * 72) + 36 - 90) * Math.PI / 180;
+                    ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
+                    ctx.lineTo(Math.cos(innerAngle) * size * 0.4, Math.sin(innerAngle) * size * 0.4);
+                }
+                ctx.closePath();
+                ctx.fillStyle = filled ? PALETTE.starfish : 'rgba(224, 120, 80, 0.25)';
+                ctx.fill();
+                ctx.strokeStyle = filled ? '#C06040' : 'rgba(192, 96, 64, 0.25)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawNextPiece() {
+            ctx.fillStyle = 'rgba(255,255,255,0.92)';
+            ctx.fillRect(15, 105, 90, 55);
+            ctx.strokeStyle = PALETTE.bluff;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(15, 105, 90, 55);
+
+            ctx.fillStyle = '#1A1A1A';
+            ctx.font = SeaRanchStyle.makeFont(9, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText('NEXT', 60, 98);
+
+            if (nextPieceName && woodSprites[nextPieceName]) {
+                const sprite = woodSprites[nextPieceName];
+                const w = sprite.naturalWidth * PIECE_SCALE * 0.7;
+                const h = sprite.naturalHeight * PIECE_SCALE * 0.7;
+                ctx.drawImage(sprite, 15 + (90 - w) / 2, 105 + (55 - h) / 2, w, h);
+            }
+        }
+
+        function drawUI() {
+            // Level indicator
+            ctx.fillStyle = 'rgba(255,255,255,0.92)';
+            ctx.fillRect(15, 55, 90, 35);
+            ctx.strokeStyle = PALETTE.bluff;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(15, 55, 90, 35);
+
+            ctx.fillStyle = '#1A1A1A';
+            ctx.font = SeaRanchStyle.makeFont(9, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText(LEVELS[currentLevel].name, 60, 70);
+            ctx.font = SeaRanchStyle.makeFont(9);
+            ctx.fillStyle = '#666';
+            ctx.fillText(`Build ${currentLevel + 1} of ${LEVELS.length}`, 60, 83);
+
+            // Pieces counter
+            ctx.fillStyle = 'rgba(255,255,255,0.92)';
+            ctx.fillRect(15, 170, 90, 50);
+            ctx.strokeStyle = PALETTE.bluff;
+            ctx.strokeRect(15, 170, 90, 50);
+
+            ctx.fillStyle = '#1A1A1A';
+            ctx.font = SeaRanchStyle.makeFont(9, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText('PIECES LEFT', 60, 185);
+            ctx.font = SeaRanchStyle.makeFont(16, 'bold');
+            ctx.fillText(`${MAX_PIECES - piecesPlaced}`, 60, 207);
+
+            // Controls
+            ctx.fillStyle = 'rgba(0,0,0,0.65)';
+            ctx.fillRect(0, height - 22, width, 22);
+            ctx.fillStyle = PALETTE.superCream;
+            ctx.font = SeaRanchStyle.makeFont(9);
+            ctx.fillText('\u2190\u2192 Move  •  \u2191\u2193 Rotate  •  A Drop', width / 2, height - 8);
+        }
+
+        function drawTitle() {
+            // HTML overlay handles the title card now
+        }
+
+        function drawComplete() {
+            // Sea Ranch style background
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+            bgGrad.addColorStop(0, '#e8e4dc');
+            bgGrad.addColorStop(1, '#d4c4a8');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Wood grain texture
+            ctx.strokeStyle = 'rgba(139, 115, 85, 0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 25; i++) {
+                const y = i * 20 + Math.sin(i * 0.5) * 5;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                for (let x = 0; x < width; x += 20) {
+                    ctx.lineTo(x, y + Math.sin(x * 0.02 + i) * 3);
+                }
+                ctx.stroke();
+            }
+
+            // Blue supergraphic curves (top right)
+            ctx.strokeStyle = '#2E5DA8';
+            ctx.lineWidth = 28;
+            ctx.beginPath();
+            ctx.arc(width + 60, -80, 280, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+            ctx.lineWidth = 14;
+            ctx.beginPath();
+            ctx.arc(width + 40, -60, 220, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+
+            // Card
+            const cardX = width / 2 - 180;
+            const cardY = 80;
+            const cardW = 360;
+            const cardH = 280;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(cardX + 4, cardY + 4, cardW, cardH);
+            ctx.fillStyle = '#f5f5f0';
+            ctx.fillRect(cardX, cardY, cardW, cardH);
+
+            // Header bar
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(cardX, cardY, cardW, 40);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = SeaRanchStyle.makeFont(14, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText(`BUILD ${currentLevel + 1} OF ${LEVELS.length}`, width / 2, cardY + 26);
+
+            // Title
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = SeaRanchStyle.makeFont(26, 'bold');
+            ctx.fillText(`${LEVELS[currentLevel].name}`, width / 2, cardY + 80);
+
+            ctx.font = SeaRanchStyle.makeFont(14);
+            ctx.fillStyle = '#8b7355';
+            ctx.fillText('Complete!', width / 2, cardY + 105);
+
+            // Divider
+            ctx.strokeStyle = '#8b7355';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cardX + 60, cardY + 125);
+            ctx.lineTo(cardX + cardW - 60, cardY + 125);
+            ctx.stroke();
+
+            // Rating section
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = SeaRanchStyle.makeFont(12, 'bold');
+            ctx.fillText('RATING', width / 2, cardY + 150);
+
+            // Rating dots instead of starfish
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(width / 2 - 30 + i * 30, cardY + 175, 10, 0, Math.PI * 2);
+                if (i < starfish) {
+                    ctx.fillStyle = '#7A9B6D';
+                    ctx.fill();
+                } else {
+                    ctx.strokeStyle = '#ccc';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+
+            // Message
+            const messages = ['Keep practicing', 'Nice work', 'Great job', 'Master builder'];
+            ctx.font = SeaRanchStyle.makeFont(14);
+            ctx.fillStyle = '#7A9B6D';
+            ctx.fillText(messages[starfish], width / 2, cardY + 210);
+
+            // Total progress
+            ctx.fillStyle = '#8b7355';
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.fillText(`Total: ${totalStarfish} / ${LEVELS.length * 3}`, width / 2, cardY + 240);
+
+            // Red accent at bottom of card
+            ctx.fillStyle = '#C41E3A';
+            ctx.fillRect(cardX, cardY + cardH - 4, cardW, 4);
+
+            // Controls
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#8b7355';
+            if (currentLevel < LEVELS.length - 1) {
+                ctx.fillText('A: NEXT BUILD', width / 2 - 70, height - 40);
+            } else {
+                ctx.fillText('A: FINISH', width / 2 - 70, height - 40);
+            }
+            ctx.fillStyle = '#C41E3A';
+            ctx.fillText('B: RETRY', width / 2 + 70, height - 40);
+        }
+
+        function drawGameOver() {
+            // Cream/sand gradient background
+            const grad = ctx.createLinearGradient(0, 0, 0, height);
+            grad.addColorStop(0, '#e8e4dc');
+            grad.addColorStop(1, '#d4c4a8');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Wood grain texture
+            ctx.strokeStyle = 'rgba(139, 115, 85, 0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < height; i += 12) {
+                ctx.beginPath();
+                ctx.moveTo(0, i + Math.sin(i * 0.05) * 3);
+                for (let x = 0; x < width; x += 20) {
+                    ctx.lineTo(x, i + Math.sin((i + x) * 0.02) * 4);
+                }
+                ctx.stroke();
+            }
+
+            // Blue supergraphic curves in top right
+            ctx.strokeStyle = '#2E5DA8';
+            ctx.lineWidth = 20;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(width + 60, -80, 280, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+            ctx.lineWidth = 14;
+            ctx.beginPath();
+            ctx.arc(width + 40, -60, 220, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+
+            // Card
+            const cardX = width / 2 - 180;
+            const cardY = 60;
+            const cardW = 360;
+            const cardH = 320;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(cardX + 4, cardY + 4, cardW, cardH);
+            ctx.fillStyle = '#f5f5f0';
+            ctx.fillRect(cardX, cardY, cardW, cardH);
+
+            // Header bar
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(cardX, cardY, cardW, 40);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = SeaRanchStyle.makeFont(14, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText('ALL BUILDS COMPLETE', width / 2, cardY + 26);
+
+            // Title
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = SeaRanchStyle.makeFont(28, 'bold');
+            ctx.fillText('Driftwood Fort', width / 2, cardY + 85);
+
+            ctx.font = SeaRanchStyle.makeFont(14);
+            ctx.fillStyle = '#8b7355';
+            ctx.fillText('Level Complete!', width / 2, cardY + 110);
+
+            // Divider
+            ctx.strokeStyle = '#8b7355';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cardX + 60, cardY + 130);
+            ctx.lineTo(cardX + cardW - 60, cardY + 130);
+            ctx.stroke();
+
+            // Final Rating section
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = SeaRanchStyle.makeFont(12, 'bold');
+            ctx.fillText('FINAL RATING', width / 2, cardY + 155);
+
+            // Rating dots (9 total for 3 builds x 3 each)
+            for (let i = 0; i < 9; i++) {
+                const row = Math.floor(i / 3);
+                const col = i % 3;
+                ctx.beginPath();
+                ctx.arc(width / 2 - 30 + col * 30, cardY + 180 + row * 28, 10, 0, Math.PI * 2);
+                if (i < totalStarfish) {
+                    ctx.fillStyle = '#7A9B6D';
+                    ctx.fill();
+                } else {
+                    ctx.strokeStyle = '#ccc';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+
+            // Final message
+            const finalMessages = [
+                'Keep practicing', 'Getting there', 'Not bad',
+                'Good effort', 'Nice building', 'Well done',
+                'Great work', 'Excellent', 'Amazing', 'Master Builder'
+            ];
+            const msgIndex = Math.min(totalStarfish, finalMessages.length - 1);
+            ctx.font = SeaRanchStyle.makeFont(14, 'bold');
+            ctx.fillStyle = '#7A9B6D';
+            ctx.fillText(finalMessages[msgIndex], width / 2, cardY + 280);
+
+            // Red accent at bottom of card
+            ctx.fillStyle = '#C41E3A';
+            ctx.fillRect(cardX, cardY + cardH - 4, cardW, 4);
+
+            // Controls
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#8b7355';
+            ctx.fillText('A: PLAY AGAIN', width / 2 - 70, height - 40);
+            ctx.fillStyle = '#C41E3A';
+            ctx.fillText('B: MENU', width / 2 + 70, height - 40);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            SeaRanchStyle.applyShake(ctx);
+
+            if (spritesLoaded < PIECE_NAMES.length) {
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = PALETTE.superCream;
+                ctx.font = SeaRanchStyle.makeFont(13);
+                ctx.textAlign = 'center';
+                ctx.fillText('Loading driftwood...', width/2, height/2);
+                return;
+            }
+
+            if (gameState === 'title') drawTitle();
+            else if (gameState === 'playing') {
+                drawBackground();
+                drawFortOutline();
+                drawPieces();
+                SeaRanchStyle.updateJuice(ctx);
+                drawNextPiece();
+                drawUI();
+            }
+            else if (gameState === 'complete') drawComplete();
+            else if (gameState === 'gameover') drawGameOver();
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+
+            // Apply weathered film grain effect for consistent Sea Ranch aesthetic
+            if (gameState !== 'title') {
+                SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ============== INPUT ==============
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            const isActionKey = e.key === ' ' || e.key === 'Enter' || e.key === 'a' || e.key === 'A';
+            const isBackKey = e.key === 'Escape' || e.key === 'b' || e.key === 'B';
+            const isRotateKey = e.key === 'r' || e.key === 'R';
+
+            // B/ESC always returns to menu (from any state)
+            if (isBackKey) {
+                window.location.href = 'level0-menu.html';
+                return;
+            }
+
+            if (gameState === 'title') {
+                if (isActionKey) {
+                    e.preventDefault();
+                    document.getElementById('title-card').style.display = 'none';
+                    startNewGame();
+                }
+                return;
+            }
+
+            if (gameState === 'complete') {
+                if (isActionKey) {
+                    e.preventDefault();
+                    nextLevel();
+                }
+                if (isRotateKey) {
+                    e.preventDefault();
+                    totalStarfish -= starfish;
+                    initGame();
+                }
+                return;
+            }
+
+            if (gameState === 'gameover') {
+                if (isActionKey) {
+                    e.preventDefault();
+                    startNewGame();
+                }
+                return;
+            }
+
+            if (gameState === 'playing' && currentPiece && !currentPiece.settled) {
+                const dims = currentPiece.getEffectiveDims();
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        currentPiece.x = Math.max(FORT_LEFT + dims.w / 2, currentPiece.x - MOVE_SPEED);
+                        break;
+                    case 'ArrowRight':
+                        currentPiece.x = Math.min(FORT_RIGHT - dims.w / 2, currentPiece.x + MOVE_SPEED);
+                        break;
+                    case 'ArrowUp':
+                        currentPiece.rotation -= Math.PI / 6; // 30 degree rotation - more organic
+                        break;
+                    case 'ArrowDown':
+                        currentPiece.rotation += Math.PI / 6; // 30 degree rotation
+                        break;
+                }
+                // A button (or space) for drop
+                if (isActionKey) {
+                    e.preventDefault();
+                    hardDrop();
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        SeaRanchStyle.setupTouchControls({ showRotate: true });
+        gameLoop();
+    </script>
+</body>
+</html>

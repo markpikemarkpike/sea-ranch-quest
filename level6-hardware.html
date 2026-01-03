@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Level 6: Sea Ranch Supply</title>
+    <script src="sea-ranch-style.js"></script>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --wood-dark: #5c4033;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+            --sky: #4a90c2;
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+        #gameCanvas {
+            display: block;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // ============== SEA RANCH PALETTE ==============
+        const PALETTE = {
+            sky: '#4a90c2',
+            skyLight: '#6ba8d4',
+            wood: '#8b7355',
+            woodDark: '#5c4033',
+            woodLight: '#a89070',
+            weathered: '#9a8b7a',
+            cream: '#f5f5f0',
+            fog: '#e8e4dc',
+            sand: '#d4c4a8',
+            red: '#C41E3A',
+            redDark: '#a32a1a',
+            orange: '#d4722a',
+            yellow: '#c4a22a',
+            green: '#3a8a4a',
+            blue: '#2E5DA8',
+            black: '#1a1a1a',
+            concrete: '#b8b0a0',
+            shadow: 'rgba(0,0,0,0.3)'
+        };
+
+        // ============== GAME STATE ==============
+        let gameState = 'cutscene'; // cutscene -> title -> playing -> complete -> gameover
+        let cutsceneTime = 0;
+        let currentRound = 0;
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let canFlip = true;
+        let totalPairs = 0;
+        let selectedCardIndex = 0;
+
+        // Man sprite animation
+        let manX = -60;
+        let manFrame = 0;
+        let manFrameTime = 0;
+
+        // Load the hardware store image
+        const storeImage = new Image();
+        storeImage.src = 'reference/hardware.jpg';
+        let storeImageLoaded = false;
+        storeImage.onload = () => { storeImageLoaded = true; };
+
+        // ============== ROUND DEFINITIONS ==============
+        const ROUNDS = [
+            { name: 'WOOD SCREWS', pairs: 6, gridCols: 4, gridRows: 3 },
+            { name: 'MIXED HARDWARE', pairs: 8, gridCols: 4, gridRows: 4 },
+            { name: 'BULK BIN', pairs: 10, gridCols: 5, gridRows: 4 }
+        ];
+
+        // ============== HARDWARE ITEMS ==============
+        const HARDWARE_TYPES = [
+            {
+                id: 'screw-wood-1', name: '#8 x 1"',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#71797E';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -size * 0.32, size * 0.22, size * 0.08, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#4A4A4A';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.12, -size * 0.32);
+                    ctx.lineTo(size * 0.12, -size * 0.32);
+                    ctx.stroke();
+                    ctx.fillStyle = '#4A4A4A';
+                    ctx.fillRect(-size * 0.05, -size * 0.28, size * 0.1, size * 0.5);
+                    ctx.strokeStyle = '#A9A9A9';
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < 5; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-size * 0.08, -size * 0.18 + i * size * 0.1);
+                        ctx.lineTo(size * 0.08, -size * 0.18 + i * size * 0.1);
+                        ctx.stroke();
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.05, size * 0.22);
+                    ctx.lineTo(size * 0.05, size * 0.22);
+                    ctx.lineTo(0, size * 0.38);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'screw-wood-2', name: '#8 x 2"',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#71797E';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -size * 0.38, size * 0.22, size * 0.08, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#4A4A4A';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.12, -size * 0.38);
+                    ctx.lineTo(size * 0.12, -size * 0.38);
+                    ctx.stroke();
+                    ctx.fillStyle = '#4A4A4A';
+                    ctx.fillRect(-size * 0.05, -size * 0.32, size * 0.1, size * 0.68);
+                    ctx.strokeStyle = '#A9A9A9';
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < 7; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-size * 0.08, -size * 0.22 + i * size * 0.1);
+                        ctx.lineTo(size * 0.08, -size * 0.22 + i * size * 0.1);
+                        ctx.stroke();
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.05, size * 0.36);
+                    ctx.lineTo(size * 0.05, size * 0.36);
+                    ctx.lineTo(0, size * 0.48);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'screw-deck', name: 'DECK 2.5"',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#4A5D23';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -size * 0.36, size * 0.2, size * 0.08, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#2D3A16';
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = i * Math.PI / 3 - Math.PI / 2;
+                        const r = size * 0.06;
+                        ctx.lineTo(Math.cos(angle) * r, -size * 0.36 + Math.sin(angle) * r);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = '#3D4F1C';
+                    ctx.fillRect(-size * 0.055, -size * 0.3, size * 0.11, size * 0.7);
+                    ctx.strokeStyle = '#4A5D23';
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < 8; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-size * 0.09, -size * 0.2 + i * size * 0.1);
+                        ctx.lineTo(size * 0.09, -size * 0.2 + i * size * 0.1);
+                        ctx.stroke();
+                    }
+                    ctx.fillStyle = '#3D4F1C';
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.055, size * 0.4);
+                    ctx.lineTo(size * 0.055, size * 0.4);
+                    ctx.lineTo(0, size * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'nail-finish', name: '4d FINISH',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#A9A9A9';
+                    ctx.beginPath();
+                    ctx.arc(0, -size * 0.38, size * 0.05, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#71797E';
+                    ctx.fillRect(-size * 0.02, -size * 0.38, size * 0.04, size * 0.8);
+                    ctx.fillStyle = '#4A4A4A';
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.02, size * 0.42);
+                    ctx.lineTo(size * 0.02, size * 0.42);
+                    ctx.lineTo(0, size * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'nail-common', name: '16d COMMON',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#A9A9A9';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -size * 0.4, size * 0.14, size * 0.05, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#71797E';
+                    ctx.fillRect(-size * 0.04, -size * 0.38, size * 0.08, size * 0.82);
+                    ctx.fillStyle = '#4A4A4A';
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.04, size * 0.44);
+                    ctx.lineTo(size * 0.04, size * 0.44);
+                    ctx.lineTo(0, size * 0.52);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'nail-galv', name: 'GALV 8d',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#C8D4E0';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -size * 0.36, size * 0.12, size * 0.045, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    const grad = ctx.createLinearGradient(-size * 0.1, 0, size * 0.1, 0);
+                    grad.addColorStop(0, '#8899AA');
+                    grad.addColorStop(0.5, '#C8D4E0');
+                    grad.addColorStop(1, '#8899AA');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(-size * 0.03, -size * 0.34, size * 0.06, size * 0.74);
+                    ctx.fillStyle = '#8899AA';
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.03, size * 0.4);
+                    ctx.lineTo(size * 0.03, size * 0.4);
+                    ctx.lineTo(0, size * 0.48);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'bolt-hex', name: '1/4-20 HEX',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#71797E';
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = i * Math.PI / 3 - Math.PI / 6;
+                        const px = Math.cos(angle) * size * 0.18;
+                        const py = -size * 0.32 + Math.sin(angle) * size * 0.18;
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#4A4A4A';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.fillStyle = '#4A4A4A';
+                    ctx.fillRect(-size * 0.06, -size * 0.18, size * 0.12, size * 0.58);
+                    ctx.strokeStyle = '#A9A9A9';
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < 6; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-size * 0.09, -size * 0.08 + i * size * 0.1);
+                        ctx.lineTo(size * 0.09, -size * 0.08 + i * size * 0.1);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'bolt-carriage', name: '5/16 CARR',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#71797E';
+                    ctx.beginPath();
+                    ctx.arc(0, -size * 0.32, size * 0.14, Math.PI, 0);
+                    ctx.fill();
+                    ctx.fillStyle = '#4A4A4A';
+                    ctx.fillRect(-size * 0.08, -size * 0.32, size * 0.16, size * 0.12);
+                    ctx.fillRect(-size * 0.055, -size * 0.2, size * 0.11, size * 0.6);
+                    ctx.strokeStyle = '#A9A9A9';
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < 6; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-size * 0.08, -size * 0.1 + i * size * 0.1);
+                        ctx.lineTo(size * 0.08, -size * 0.1 + i * size * 0.1);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'washer-flat', name: '1/4 FLAT',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#A9A9A9';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#C9B896';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#4A4A4A';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.22, Math.PI * 0.7, Math.PI * 1.3);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'washer-lock', name: 'LOCK 1/4',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.strokeStyle = '#71797E';
+                    ctx.lineWidth = size * 0.12;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.2, 0, Math.PI * 1.7);
+                    ctx.stroke();
+                    ctx.lineWidth = size * 0.1;
+                    ctx.beginPath();
+                    ctx.moveTo(size * 0.2, -size * 0.08);
+                    ctx.lineTo(size * 0.2, size * 0.08);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'nut-hex', name: '1/4-20 NUT',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#71797E';
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = i * Math.PI / 3;
+                        const px = Math.cos(angle) * size * 0.28;
+                        const py = Math.sin(angle) * size * 0.28;
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#4A4A4A';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    ctx.fillStyle = '#C9B896';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'nut-wing', name: 'WING NUT',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#71797E';
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = i * Math.PI / 3;
+                        ctx.lineTo(Math.cos(angle) * size * 0.12, Math.sin(angle) * size * 0.12);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(-size * 0.25, 0, size * 0.15, size * 0.28, -0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(size * 0.25, 0, size * 0.15, size * 0.28, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#C9B896';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.06, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'hook-cup', name: 'CUP HOOK',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#B5A642';
+                    ctx.fillRect(-size * 0.03, -size * 0.4, size * 0.06, size * 0.35);
+                    ctx.strokeStyle = '#8B7500';
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < 4; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-size * 0.05, -size * 0.35 + i * size * 0.08);
+                        ctx.lineTo(size * 0.05, -size * 0.35 + i * size * 0.08);
+                        ctx.stroke();
+                    }
+                    ctx.strokeStyle = '#B5A642';
+                    ctx.lineWidth = size * 0.06;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.arc(0, size * 0.15, size * 0.22, -Math.PI * 0.5, Math.PI * 0.75);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'hook-screw', name: 'SCREW EYE',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#71797E';
+                    ctx.fillRect(-size * 0.03, -size * 0.1, size * 0.06, size * 0.45);
+                    ctx.strokeStyle = '#4A4A4A';
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < 5; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-size * 0.05, -size * 0.05 + i * size * 0.08);
+                        ctx.lineTo(size * 0.05, -size * 0.05 + i * size * 0.08);
+                        ctx.stroke();
+                    }
+                    ctx.strokeStyle = '#71797E';
+                    ctx.lineWidth = size * 0.05;
+                    ctx.beginPath();
+                    ctx.arc(0, -size * 0.28, size * 0.15, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'anchor-plastic', name: 'ANCHOR #8',
+                draw: (ctx, x, y, size) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.fillStyle = '#E8E0D0';
+                    ctx.beginPath();
+                    ctx.moveTo(-size * 0.08, -size * 0.35);
+                    ctx.lineTo(size * 0.08, -size * 0.35);
+                    ctx.lineTo(size * 0.12, size * 0.35);
+                    ctx.lineTo(-size * 0.12, size * 0.35);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#C8C0B0';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 5; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(-size * 0.1, -size * 0.2 + i * size * 0.12);
+                        ctx.lineTo(size * 0.1, -size * 0.2 + i * size * 0.12);
+                        ctx.stroke();
+                    }
+                    ctx.fillStyle = '#E8E0D0';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -size * 0.35, size * 0.14, size * 0.05, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+        ];
+
+        // ============== CARD CLASS ==============
+        class Card {
+            constructor(x, y, w, h, itemType) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+                this.itemType = itemType;
+                this.flipped = false;
+                this.matched = false;
+                this.flipProgress = 0;
+                // Random wood grain offset for variety
+                this.grainOffset = Math.random() * 100;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+
+                const scaleX = Math.abs(Math.cos(this.flipProgress * Math.PI));
+
+                if (this.matched) {
+                    ctx.globalAlpha = 0.25;
+                }
+
+                ctx.scale(scaleX || 0.01, 1);
+
+                if (this.flipProgress < 0.5 && !this.flipped) {
+                    // Face down - beautiful wooden drawer
+                    // Drawer shadow/depth
+                    ctx.fillStyle = '#1a1208';
+                    ctx.fillRect(-this.w / 2 + 3, -this.h / 2 + 3, this.w - 3, this.h - 3);
+
+                    // Main drawer face - warm wood gradient
+                    const woodGrad = ctx.createLinearGradient(-this.w/2, -this.h/2, -this.w/2, this.h/2);
+                    woodGrad.addColorStop(0, '#a08868');
+                    woodGrad.addColorStop(0.1, '#9a7a58');
+                    woodGrad.addColorStop(0.5, '#8b6b48');
+                    woodGrad.addColorStop(0.9, '#7a5a38');
+                    woodGrad.addColorStop(1, '#6a4a28');
+                    ctx.fillStyle = woodGrad;
+                    ctx.fillRect(-this.w / 2, -this.h / 2, this.w - 3, this.h - 3);
+
+                    // Wood grain - horizontal curved lines
+                    ctx.strokeStyle = 'rgba(50, 30, 10, 0.12)';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 6; i++) {
+                        const yBase = -this.h / 2 + (i + 0.5) * this.h / 6;
+                        ctx.beginPath();
+                        ctx.moveTo(-this.w / 2 + 2, yBase);
+                        ctx.bezierCurveTo(
+                            -this.w / 4, yBase + Math.sin(this.grainOffset + i) * 4,
+                            this.w / 4, yBase + Math.cos(this.grainOffset + i * 0.7) * 3,
+                            this.w / 2 - 5, yBase + 1
+                        );
+                        ctx.stroke();
+                    }
+
+                    // Top edge highlight
+                    ctx.strokeStyle = 'rgba(255, 240, 210, 0.25)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-this.w / 2 + 2, -this.h / 2 + 2);
+                    ctx.lineTo(this.w / 2 - 5, -this.h / 2 + 2);
+                    ctx.stroke();
+
+                    // Left edge highlight
+                    ctx.strokeStyle = 'rgba(255, 240, 210, 0.15)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(-this.w / 2 + 2, -this.h / 2 + 4);
+                    ctx.lineTo(-this.w / 2 + 2, this.h / 2 - 5);
+                    ctx.stroke();
+
+                    // Brass handle - elegant curved pull
+                    const handleW = Math.min(36, this.w * 0.45);
+                    const handleH = 8;
+
+                    // Handle shadow
+                    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                    ctx.beginPath();
+                    ctx.roundRect(-handleW/2 + 2, -handleH/2 + 2, handleW, handleH, 3);
+                    ctx.fill();
+
+                    // Handle base plate
+                    const brassGrad = ctx.createLinearGradient(0, -handleH/2, 0, handleH/2);
+                    brassGrad.addColorStop(0, '#e8d060');
+                    brassGrad.addColorStop(0.3, '#d4b840');
+                    brassGrad.addColorStop(0.5, '#f0e070');
+                    brassGrad.addColorStop(0.7, '#c9a830');
+                    brassGrad.addColorStop(1, '#a08020');
+                    ctx.fillStyle = brassGrad;
+                    ctx.beginPath();
+                    ctx.roundRect(-handleW/2, -handleH/2, handleW, handleH, 3);
+                    ctx.fill();
+
+                    // Handle highlight
+                    ctx.strokeStyle = 'rgba(255, 245, 200, 0.6)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(-handleW/2 + 4, -handleH/2 + 2);
+                    ctx.lineTo(handleW/2 - 4, -handleH/2 + 2);
+                    ctx.stroke();
+
+                    // Handle edge
+                    ctx.strokeStyle = '#8a6a15';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.roundRect(-handleW/2, -handleH/2, handleW, handleH, 3);
+                    ctx.stroke();
+
+                    // Drawer frame/border
+                    ctx.strokeStyle = '#4a3a20';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.w / 2, -this.h / 2, this.w - 3, this.h - 3);
+                } else {
+                    // Face up - drawer opened, showing contents
+                    // Drawer interior shadow (depth)
+                    ctx.fillStyle = '#1a1208';
+                    ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+
+                    // Inner compartment - warm cardboard/wood feel
+                    const innerGrad = ctx.createLinearGradient(0, -this.h/2, 0, this.h/2);
+                    innerGrad.addColorStop(0, '#c4b498');
+                    innerGrad.addColorStop(0.3, '#d4c4a8');
+                    innerGrad.addColorStop(1, '#b4a488');
+                    ctx.fillStyle = innerGrad;
+                    ctx.fillRect(-this.w / 2 + 5, -this.h / 2 + 5, this.w - 10, this.h - 10);
+
+                    // Inner shadow on edges
+                    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                    ctx.fillRect(-this.w / 2 + 5, -this.h / 2 + 5, this.w - 10, 6);
+                    ctx.fillRect(-this.w / 2 + 5, -this.h / 2 + 5, 4, this.h - 10);
+
+                    // Draw the hardware item
+                    const itemSize = Math.min(this.w, this.h) * 0.5;
+                    this.itemType.draw(ctx, 0, -this.h * 0.06, itemSize);
+
+                    // Item name - simple text at bottom
+                    ctx.fillStyle = '#4a3a25';
+                    ctx.font = `bold ${Math.max(8, this.h * 0.1)}px 'Helvetica Neue', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.itemType.name, 0, this.h / 2 - 12);
+
+                    // Drawer frame
+                    ctx.strokeStyle = '#3a3025';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(-this.w / 2, -this.h / 2, this.w, this.h);
+                    ctx.strokeStyle = '#5a5045';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(-this.w / 2 + 2, -this.h / 2 + 2, this.w - 4, this.h - 4);
+                }
+
+                ctx.restore();
+            }
+
+            contains(px, py) {
+                return px >= this.x && px <= this.x + this.w &&
+                       py >= this.y && py <= this.y + this.h;
+            }
+        }
+
+        // ============== DRAW STORE EXTERIOR (for cutscene) ==============
+        function drawStoreExterior() {
+            if (storeImageLoaded) {
+                // Draw the actual hardware.jpg image, scaled to fit canvas
+                // Image is wider than tall, so we'll cover the canvas
+                const imgAspect = storeImage.width / storeImage.height;
+                const canvasAspect = width / height;
+
+                let drawW, drawH, drawX, drawY;
+                if (imgAspect > canvasAspect) {
+                    // Image is wider - fit to height
+                    drawH = height;
+                    drawW = height * imgAspect;
+                    drawX = (width - drawW) / 2;
+                    drawY = 0;
+                } else {
+                    // Image is taller - fit to width
+                    drawW = width;
+                    drawH = width / imgAspect;
+                    drawX = 0;
+                    drawY = (height - drawH) / 2;
+                }
+
+                ctx.drawImage(storeImage, drawX, drawY, drawW, drawH);
+            } else {
+                // Fallback while loading
+                ctx.fillStyle = PALETTE.sky;
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = PALETTE.cream;
+                ctx.font = SeaRanchStyle.makeFont(16);
+                ctx.textAlign = 'center';
+                ctx.fillText('Loading...', width / 2, height / 2);
+            }
+        }
+
+        // ============== DRAW MAN SPRITE ==============
+        function drawMan(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Simple walking man - Sea Ranch visitor style
+            const walkOffset = Math.sin(manFrame * 0.5) * 3;
+
+            // Legs (walking animation)
+            ctx.fillStyle = '#4a4a5a'; // Dark pants
+            ctx.fillRect(-6, 20, 5, 25 + walkOffset);
+            ctx.fillRect(1, 20, 5, 25 - walkOffset);
+
+            // Shoes
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(-8, 43 + walkOffset, 8, 5);
+            ctx.fillRect(-1, 43 - walkOffset, 8, 5);
+
+            // Body - casual shirt
+            ctx.fillStyle = '#6a8a9a';
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(10, 0);
+            ctx.lineTo(8, 22);
+            ctx.lineTo(-8, 22);
+            ctx.closePath();
+            ctx.fill();
+
+            // Arms
+            ctx.fillStyle = '#6a8a9a';
+            ctx.fillRect(-15, 2, 6, 18);
+            ctx.fillRect(9, 2, 6, 18);
+
+            // Hands
+            ctx.fillStyle = '#d4a574';
+            ctx.fillRect(-15, 18, 5, 6);
+            ctx.fillRect(10, 18, 5, 6);
+
+            // Head
+            ctx.fillStyle = '#d4a574';
+            ctx.beginPath();
+            ctx.arc(0, -10, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hair
+            ctx.fillStyle = '#5a4a3a';
+            ctx.beginPath();
+            ctx.arc(0, -14, 10, Math.PI, 0);
+            ctx.fill();
+
+            // Face details
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(-4, -12, 2, 2); // Left eye
+            ctx.fillRect(2, -12, 2, 2);  // Right eye
+
+            ctx.restore();
+        }
+
+        // ============== DRAW STORE INTERIOR (for gameplay) ==============
+        function drawStoreInterior() {
+            // ═══════════════════════════════════════════════════════════════
+            // BACK WALL - Rich redwood paneling with depth
+            // ═══════════════════════════════════════════════════════════════
+
+            // Deep back wall shadow
+            ctx.fillStyle = '#2a1a0a';
+            ctx.fillRect(0, 0, width, height);
+
+            // Vertical redwood planks - the heart of Sea Ranch style
+            const plankWidth = 48;
+            for (let px = 0; px < width; px += plankWidth) {
+                // Each plank has unique wood grain
+                const hueShift = Math.sin(px * 0.05) * 8;
+                const baseColor = 40 + hueShift;
+
+                // Plank gradient - lighter in middle
+                const plankGrad = ctx.createLinearGradient(px, 0, px + plankWidth, 0);
+                plankGrad.addColorStop(0, `hsl(25, 35%, ${baseColor - 5}%)`);
+                plankGrad.addColorStop(0.2, `hsl(25, 38%, ${baseColor + 3}%)`);
+                plankGrad.addColorStop(0.5, `hsl(25, 40%, ${baseColor + 6}%)`);
+                plankGrad.addColorStop(0.8, `hsl(25, 38%, ${baseColor + 2}%)`);
+                plankGrad.addColorStop(1, `hsl(25, 35%, ${baseColor - 6}%)`);
+                ctx.fillStyle = plankGrad;
+                ctx.fillRect(px, 0, plankWidth - 1, height);
+
+                // Wood grain lines - horizontal curved strokes
+                ctx.strokeStyle = `hsla(25, 30%, ${baseColor - 12}%, 0.2)`;
+                ctx.lineWidth = 1;
+                for (let gy = 20; gy < height; gy += 25 + Math.sin(px) * 8) {
+                    ctx.beginPath();
+                    ctx.moveTo(px + 2, gy);
+                    ctx.bezierCurveTo(
+                        px + plankWidth * 0.3, gy + Math.sin(gy * 0.02 + px) * 3,
+                        px + plankWidth * 0.7, gy + Math.cos(gy * 0.03 + px) * 4,
+                        px + plankWidth - 3, gy + 2
+                    );
+                    ctx.stroke();
+                }
+
+                // Occasional knot
+                if (Math.sin(px * 0.7 + 1.3) > 0.7) {
+                    const knotY = 100 + Math.abs(Math.sin(px * 0.4)) * 300;
+                    const knotSize = 6 + Math.sin(px) * 2;
+                    ctx.fillStyle = `hsla(25, 40%, ${baseColor - 15}%, 0.6)`;
+                    ctx.beginPath();
+                    ctx.ellipse(px + plankWidth/2, knotY, knotSize, knotSize * 0.7, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Knot rings
+                    ctx.strokeStyle = `hsla(25, 35%, ${baseColor - 20}%, 0.3)`;
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.ellipse(px + plankWidth/2, knotY, knotSize * 0.6, knotSize * 0.4, 0.3, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Plank edge shadow (seam)
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.fillRect(px + plankWidth - 2, 0, 2, height);
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // CABINET FRAMEWORK - Darker wood framing
+            // ═══════════════════════════════════════════════════════════════
+
+            // Heavy top beam
+            const beamGrad = ctx.createLinearGradient(0, 46, 0, 62);
+            beamGrad.addColorStop(0, '#5a4a38');
+            beamGrad.addColorStop(0.3, '#4a3a28');
+            beamGrad.addColorStop(1, '#3a2a18');
+            ctx.fillStyle = beamGrad;
+            ctx.fillRect(0, 46, width, 16);
+
+            // Beam highlight
+            ctx.fillStyle = 'rgba(255, 240, 200, 0.08)';
+            ctx.fillRect(0, 46, width, 2);
+
+            // Beam shadow below
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 62, width, 4);
+
+            // Vertical cabinet posts
+            for (let px = 0; px <= width; px += 160) {
+                // Post shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.fillRect(px - 2, 46, 14, height - 70);
+
+                // Post
+                const postGrad = ctx.createLinearGradient(px, 0, px + 10, 0);
+                postGrad.addColorStop(0, '#4a3a28');
+                postGrad.addColorStop(0.4, '#5a4a38');
+                postGrad.addColorStop(1, '#3a2a18');
+                ctx.fillStyle = postGrad;
+                ctx.fillRect(px, 46, 10, height - 70);
+
+                // Post highlight
+                ctx.fillStyle = 'rgba(255, 240, 200, 0.1)';
+                ctx.fillRect(px + 1, 46, 2, height - 70);
+            }
+
+            // Bottom trim/baseboard
+            const baseGrad = ctx.createLinearGradient(0, height - 30, 0, height);
+            baseGrad.addColorStop(0, '#4a3a28');
+            baseGrad.addColorStop(0.5, '#3a2a18');
+            baseGrad.addColorStop(1, '#2a1a08');
+            ctx.fillStyle = baseGrad;
+            ctx.fillRect(0, height - 30, width, 30);
+
+            // Baseboard detail
+            ctx.fillStyle = '#5a4a38';
+            ctx.fillRect(0, height - 30, width, 3);
+            ctx.fillStyle = 'rgba(255, 240, 200, 0.06)';
+            ctx.fillRect(0, height - 30, width, 1);
+
+            // ═══════════════════════════════════════════════════════════════
+            // SHELVING SHADOWS - Where the drawers sit
+            // ═══════════════════════════════════════════════════════════════
+
+            // Shelf shadows behind drawer grid
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(20, 62, width - 40, height - 95);
+
+            // ═══════════════════════════════════════════════════════════════
+            // ATMOSPHERIC LIGHTING
+            // ═══════════════════════════════════════════════════════════════
+
+            // Warm overhead light pools
+            for (let lx = 160; lx < width; lx += 320) {
+                const lightGrad = ctx.createRadialGradient(lx, 30, 10, lx, 60, 200);
+                lightGrad.addColorStop(0, 'rgba(255, 235, 180, 0.15)');
+                lightGrad.addColorStop(0.5, 'rgba(255, 225, 160, 0.06)');
+                lightGrad.addColorStop(1, 'rgba(255, 220, 140, 0)');
+                ctx.fillStyle = lightGrad;
+                ctx.fillRect(lx - 200, 0, 400, 350);
+            }
+
+            // Subtle dust motes in light beams (animated)
+            const dustTime = Date.now() * 0.001;
+            ctx.fillStyle = 'rgba(255, 240, 200, 0.4)';
+            for (let i = 0; i < 20; i++) {
+                const dx = 100 + Math.sin(dustTime * 0.3 + i * 1.7) * 200 + (i * 23) % 440;
+                const dy = 80 + Math.sin(dustTime * 0.2 + i * 2.3) * 30 + (i * 17) % 200;
+                const ds = 0.5 + Math.sin(i * 0.8) * 0.3;
+                ctx.beginPath();
+                ctx.arc(dx, dy, ds, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Soft vignette
+            const vignetteGrad = ctx.createRadialGradient(width/2, height/2, 150, width/2, height/2, 450);
+            vignetteGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+            ctx.fillStyle = vignetteGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // ═══════════════════════════════════════════════════════════════
+            // DECORATIVE ELEMENTS
+            // ═══════════════════════════════════════════════════════════════
+
+            // Small "SEA RANCH SUPPLY" sign on top beam
+            ctx.save();
+            ctx.translate(width/2, 28);
+
+            // Sign background - weathered brass plate
+            const signW = 180;
+            const signH = 18;
+            ctx.fillStyle = '#8a7a50';
+            ctx.fillRect(-signW/2, -signH/2, signW, signH);
+            ctx.fillStyle = '#9a8a60';
+            ctx.fillRect(-signW/2, -signH/2, signW, signH/2);
+            ctx.strokeStyle = '#6a5a30';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-signW/2, -signH/2, signW, signH);
+
+            // Sign text
+            ctx.fillStyle = '#2a1a0a';
+            ctx.font = "bold 10px 'Helvetica Neue', sans-serif";
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('SEA RANCH SUPPLY · EST. 1965', 0, 0);
+            ctx.restore();
+        }
+
+        // ============== GAME FUNCTIONS ==============
+        function initRound() {
+            const round = ROUNDS[currentRound];
+            cards = [];
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            canFlip = true;
+            totalPairs = round.pairs;
+            selectedCardIndex = 0;
+
+            const shuffledTypes = [...HARDWARE_TYPES].sort(() => Math.random() - 0.5);
+            const selectedTypes = shuffledTypes.slice(0, round.pairs);
+
+            const cardItems = [];
+            for (const type of selectedTypes) {
+                cardItems.push(type, type);
+            }
+
+            for (let i = cardItems.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cardItems[i], cardItems[j]] = [cardItems[j], cardItems[i]];
+            }
+
+            // Grid layout with room for HUD
+            const gridW = width - 50;
+            const gridH = height - 100; // Room for top and bottom bars
+            const gap = 10;
+            const cardW = (gridW - (round.gridCols - 1) * gap) / round.gridCols;
+            const cardH = (gridH - (round.gridRows - 1) * gap) / round.gridRows;
+            const startX = 25;
+            const startY = 58;
+
+            for (let row = 0; row < round.gridRows; row++) {
+                for (let col = 0; col < round.gridCols; col++) {
+                    const idx = row * round.gridCols + col;
+                    if (idx < cardItems.length) {
+                        const x = startX + col * (cardW + gap);
+                        const y = startY + row * (cardH + gap);
+                        cards.push(new Card(x, y, cardW, cardH, cardItems[idx]));
+                    }
+                }
+            }
+
+            gameState = 'playing';
+        }
+
+        function startNewGame() {
+            currentRound = 0;
+            initRound();
+        }
+
+        function nextRound() {
+            currentRound++;
+            if (currentRound >= ROUNDS.length) {
+                gameState = 'gameover';
+            } else {
+                initRound();
+            }
+        }
+
+        function flipCard(card) {
+            if (!canFlip || card.flipped || card.matched) return;
+
+            card.flipped = true;
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                canFlip = false;
+
+                if (flippedCards[0].itemType.id === flippedCards[1].itemType.id) {
+                    setTimeout(() => {
+                        flippedCards[0].matched = true;
+                        flippedCards[1].matched = true;
+                        matchedPairs++;
+                        // Juice: sparkles on matched cards
+                        const card1 = flippedCards[0];
+                        const card2 = flippedCards[1];
+                        SeaRanchStyle.spawnSparkles(card1.x + card1.w / 2, card1.y + card1.h / 2, SeaRanchStyle.colors.cream);
+                        SeaRanchStyle.spawnSparkles(card2.x + card2.w / 2, card2.y + card2.h / 2, SeaRanchStyle.colors.cream);
+                        SeaRanchStyle.shake(4, 0.85);
+                        flippedCards = [];
+                        canFlip = true;
+
+                        if (matchedPairs === totalPairs) {
+                            setTimeout(endRound, 600);
+                        }
+                    }, 400);
+                } else {
+                    // Juice: shake and flash on mismatch
+                    SeaRanchStyle.shake(6, 0.85);
+                    SeaRanchStyle.flash(SeaRanchStyle.colors.red, 0.15);
+                    setTimeout(() => {
+                        flippedCards[0].flipped = false;
+                        flippedCards[1].flipped = false;
+                        flippedCards = [];
+                        canFlip = true;
+                    }, 900);
+                }
+            }
+        }
+
+        function endRound() {
+            gameState = 'complete';
+            SeaRanchStyle.saveCompletion(6);
+        }
+
+        function update() {
+            // Cutscene update
+            if (gameState === 'cutscene') {
+                cutsceneTime++;
+                manFrameTime++;
+                if (manFrameTime > 6) {
+                    manFrame++;
+                    manFrameTime = 0;
+                }
+
+                // Man walks slowly toward store entrance
+                if (manX < 260) {
+                    manX += 0.7;
+                } else if (cutsceneTime > 280) {
+                    // Fade to title after arriving at store
+                    gameState = 'title';
+                }
+            }
+
+            // Card flip animation
+            for (const card of cards) {
+                if (card.flipped && card.flipProgress < 1) {
+                    card.flipProgress = Math.min(1, card.flipProgress + 0.12);
+                } else if (!card.flipped && card.flipProgress > 0) {
+                    card.flipProgress = Math.max(0, card.flipProgress - 0.12);
+                }
+            }
+        }
+
+        // ============== DRAWING ==============
+        function drawCutscene() {
+            drawStoreExterior();
+
+            // Position man on the ground area, approaching the ramp
+            drawMan(manX, height - 70);
+
+            // Dialogue - small text box at top left, doesn't cover the art
+            if (cutsceneTime > 60) {
+                // Small speech bubble style at top
+                ctx.fillStyle = 'rgba(0,0,0,0.75)';
+                ctx.fillRect(15, 12, 340, 36);
+
+                ctx.fillStyle = PALETTE.cream;
+                ctx.font = SeaRanchStyle.makeFont(13);
+                ctx.textAlign = 'left';
+                ctx.fillText('"Just need to pick up a few pieces of matching hardware."', 24, 35);
+            }
+
+            // Skip hint - very subtle at bottom right
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.font = SeaRanchStyle.makeFont(10);
+            ctx.textAlign = 'right';
+            ctx.fillText('A: Skip', width - 15, height - 10);
+        }
+
+        function drawTitle() {
+            // Sea Ranch styled title card
+            // Cream/sand gradient background
+            const grad = ctx.createLinearGradient(0, 0, 0, height);
+            grad.addColorStop(0, PALETTE.fog);
+            grad.addColorStop(1, PALETTE.sand);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Wood grain texture
+            ctx.strokeStyle = 'rgba(139, 115, 85, 0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < height; i += 12) {
+                ctx.beginPath();
+                ctx.moveTo(0, i + Math.sin(i * 0.05) * 3);
+                for (let x = 0; x < width; x += 20) {
+                    ctx.lineTo(x, i + Math.sin((i + x) * 0.02) * 4);
+                }
+                ctx.stroke();
+            }
+
+            // Blue supergraphic curves
+            ctx.strokeStyle = PALETTE.blue;
+            ctx.lineWidth = 36;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(width + 60, -80, 280, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+            ctx.lineWidth = 26;
+            ctx.beginPath();
+            ctx.arc(width + 40, -60, 220, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+
+            // Red arrow accent
+            ctx.fillStyle = PALETTE.red;
+            ctx.beginPath();
+            ctx.moveTo(30, height - 30);
+            ctx.lineTo(70, height - 30);
+            ctx.lineTo(70, height - 80);
+            ctx.lineTo(50, height - 100);
+            ctx.lineTo(30, height - 80);
+            ctx.closePath();
+            ctx.fill();
+
+            // Title
+            ctx.fillStyle = PALETTE.black;
+            ctx.font = SeaRanchStyle.makeFont(52, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText('Sea Ranch Supply', width / 2, height / 2 - 30);
+
+            ctx.font = SeaRanchStyle.makeFont(18);
+            ctx.fillStyle = PALETTE.wood;
+            ctx.letterSpacing = '3px';
+            ctx.fillText('MATCH THE HARDWARE', width / 2, height / 2 + 10);
+
+            // Controls hint
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.fillStyle = PALETTE.wood;
+            ctx.fillText('A to start · B to menu', width / 2, height - 40);
+        }
+
+        function drawPlaying() {
+            drawStoreInterior();
+
+            // Draw all cards first
+            for (let i = 0; i < cards.length; i++) {
+                cards[i].draw();
+            }
+
+            // Draw selection highlight on selected card
+            if (cards[selectedCardIndex] && !cards[selectedCardIndex].matched) {
+                const card = cards[selectedCardIndex];
+                const pulse = Math.sin(Date.now() * 0.006) * 0.3 + 0.7;
+
+                // Glowing selection border
+                ctx.save();
+                ctx.shadowColor = PALETTE.blue;
+                ctx.shadowBlur = 12 * pulse;
+                ctx.strokeStyle = PALETTE.blue;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(card.x - 2, card.y - 2, card.w + 4, card.h + 4);
+
+                // Inner highlight
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * pulse})`;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(card.x, card.y, card.w, card.h);
+                ctx.restore();
+            }
+
+            // HUD - Top bar with wood texture feel
+            const hudGrad = ctx.createLinearGradient(0, 0, 0, 50);
+            hudGrad.addColorStop(0, 'rgba(30, 20, 10, 0.95)');
+            hudGrad.addColorStop(1, 'rgba(40, 30, 15, 0.9)');
+            ctx.fillStyle = hudGrad;
+            ctx.fillRect(0, 0, width, 50);
+
+            // Red accent line
+            ctx.fillStyle = PALETTE.red;
+            ctx.fillRect(0, 48, width, 2);
+
+            // Bin name with brass tag style
+            const binName = ROUNDS[currentRound].name;
+            ctx.font = SeaRanchStyle.makeFont(13, 'bold');
+            const nameWidth = ctx.measureText(binName).width;
+            const tagWidth = Math.max(nameWidth + 24, 100);
+            ctx.fillStyle = '#c9a227';
+            ctx.fillRect(15, 12, tagWidth, 26);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.textAlign = 'center';
+            ctx.fillText(binName, 15 + tagWidth / 2, 29);
+
+            // Progress
+            ctx.fillStyle = PALETTE.cream;
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.textAlign = 'left';
+            ctx.fillText(`Bin ${currentRound + 1} of ${ROUNDS.length}`, 15 + tagWidth + 15, 29);
+
+            // Moves counter - right side
+            ctx.textAlign = 'right';
+            ctx.fillStyle = PALETTE.cream;
+            ctx.font = SeaRanchStyle.makeFont(20, 'bold');
+            ctx.fillText(moves.toString(), width - 20, 28);
+            ctx.font = SeaRanchStyle.makeFont(10);
+            ctx.fillStyle = '#a09080';
+            ctx.fillText('MOVES', width - 20, 42);
+
+            // Matched counter
+            ctx.fillStyle = PALETTE.cream;
+            ctx.font = SeaRanchStyle.makeFont(20, 'bold');
+            ctx.fillText(`${matchedPairs}/${totalPairs}`, width - 100, 28);
+            ctx.font = SeaRanchStyle.makeFont(10);
+            ctx.fillStyle = '#a09080';
+            ctx.fillText('MATCHED', width - 100, 42);
+
+            // Bottom controls hint - very subtle
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(0, height - 24, width, 24);
+            ctx.fillStyle = '#a09080';
+            ctx.font = SeaRanchStyle.makeFont(10);
+            ctx.textAlign = 'center';
+            ctx.fillText('← → ↑ ↓  Select  ·  A  Flip  ·  B  Menu', width / 2, height - 8);
+        }
+
+        function drawComplete() {
+            // Sea Ranch styled complete screen
+            const grad = ctx.createLinearGradient(0, 0, 0, height);
+            grad.addColorStop(0, PALETTE.fog);
+            grad.addColorStop(1, PALETTE.sand);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Wood grain
+            ctx.strokeStyle = 'rgba(139, 115, 85, 0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < height; i += 12) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                for (let x = 0; x < width; x += 20) {
+                    ctx.lineTo(x, i + Math.sin((i + x) * 0.02) * 4);
+                }
+                ctx.stroke();
+            }
+
+            // Blue supergraphics
+            ctx.strokeStyle = PALETTE.blue;
+            ctx.lineWidth = 20;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(width + 60, -80, 280, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+            ctx.lineWidth = 14;
+            ctx.beginPath();
+            ctx.arc(width + 40, -60, 220, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+
+            // Card
+            const cardX = width / 2 - 180;
+            const cardY = 80;
+            const cardW = 360;
+            const cardH = 280;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(cardX + 4, cardY + 4, cardW, cardH);
+            ctx.fillStyle = '#f5f5f0';
+            ctx.fillRect(cardX, cardY, cardW, cardH);
+
+            // Header bar
+            ctx.fillStyle = PALETTE.black;
+            ctx.fillRect(cardX, cardY, cardW, 40);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = SeaRanchStyle.makeFont(14, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText(`BIN ${currentRound + 1} OF ${ROUNDS.length}`, width / 2, cardY + 26);
+
+            // Title
+            ctx.fillStyle = PALETTE.black;
+            ctx.font = SeaRanchStyle.makeFont(26, 'bold');
+            ctx.fillText('Bin Cleared!', width / 2, cardY + 85);
+
+            ctx.font = SeaRanchStyle.makeFont(14);
+            ctx.fillStyle = PALETTE.wood;
+            ctx.fillText(`Completed in ${moves} moves`, width / 2, cardY + 115);
+
+            // Rating
+            const perfectMoves = totalPairs;
+            let rating, ratingColor;
+            if (moves <= perfectMoves * 1.5) { rating = 'EXCELLENT'; ratingColor = '#7A9B6D'; }
+            else if (moves <= perfectMoves * 2) { rating = 'GOOD'; ratingColor = PALETTE.blue; }
+            else if (moves <= perfectMoves * 3) { rating = 'FAIR'; ratingColor = PALETTE.wood; }
+            else { rating = 'COMPLETE'; ratingColor = PALETTE.wood; }
+
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = SeaRanchStyle.makeFont(12, 'bold');
+            ctx.fillText('RATING', width / 2, cardY + 155);
+
+            ctx.fillStyle = ratingColor;
+            ctx.font = SeaRanchStyle.makeFont(28, 'bold');
+            ctx.fillText(rating, width / 2, cardY + 195);
+
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.fillStyle = '#888';
+            ctx.fillText(`(Perfect: ${perfectMoves} moves)`, width / 2, cardY + 225);
+
+            // Red accent
+            ctx.fillStyle = PALETTE.red;
+            ctx.fillRect(cardX, cardY + cardH - 4, cardW, 4);
+
+            // Controls
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.fillStyle = PALETTE.wood;
+            if (currentRound < ROUNDS.length - 1) {
+                ctx.fillText('A: NEXT BIN', width / 2 - 70, height - 40);
+            } else {
+                ctx.fillText('A: FINISH', width / 2 - 70, height - 40);
+            }
+            ctx.fillStyle = PALETTE.red;
+            ctx.fillText('B: RETRY', width / 2 + 70, height - 40);
+        }
+
+        function drawGameOver() {
+            // Sea Ranch styled game over
+            const grad = ctx.createLinearGradient(0, 0, 0, height);
+            grad.addColorStop(0, PALETTE.fog);
+            grad.addColorStop(1, PALETTE.sand);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Wood grain
+            ctx.strokeStyle = 'rgba(139, 115, 85, 0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < height; i += 12) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                for (let x = 0; x < width; x += 20) {
+                    ctx.lineTo(x, i + Math.sin((i + x) * 0.02) * 4);
+                }
+                ctx.stroke();
+            }
+
+            // Blue supergraphics
+            ctx.strokeStyle = PALETTE.blue;
+            ctx.lineWidth = 20;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(width + 60, -80, 280, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+            ctx.lineWidth = 14;
+            ctx.beginPath();
+            ctx.arc(width + 40, -60, 220, Math.PI * 0.5, Math.PI);
+            ctx.stroke();
+
+            // Card
+            const cardX = width / 2 - 180;
+            const cardY = 70;
+            const cardW = 360;
+            const cardH = 300;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(cardX + 4, cardY + 4, cardW, cardH);
+            ctx.fillStyle = '#f5f5f0';
+            ctx.fillRect(cardX, cardY, cardW, cardH);
+
+            // Header bar
+            ctx.fillStyle = PALETTE.black;
+            ctx.fillRect(cardX, cardY, cardW, 40);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = SeaRanchStyle.makeFont(14, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText('LEVEL COMPLETE', width / 2, cardY + 26);
+
+            // Title
+            ctx.fillStyle = PALETTE.black;
+            ctx.font = SeaRanchStyle.makeFont(28, 'bold');
+            ctx.fillText('Sea Ranch Supply', width / 2, cardY + 85);
+
+            // Divider
+            ctx.strokeStyle = PALETTE.wood;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cardX + 40, cardY + 110);
+            ctx.lineTo(cardX + cardW - 40, cardY + 110);
+            ctx.stroke();
+
+            // Message
+            ctx.fillStyle = PALETTE.black;
+            ctx.font = SeaRanchStyle.makeFont(14);
+            ctx.fillText('Thanks for shopping at our hardware store.', width / 2, cardY + 145);
+
+            ctx.font = SeaRanchStyle.makeFont(13, 'italic');
+            ctx.fillStyle = PALETTE.wood;
+            ctx.fillText('"If we don\'t have it, you don\'t need it."', width / 2, cardY + 180);
+
+            ctx.font = SeaRanchStyle.makeFont(14);
+            ctx.fillStyle = PALETTE.black;
+            ctx.fillText('Come back anytime.', width / 2, cardY + 220);
+
+            // Red accent
+            ctx.fillStyle = PALETTE.red;
+            ctx.fillRect(cardX, cardY + cardH - 4, cardW, 4);
+
+            // Controls
+            ctx.font = SeaRanchStyle.makeFont(12);
+            ctx.fillStyle = PALETTE.wood;
+            ctx.fillText('A: PLAY AGAIN', width / 2 - 70, height - 40);
+            ctx.fillStyle = PALETTE.red;
+            ctx.fillText('B: MENU', width / 2 + 70, height - 40);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            SeaRanchStyle.applyShake(ctx);
+
+            if (gameState === 'cutscene') drawCutscene();
+            else if (gameState === 'title') drawTitle();
+            else if (gameState === 'playing') drawPlaying();
+            else if (gameState === 'complete') drawComplete();
+            else if (gameState === 'gameover') drawGameOver();
+
+            SeaRanchStyle.updateJuice(ctx);
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+
+            // Apply weathered film grain effect for consistent Sea Ranch aesthetic
+            if (gameState !== 'title' && gameState !== 'cutscene') {
+                SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ============== INPUT ==============
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (width / rect.width);
+            const y = (e.clientY - rect.top) * (height / rect.height);
+
+            if (gameState === 'cutscene') {
+                gameState = 'title';
+                return;
+            }
+
+            if (gameState === 'title') {
+                startNewGame();
+                return;
+            }
+
+            if (gameState === 'complete') {
+                nextRound();
+                return;
+            }
+
+            if (gameState === 'gameover') {
+                window.location.href = 'level0-menu.html';
+                return;
+            }
+
+            if (gameState === 'playing') {
+                for (let i = 0; i < cards.length; i++) {
+                    if (cards[i].contains(x, y)) {
+                        selectedCardIndex = i;
+                        flipCard(cards[i]);
+                        break;
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const isActionKey = e.key === ' ' || e.key === 'Enter' || e.key === 'a' || e.key === 'A';
+            const isBackKey = e.key === 'Escape' || e.key === 'b' || e.key === 'B';
+
+            // B/ESC always returns to menu (from any state)
+            if (isBackKey) {
+                window.location.href = 'level0-menu.html';
+                return;
+            }
+
+            if (gameState === 'cutscene') {
+                if (isActionKey) {
+                    gameState = 'title';
+                }
+                return;
+            }
+
+            if (gameState === 'title') {
+                if (isActionKey) {
+                    startNewGame();
+                }
+                return;
+            }
+
+            if (gameState === 'complete') {
+                if (isActionKey) {
+                    nextRound();
+                }
+                return;
+            }
+
+            if (gameState === 'gameover') {
+                if (isActionKey) {
+                    currentRound = 0;
+                    startNewGame();
+                }
+                return;
+            }
+
+            if (gameState === 'playing') {
+                const round = ROUNDS[currentRound];
+                const cols = round.gridCols;
+                let newIndex = selectedCardIndex;
+
+                switch (e.key) {
+                    case 'ArrowRight':
+                        newIndex = Math.min(cards.length - 1, selectedCardIndex + 1);
+                        break;
+                    case 'ArrowLeft':
+                        newIndex = Math.max(0, selectedCardIndex - 1);
+                        break;
+                    case 'ArrowDown':
+                        newIndex = Math.min(cards.length - 1, selectedCardIndex + cols);
+                        break;
+                    case 'ArrowUp':
+                        newIndex = Math.max(0, selectedCardIndex - cols);
+                        break;
+                }
+
+                // Skip matched cards
+                if (cards[newIndex] && cards[newIndex].matched) {
+                    // Try to find next unmatched card
+                    const dir = newIndex > selectedCardIndex ? 1 : -1;
+                    for (let i = newIndex; i >= 0 && i < cards.length; i += dir) {
+                        if (!cards[i].matched) {
+                            newIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                selectedCardIndex = newIndex;
+
+                if (isActionKey && cards[selectedCardIndex]) {
+                    flipCard(cards[selectedCardIndex]);
+                }
+            }
+        });
+
+        SeaRanchStyle.setupTouchControls();
+        gameLoop();
+    </script>
+</body>
+</html>

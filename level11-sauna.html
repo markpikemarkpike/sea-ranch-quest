@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Level 11: Sauna Maze - Sea Ranch Quest</title>
+    <script src="sea-ranch-style.js"></script>
+<style>
+:root {
+    /* Supergraphic accents - Barbara Stauffacher Solomon */
+    --red: #C41E3A;
+    --blue: #2E5DA8;
+
+    /* Neutrals */
+    --black: #1a1a1a;
+    --white: #f5f5f0;
+    --cream: #f5f5f0;
+    --fog: #e8e4dc;
+
+    /* Natural/weathered tones */
+    --wood: #8b7355;
+    --wood-light: #a89070;
+    --wood-dark: #5c4a3a;
+    --sand: #d4c4a8;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #1a1a1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+#game-container {
+    width: 640px;
+    height: 480px;
+    position: relative;
+    overflow: hidden;
+    background: var(--fog);
+}
+
+#gameCanvas {
+    display: block;
+    width: 640px;
+    height: 480px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+/* HTML/CSS Title Card */
+.title-card {
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.title-card .wood-bg {
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(139, 115, 85, 0.08) 3px, rgba(139, 115, 85, 0.08) 4px),
+        radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+        radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+}
+.title-card .supergraphic {
+    position: absolute;
+    top: -80px;
+    right: -120px;
+    width: 550px;
+    height: 550px;
+    pointer-events: none;
+}
+.title-card .supergraphic::before,
+.title-card .supergraphic::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 36px solid var(--blue);
+}
+.title-card .supergraphic::before {
+    width: 420px;
+    height: 420px;
+    top: 0;
+    right: 0;
+    border-color: transparent transparent var(--blue) var(--blue);
+    transform: rotate(-45deg);
+}
+.title-card .supergraphic::after {
+    width: 320px;
+    height: 320px;
+    top: 50px;
+    right: 50px;
+    border-color: transparent transparent var(--blue) var(--blue);
+    transform: rotate(-45deg);
+    opacity: 0.7;
+}
+.title-card .arrow-accent {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 80px;
+    height: 100px;
+    pointer-events: none;
+}
+.title-card .arrow-accent::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 50px solid var(--red);
+    top: 0;
+}
+.title-card .arrow-accent::after {
+    content: '';
+    position: absolute;
+    width: 26px;
+    height: 50px;
+    background: var(--red);
+    top: 45px;
+    left: 27px;
+}
+.title-card .title-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+}
+.title-card .level-title {
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--black);
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+.title-card .level-subtitle {
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--wood);
+}
+.title-card .continue-hint {
+    position: absolute;
+    bottom: 36px;
+    right: 36px;
+    font-size: 12px;
+    color: var(--wood);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.title-card .title-grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.4;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+</style>
+</head>
+<body>
+<div id="game-container">
+    <div class="title-card" id="title-card">
+        <div class="wood-bg"></div>
+        <div class="supergraphic"></div>
+        <div class="arrow-accent"></div>
+        <div class="title-content">
+            <div class="level-title">Sauna Maze</div>
+            <div class="level-subtitle">Escape the Supergraphics</div>
+        </div>
+        <div class="continue-hint">A to start · B to menu</div>
+        <div class="title-grain"></div>
+    </div>
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+</div>
+<script>
+// ============================================================================
+// LEVEL 11: SAUNA MAZE
+// Sea Ranch Rec Center Sauna -> Supergraphic Maze
+// Style matched to hub-prototype.html
+// ============================================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Sea Ranch Design System - Barbara Stauffacher Solomon
+const COLORS = {
+    // Supergraphic accents
+    red: '#C41E3A',
+    blue: '#2E5DA8',
+    // Neutrals
+    black: '#1a1a1a',
+    white: '#f5f5f0',
+    cream: '#f5f5f0',
+    fog: '#e8e4dc',
+    // Natural tones
+    wood: '#8b7355',
+    woodLight: '#a89070',
+    woodDark: '#5c4a3a',
+    sand: '#d4c4a8'
+};
+
+// Game states
+const GameState = {
+    TITLE: 'title',
+    SAUNA_INTRO: 'sauna_intro',
+    GETTING_HOT: 'getting_hot',
+    DOOR_OPENS: 'door_opens',
+    DOLLY_ZOOM: 'dolly_zoom',      // New: slow approach to supergraphic
+    HAND_RAISE: 'hand_raise',       // New: person raises hand to point
+    MAZE_PLAYING: 'maze_playing',
+    MAZE_COMPLETE: 'maze_complete'
+};
+
+let state = GameState.TITLE;
+let stateTimer = 0;
+let heatLevel = 0;
+let steamParticles = [];
+let dollyZoom = 0;        // 0 = far back in doorway, 1 = close to wall
+let handRaiseProgress = 0; // 0 = hand down, 1 = hand pointing at start
+
+// Sauna background image
+let saunaImage = null;
+const saunaImg = new Image();
+saunaImg.onload = () => saunaImage = saunaImg;
+saunaImg.src = 'level-11/steam.jpg';
+
+// Player in maze (floating pointer finger position)
+let player = { x: 0, y: 0, targetX: 0, targetY: 0 };
+
+// Dizzy effect during maze
+let dizzyBlurAmount = 0;       // Current blur/spin intensity (0-1)
+let dizzyTimer = 0;            // Timer for dizzy animation
+let mazeShiftsRemaining = 3;   // Number of maze shifts left
+let nextShiftTime = 0;         // When to trigger next shift
+let mazePlayTime = 0;          // Time spent in maze
+let shiftedCells = [];         // Cells that changed during last shift (for highlighting)
+
+// Maze definition - cleaner, more supergraphic-like
+const CELL_SIZE = 18;
+const MAZE_OFFSET_X = 50;
+const MAZE_OFFSET_Y = 35;
+
+// Maze: 0 = wall, 1 = path, 2 = start, 3 = end
+// Harder maze with dead ends but guaranteed solvable path
+const MAZE = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,2,1,1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0],
+    [0,0,0,1,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,1,0],
+    [0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1,1,0],
+    [0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,1,0,1,0,0,0],
+    [0,1,1,1,1,1,1,1,1,1,0,1,1,1,0,1,0,1,1,1,0],
+    [0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0],
+    [0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,0,1,0],
+    [0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0],
+    [0,1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1,0,1,0],
+    [0,1,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,1,0,1,0],
+    [0,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1,1,1,0,1,0],
+    [0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+];
+
+const MAZE_HEIGHT = MAZE.length;
+const MAZE_WIDTH = MAZE[0].length;
+
+// Find start and end positions
+let startPos = { x: 1, y: 1 };
+let endPos = { x: 19, y: 13 };
+for (let y = 0; y < MAZE_HEIGHT; y++) {
+    for (let x = 0; x < MAZE_WIDTH; x++) {
+        if (MAZE[y][x] === 2) startPos = { x, y };
+        if (MAZE[y][x] === 3) endPos = { x, y };
+    }
+}
+
+player.x = startPos.x;
+player.y = startPos.y;
+player.targetX = startPos.x;
+player.targetY = startPos.y;
+
+// Check if there's a path from (sx,sy) to (ex,ey) using BFS
+function hasPath(sx, sy, ex, ey) {
+    const visited = new Set();
+    const queue = [{x: sx, y: sy}];
+    visited.add(`${sx},${sy}`);
+
+    while (queue.length > 0) {
+        const {x, y} = queue.shift();
+        if (x === ex && y === ey) return true;
+
+        const neighbors = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dx, dy] of neighbors) {
+            const nx = x + dx;
+            const ny = y + dy;
+            const key = `${nx},${ny}`;
+            if (nx >= 0 && nx < MAZE_WIDTH && ny >= 0 && ny < MAZE_HEIGHT &&
+                !visited.has(key) && MAZE[ny][nx] !== 0) {
+                visited.add(key);
+                queue.push({x: nx, y: ny});
+            }
+        }
+    }
+    return false;
+}
+
+// Function to shift maze walls (dizzy effect)
+// Strategy: Block the path ahead of the player, forcing backtracking
+function shiftMazeWalls() {
+    const px = Math.round(player.targetX);
+    const py = Math.round(player.targetY);
+
+    // Save maze state in case we need to revert
+    const mazeCopy = MAZE.map(row => [...row]);
+
+    shiftedCells = [];
+
+    // Find path cells AHEAD of the player (toward the exit)
+    // and block some of them to force backtracking
+    let pathsToBlock = [];
+    let pathsToOpen = [];
+
+    for (let y = 1; y < MAZE_HEIGHT - 1; y++) {
+        for (let x = 1; x < MAZE_WIDTH - 1; x++) {
+            // Skip player position, start, and end
+            if (x === px && y === py) continue;
+            if (x === startPos.x && y === startPos.y) continue;
+            if (x === endPos.x && y === endPos.y) continue;
+
+            // Calculate if this cell is "ahead" (closer to exit than player)
+            const playerDistToExit = Math.abs(px - endPos.x) + Math.abs(py - endPos.y);
+            const cellDistToExit = Math.abs(x - endPos.x) + Math.abs(y - endPos.y);
+
+            // Check neighbors
+            let wallCount = 0;
+            let pathCount = 0;
+            const neighbors = [[-1,0],[1,0],[0,-1],[0,1]];
+            for (const [dx, dy] of neighbors) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx >= 0 && nx < MAZE_WIDTH && ny >= 0 && ny < MAZE_HEIGHT) {
+                    if (MAZE[ny][nx] === 0) wallCount++;
+                    else pathCount++;
+                }
+            }
+
+            // Only consider cells at path/wall boundaries
+            if (wallCount === 0 || pathCount === 0) continue;
+
+            if (MAZE[y][x] !== 0) {
+                // It's a path cell
+                // Prioritize blocking paths that are ahead of player but not too close
+                const distFromPlayer = Math.abs(x - px) + Math.abs(y - py);
+                if (cellDistToExit < playerDistToExit && distFromPlayer >= 3) {
+                    pathsToBlock.push({x, y, priority: distFromPlayer, current: MAZE[y][x]});
+                }
+            } else {
+                // It's a wall cell - could open as alternate route
+                pathsToOpen.push({x, y, current: MAZE[y][x]});
+            }
+        }
+    }
+
+    // Shuffle candidates
+    pathsToBlock.sort(() => Math.random() - 0.5);
+    pathsToOpen.sort(() => Math.random() - 0.5);
+
+    // First, open 2-3 alternate paths
+    const openCount = Math.min(pathsToOpen.length, 2 + Math.floor(Math.random() * 2));
+    for (let i = 0; i < openCount; i++) {
+        const cell = pathsToOpen[i];
+        MAZE[cell.y][cell.x] = 1;
+        shiftedCells.push({x: cell.x, y: cell.y, newValue: 1});
+    }
+
+    // Then try to block paths, but verify path still exists after each block
+    let blockedCount = 0;
+    const maxBlocks = 2;
+    for (const cell of pathsToBlock) {
+        if (blockedCount >= maxBlocks) break;
+
+        // Temporarily block this cell
+        MAZE[cell.y][cell.x] = 0;
+
+        // Check if player can still reach exit
+        if (hasPath(px, py, endPos.x, endPos.y)) {
+            // Block is safe
+            shiftedCells.push({x: cell.x, y: cell.y, newValue: 0});
+            blockedCount++;
+        } else {
+            // Revert - this would trap the player
+            MAZE[cell.y][cell.x] = cell.current;
+        }
+    }
+
+    // Final safety check - if no path exists, revert everything
+    if (!hasPath(px, py, endPos.x, endPos.y)) {
+        for (let y = 0; y < MAZE_HEIGHT; y++) {
+            for (let x = 0; x < MAZE_WIDTH; x++) {
+                MAZE[y][x] = mazeCopy[y][x];
+            }
+        }
+        shiftedCells = [];
+    }
+}
+
+// ============================================================================
+// DRAWING HELPERS
+// ============================================================================
+
+function drawRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
+}
+
+function drawText(text, x, y, size, color, align = 'left', weight = '700') {
+    ctx.font = SeaRanchStyle.makeFont(size, weight);
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.fillText(text, x, y);
+}
+
+// Wood grain texture (like hub background)
+function drawWoodGrain() {
+    // Base fog/sand gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, 320);
+    grad.addColorStop(0, COLORS.fog);
+    grad.addColorStop(1, COLORS.sand);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 480, 320);
+
+    // Wood grain lines
+    ctx.strokeStyle = 'rgba(139, 115, 85, 0.08)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < 480; x += 4) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 320);
+        ctx.stroke();
+    }
+
+    // Weathering spots
+    ctx.fillStyle = 'rgba(139, 115, 85, 0.1)';
+    ctx.beginPath();
+    ctx.ellipse(96, 96, 80, 60, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(336, 192, 60, 50, 0, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// Bold sweeping blue curves (like pool ceiling supergraphic)
+function drawSupergraphicCurves(alpha = 1) {
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = COLORS.blue;
+    ctx.lineWidth = 28;
+    ctx.lineCap = 'round';
+
+    // Large sweeping curve
+    ctx.beginPath();
+    ctx.arc(520, -40, 280, Math.PI * 0.6, Math.PI * 1.1, false);
+    ctx.stroke();
+
+    // Second curve (slightly smaller, offset)
+    ctx.lineWidth = 22;
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.beginPath();
+    ctx.arc(500, -20, 220, Math.PI * 0.55, Math.PI * 1.05, false);
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+}
+
+// Red arrow accent (like the one on weathered wood)
+function drawArrowAccent(x, y, scale = 1) {
+    ctx.fillStyle = COLORS.red;
+
+    // Triangle top
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 30 * scale, y + 40 * scale);
+    ctx.lineTo(x - 30 * scale, y + 40 * scale);
+    ctx.closePath();
+    ctx.fill();
+
+    // Rectangle stem
+    ctx.fillRect(x - 10 * scale, y + 35 * scale, 20 * scale, 40 * scale);
+}
+
+// Grain overlay
+function drawGrainOverlay(alpha = 0.3) {
+    ctx.globalAlpha = alpha;
+    for (let i = 0; i < 2000; i++) {
+        const x = Math.random() * 480;
+        const y = Math.random() * 320;
+        const gray = Math.random() * 100 + 100;
+        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+        ctx.fillRect(x, y, 1, 1);
+    }
+    ctx.globalAlpha = 1;
+}
+
+// ============================================================================
+// SAUNA SCENE
+// ============================================================================
+
+function drawSaunaScene() {
+    // Draw the sauna background image
+    if (saunaImage) {
+        ctx.drawImage(saunaImage, 0, 0, 480, 320);
+    } else {
+        // Fallback
+        drawRect(0, 0, 480, 320, COLORS.wood);
+    }
+
+    // Animated steam particles rising from the hot rocks (bottom right area)
+    // Rock heater is around x: 380-460, steam rises from there
+    const steamBaseX = 410;
+    const steamBaseY = 240;
+
+    // Add new steam particles based on heat level
+    if (stateTimer % 3 === 0) {
+        const numParticles = Math.floor(1 + heatLevel * 3);
+        for (let i = 0; i < numParticles; i++) {
+            steamParticles.push({
+                x: steamBaseX + (Math.random() - 0.5) * 60,
+                y: steamBaseY + Math.random() * 20,
+                vx: (Math.random() - 0.5) * 0.8,
+                vy: -0.5 - Math.random() * 1.5 - heatLevel * 0.5,
+                size: 8 + Math.random() * 15 + heatLevel * 10,
+                alpha: 0.3 + Math.random() * 0.3,
+                life: 120 + Math.random() * 60
+            });
+        }
+    }
+
+    // Update and draw steam particles
+    ctx.save();
+    steamParticles = steamParticles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy -= 0.01; // Accelerate upward slightly
+        p.size *= 1.008; // Grow as they rise
+        p.alpha *= 0.995; // Fade slowly
+        p.life--;
+
+        if (p.life > 0 && p.alpha > 0.02) {
+            ctx.fillStyle = `rgba(240, 235, 225, ${p.alpha})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            return true;
+        }
+        return false;
+    });
+    ctx.restore();
+
+    // Animated thermometer - draw over the existing one in the image
+    // Thermometer in image is on the left wall around x: 22-38, y: 70-175
+    const thermoX = 24;
+    const thermoTop = 75;
+    const thermoHeight = 95;
+    const bulbY = thermoTop + thermoHeight + 8;
+
+    // Cover the static thermometer mercury with animated version
+    // Draw black background over mercury area
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(thermoX + 4, thermoTop + 5, 8, thermoHeight - 5);
+
+    // Draw rising mercury based on heat level
+    const mercuryH = heatLevel * (thermoHeight - 10);
+    const mercuryGrad = ctx.createLinearGradient(0, thermoTop + thermoHeight - mercuryH, 0, thermoTop + thermoHeight);
+    mercuryGrad.addColorStop(0, '#ff3333');
+    mercuryGrad.addColorStop(1, '#cc0000');
+    ctx.fillStyle = mercuryGrad;
+    ctx.fillRect(thermoX + 4, thermoTop + thermoHeight - mercuryH - 5, 8, mercuryH + 5);
+
+    // Pulsing glow on bulb when hot
+    if (heatLevel > 0.5) {
+        const pulseAlpha = (heatLevel - 0.5) * 0.4 * (0.7 + 0.3 * Math.sin(stateTimer * 0.1));
+        ctx.fillStyle = `rgba(255, 50, 50, ${pulseAlpha})`;
+        ctx.beginPath();
+        ctx.arc(thermoX + 8, bulbY, 12 + heatLevel * 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Heat shimmer overlay (increases with temperature)
+    if (heatLevel > 0.3) {
+        const shimmerAlpha = (heatLevel - 0.3) * 0.15;
+        ctx.fillStyle = `rgba(255, 100, 50, ${shimmerAlpha})`;
+        ctx.fillRect(0, 0, 480, 320);
+    }
+
+    // Heat distortion - subtle wave effect at high temps
+    if (heatLevel > 0.6) {
+        ctx.fillStyle = `rgba(255, 200, 150, ${(heatLevel - 0.6) * 0.1})`;
+        for (let y = 0; y < 320; y += 40) {
+            const waveOffset = Math.sin(stateTimer * 0.05 + y * 0.1) * 3 * heatLevel;
+            ctx.fillRect(waveOffset, y, 480, 2);
+        }
+    }
+
+    // Sweat drops on visible skin (arms area roughly x: 150-190, 290-330, y: 200-260)
+    if (heatLevel > 0.2) {
+        ctx.fillStyle = 'rgba(180, 220, 255, 0.5)';
+        const dropCount = Math.floor(heatLevel * 8);
+        for (let i = 0; i < dropCount; i++) {
+            // Left arm area
+            const lx = 155 + Math.random() * 30;
+            const ly = 210 + Math.random() * 40;
+            ctx.beginPath();
+            ctx.ellipse(lx, ly, 1.5, 2.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Right arm area
+            const rx = 295 + Math.random() * 30;
+            const ry = 210 + Math.random() * 40;
+            ctx.beginPath();
+            ctx.ellipse(rx, ry, 1.5, 2.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Title text
+    if (state === GameState.SAUNA_INTRO) {
+        // Text shadow for readability
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        drawText('Moonraker Recreation Center', 242, 27, 18, 'rgba(0,0,0,0.5)', 'center');
+        drawText('Moonraker Recreation Center', 240, 25, 18, COLORS.cream, 'center');
+
+        drawText('PRESS A TO RELAX', 240, 308, 10, COLORS.fog, 'center', '400');
+    } else if (heatLevel > 0.7) {
+        // Pulsing "TOO HOT" text
+        const pulse = 0.8 + 0.2 * Math.sin(stateTimer * 0.15);
+        ctx.globalAlpha = pulse;
+        drawText('TOO HOT!', 240, 60, 28, '#ff3333', 'center');
+        ctx.globalAlpha = 1;
+    }
+}
+
+// ============================================================================
+// DOOR OPENING SCENE
+// ============================================================================
+
+function drawDoorScene(openAmount) {
+    // Dark hallway
+    drawRect(0, 0, 480, 320, COLORS.black);
+
+    // Door opening - reveals supergraphic wall
+    const doorW = 180 * openAmount;
+    const doorX = 240 - doorW / 2;
+
+    // Supergraphic glimpse through door
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(doorX, 40, doorW, 240);
+    ctx.clip();
+
+    drawWoodGrain();
+    drawSupergraphicCurves();
+
+    ctx.restore();
+
+    // Door frame (wood)
+    drawRect(doorX - 16, 30, 16, 260, COLORS.wood);
+    drawRect(doorX + doorW, 30, 16, 260, COLORS.wood);
+    drawRect(doorX - 16, 20, doorW + 32, 16, COLORS.wood);
+
+    // Steam particles
+    ctx.fillStyle = 'rgba(245, 243, 239, 0.6)';
+    for (let p of steamParticles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    drawText('*the door opens*', 240, 305, 12, COLORS.fog, 'center', '400');
+}
+
+// ============================================================================
+// DOLLY ZOOM - POV from behind person in doorway approaching the supergraphic
+// ============================================================================
+
+function drawDollyZoom(progress) {
+    // progress: 0 = standing in doorway, 1 = close to wall
+
+    // === ROOM with perspective that changes as we dolly in ===
+
+    // The "zoom" effect: as we move forward, walls spread apart
+    const spread = progress * 0.4; // How much walls spread
+    const wallDepth = 1 - progress * 0.6; // Wall gets "closer"
+
+    // Ceiling - gets higher as we approach
+    const ceilingY = 60 - progress * 40;
+    drawRect(0, 0, 480, ceilingY + 20, COLORS.fog);
+
+    // Floor - drops as we approach
+    const floorY = 260 + progress * 40;
+    const floorGrad = ctx.createLinearGradient(0, floorY, 0, 320);
+    floorGrad.addColorStop(0, COLORS.wood);
+    floorGrad.addColorStop(1, COLORS.woodDark);
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, floorY - 20, 480, 340 - floorY + 20);
+
+    // Back wall with supergraphic - gets larger as we approach
+    const wallMargin = 80 * wallDepth;
+    const wallTop = ceilingY + 10;
+    const wallBottom = floorY - 10;
+
+    // Wall background
+    ctx.fillStyle = COLORS.white;
+    ctx.fillRect(wallMargin, wallTop, 480 - wallMargin * 2, wallBottom - wallTop);
+
+    // Draw supergraphic on the wall (the maze preview)
+    const mazeScale = 0.4 + progress * 0.5;
+    const mazeX = 240 - (MAZE_WIDTH * 10 * mazeScale) / 2;
+    const mazeY = 160 - (MAZE_HEIGHT * 7 * mazeScale) / 2;
+
+    ctx.save();
+    for (let y = 0; y < MAZE_HEIGHT; y++) {
+        for (let x = 0; x < MAZE_WIDTH; x++) {
+            if (MAZE[y][x] === 0) {
+                ctx.fillStyle = COLORS.blue;
+                ctx.fillRect(
+                    mazeX + x * 10 * mazeScale,
+                    mazeY + y * 7 * mazeScale,
+                    10 * mazeScale + 1,
+                    7 * mazeScale + 1
+                );
+            }
+        }
+    }
+    ctx.restore();
+
+    // Sweeping curves on ceiling
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = COLORS.blue;
+    ctx.lineWidth = 15 + progress * 10;
+    ctx.beginPath();
+    ctx.arc(500 + progress * 50, -80 - progress * 100, 200 + progress * 100, Math.PI * 0.6, Math.PI * 1.0, false);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Left wall perspective
+    ctx.fillStyle = COLORS.sand;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(wallMargin, wallTop);
+    ctx.lineTo(wallMargin, wallBottom);
+    ctx.lineTo(0, 320);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right wall perspective
+    ctx.beginPath();
+    ctx.moveTo(480, 0);
+    ctx.lineTo(480 - wallMargin, wallTop);
+    ctx.lineTo(480 - wallMargin, wallBottom);
+    ctx.lineTo(480, 320);
+    ctx.closePath();
+    ctx.fill();
+
+    // === PERSON SILHOUETTE from behind (in towel) ===
+    // Shrinks and lowers as camera moves past them
+    const personScale = Math.max(0, 1 - progress * 1.5);
+    const personY = 320 - 100 * personScale;
+
+    if (personScale > 0.1) {
+        ctx.fillStyle = COLORS.black;
+
+        // Head
+        ctx.beginPath();
+        ctx.ellipse(240, personY - 70 * personScale, 18 * personScale, 22 * personScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Shoulders/body in towel (trapezoid shape)
+        ctx.beginPath();
+        ctx.moveTo(240 - 35 * personScale, personY - 45 * personScale);
+        ctx.lineTo(240 + 35 * personScale, personY - 45 * personScale);
+        ctx.lineTo(240 + 45 * personScale, personY + 60 * personScale);
+        ctx.lineTo(240 - 45 * personScale, personY + 60 * personScale);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Steam wisps
+    ctx.fillStyle = 'rgba(245, 243, 239, 0.4)';
+    for (let p of steamParticles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * (1 - progress * 0.5), 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Vignette for dream-like effect
+    const vignetteGrad = ctx.createRadialGradient(240, 160, 50, 240, 160, 300);
+    vignetteGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    vignetteGrad.addColorStop(1, `rgba(0,0,0,${0.3 + progress * 0.2})`);
+    ctx.fillStyle = vignetteGrad;
+    ctx.fillRect(0, 0, 480, 320);
+
+    // Text
+    if (progress < 0.3) {
+        drawText('*stepping out of the sauna*', 240, 305, 11, COLORS.fog, 'center', '400');
+    } else if (progress < 0.7) {
+        drawText('So dizzy from the heat...', 240, 305, 11, COLORS.fog, 'center', '400');
+    } else {
+        drawText('Is that... a maze?', 240, 305, 11, COLORS.red, 'center', '400');
+    }
+}
+
+// ============================================================================
+// HAND RAISE - Floating finger cursor appears
+// ============================================================================
+
+function drawHandRaise(progress) {
+    // First draw the maze room
+    drawMazeRoom();
+
+    // === FLOATING EYE ===
+    // Starts from center, focuses to the maze start position
+
+    // Match the wall dimensions from drawMazeRoom
+    const wallX = 20;
+    const wallY = 45;
+    const wallW = 440;
+    const wallH = 225;
+    const cellW = wallW / MAZE_WIDTH;
+    const cellH = wallH / MAZE_HEIGHT;
+
+    // Start position on maze
+    const targetX = wallX + startPos.x * cellW + cellW/2;
+    const targetY = wallY + startPos.y * cellH + cellH/2;
+
+    // Animate from center to target (eye focusing)
+    const startX = 240;
+    const startY = 160;
+    const eyeX = startX + (targetX - startX) * progress;
+    const eyeY = startY + (targetY - startY) * progress;
+
+    drawFloatingEye(eyeX, eyeY, 1);
+
+    // Text
+    drawText('TRACE THE PATH', 240, 15, 10, COLORS.black, 'center');
+    if (progress < 0.5) {
+        drawText('*focusing your gaze*', 240, 312, 9, COLORS.wood, 'center', '400');
+    } else {
+        drawText('ARROWS: MOVE', 240, 312, 9, COLORS.wood, 'center', '400');
+    }
+}
+
+// ============================================================================
+// FLOATING EYE - Player's gaze navigating the maze
+// ============================================================================
+
+function drawFloatingEye(x, y, scale = 1) {
+    ctx.save();
+
+    // Draw eye emoji - the player's gaze
+    ctx.font = SeaRanchStyle.makeFont(28 * scale);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('👁️', x, y);
+
+    ctx.restore();
+}
+
+// ============================================================================
+// MAZE ROOM - Just the room and maze, no pointer
+// ============================================================================
+
+function drawMazeRoom() {
+    // === GYM/LOCKER ROOM with large supergraphic maze on wall ===
+
+    // Ceiling - same as dolly zoom scene
+    drawRect(0, 0, 480, 35, COLORS.fog);
+
+    // Back wall (where the supergraphic maze is painted)
+    drawRect(0, 35, 480, 245, COLORS.white);
+
+    // Floor (wood)
+    const floorGrad = ctx.createLinearGradient(0, 280, 0, 320);
+    floorGrad.addColorStop(0, COLORS.wood);
+    floorGrad.addColorStop(1, COLORS.woodDark);
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, 280, 480, 40);
+
+    // Floor boards (perspective lines)
+    ctx.strokeStyle = COLORS.woodDark;
+    ctx.lineWidth = 1;
+    for (let x = 0; x < 480; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 280);
+        ctx.lineTo(x - 20, 320);
+        ctx.stroke();
+    }
+
+    // Left wall edge (perspective)
+    ctx.fillStyle = COLORS.sand;
+    ctx.beginPath();
+    ctx.moveTo(0, 35);
+    ctx.lineTo(15, 40);
+    ctx.lineTo(15, 275);
+    ctx.lineTo(0, 280);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right wall edge (perspective)
+    ctx.beginPath();
+    ctx.moveTo(480, 35);
+    ctx.lineTo(465, 40);
+    ctx.lineTo(465, 275);
+    ctx.lineTo(480, 280);
+    ctx.closePath();
+    ctx.fill();
+
+    // === SUPERGRAPHIC MAZE ON THE WALL ===
+    // Large but with some margin to show it's painted on wall
+    const wallX = 20;
+    const wallY = 45;
+    const wallW = 440;
+    const wallH = 225;
+
+    // Subtle shadow behind maze (painted on wall effect)
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    ctx.fillRect(wallX + 3, wallY + 3, wallW, wallH);
+
+    // Maze background
+    ctx.fillStyle = COLORS.white;
+    ctx.fillRect(wallX, wallY, wallW, wallH);
+
+    // Draw the maze ON the wall
+    const cellW = wallW / MAZE_WIDTH;
+    const cellH = wallH / MAZE_HEIGHT;
+
+    for (let y = 0; y < MAZE_HEIGHT; y++) {
+        for (let x = 0; x < MAZE_WIDTH; x++) {
+            const px = wallX + x * cellW;
+            const py = wallY + y * cellH;
+
+            if (MAZE[y][x] === 0) {
+                // Wall cells - supergraphic blue
+                ctx.fillStyle = COLORS.blue;
+                ctx.fillRect(px, py, cellW + 0.5, cellH + 0.5);
+            }
+        }
+    }
+
+    // Maze border (painted on wall)
+    ctx.strokeStyle = COLORS.black;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(wallX, wallY, wallW, wallH);
+
+    // End marker - red EXIT
+    const endPx = wallX + endPos.x * cellW;
+    const endPy = wallY + endPos.y * cellH;
+    ctx.fillStyle = COLORS.red;
+    ctx.fillRect(endPx - 2, endPy - 2, cellW + 4, cellH + 4);
+
+    // Small arrow on exit
+    ctx.fillStyle = COLORS.white;
+    ctx.beginPath();
+    ctx.moveTo(endPx + cellW/2, endPy + 2);
+    ctx.lineTo(endPx + cellW - 3, endPy + cellH/2);
+    ctx.lineTo(endPx + 3, endPy + cellH/2);
+    ctx.closePath();
+    ctx.fill();
+
+    // === SWEEPING BLUE CURVES on ceiling (supergraphic style) ===
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = COLORS.blue;
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(520, -100, 180, Math.PI * 0.6, Math.PI * 0.95, false);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // === RED ARROW accent on left wall ===
+    ctx.fillStyle = COLORS.red;
+    ctx.beginPath();
+    ctx.moveTo(8, 150);
+    ctx.lineTo(14, 170);
+    ctx.lineTo(2, 170);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(5, 168, 6, 18);
+}
+
+// ============================================================================
+// MAZE GAMEPLAY - Room + floating pointer finger
+// ============================================================================
+
+function drawMaze() {
+    drawMazeRoom();
+
+    // === FLOATING EYE (player's gaze) ===
+    // Match the wall dimensions from drawMazeRoom
+    const wallX = 20;
+    const wallY = 45;
+    const wallW = 440;
+    const wallH = 225;
+    const cellW = wallW / MAZE_WIDTH;
+    const cellH = wallH / MAZE_HEIGHT;
+
+    // No highlight on shifted cells - let the player notice (or not)
+
+    // Smooth interpolation
+    const displayX = player.x + (player.targetX - player.x) * 0.3;
+    const displayY = player.y + (player.targetY - player.y) * 0.3;
+    player.x = displayX;
+    player.y = displayY;
+
+    const eyeX = wallX + displayX * cellW + cellW/2;
+    const eyeY = wallY + displayY * cellH + cellH/2;
+
+    // Draw the floating eye cursor
+    drawFloatingEye(eyeX, eyeY, 1);
+
+    // === UI TEXT ===
+    drawText('TRACE THE PATH', 240, 15, 10, COLORS.black, 'center');
+    drawText('ARROWS: MOVE', 240, 312, 9, COLORS.wood, 'center', '400');
+}
+
+function drawMazeComplete() {
+    // Use shared win screen
+    SeaRanchStyle.drawWinScreen(ctx, 'ESCAPED!');
+}
+
+// ============================================================================
+// UPDATE
+// ============================================================================
+
+function update() {
+    stateTimer++;
+
+    switch (state) {
+        case GameState.TITLE:
+            // HTML overlay handles the title card
+            break;
+
+        case GameState.SAUNA_INTRO:
+            break;
+
+        case GameState.GETTING_HOT:
+            heatLevel = Math.min(1, heatLevel + 0.005);
+            if (heatLevel >= 1) {
+                state = GameState.DOOR_OPENS;
+                stateTimer = 0;
+            }
+            break;
+
+        case GameState.DOOR_OPENS:
+            if (stateTimer % 2 === 0) {
+                steamParticles.push({
+                    x: 240 + (Math.random() - 0.5) * 120,
+                    y: 160 + Math.random() * 80,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: -2 - Math.random() * 3,
+                    size: 15 + Math.random() * 25,
+                    life: 80
+                });
+                // Juice effect: steam rising particles
+                SeaRanchStyle.spawnParticles(240 + (Math.random() - 0.5) * 100, 200, { count: 8, color: '#e8e4dc', speed: 2, size: 4, life: 30, gravity: -0.05 });
+            }
+
+            steamParticles = steamParticles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                p.size *= 1.02;
+                return p.life > 0;
+            });
+
+            if (stateTimer > 80) {
+                state = GameState.DOLLY_ZOOM;
+                stateTimer = 0;
+            }
+            break;
+
+        case GameState.DOLLY_ZOOM:
+            // Slow dolly zoom - 480 frames (~8 seconds) - more dramatic
+            dollyZoom = Math.min(1, stateTimer / 480);
+
+            // Keep steam particles fading
+            steamParticles = steamParticles.filter(p => {
+                p.x += p.vx * 0.5;
+                p.y += p.vy * 0.3;
+                p.life--;
+                return p.life > 0;
+            });
+
+            // Add occasional new steam
+            if (stateTimer % 15 === 0 && stateTimer < 240) {
+                steamParticles.push({
+                    x: 240 + (Math.random() - 0.5) * 200,
+                    y: 100 + Math.random() * 150,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: -1 - Math.random() * 2,
+                    size: 20 + Math.random() * 30,
+                    life: 80
+                });
+            }
+
+            if (stateTimer > 500) {
+                state = GameState.HAND_RAISE;
+                stateTimer = 0;
+            }
+            break;
+
+        case GameState.HAND_RAISE:
+            // Eye focus animation - 180 frames (~3 seconds)
+            handRaiseProgress = Math.min(1, stateTimer / 180);
+
+            if (stateTimer > 200) {
+                state = GameState.MAZE_PLAYING;
+                stateTimer = 0;
+            }
+            break;
+
+        case GameState.MAZE_PLAYING:
+            mazePlayTime++;
+
+            // Initialize next shift time on first frame
+            if (nextShiftTime === 0 && mazeShiftsRemaining > 0) {
+                // First shift happens after 3-5 seconds
+                nextShiftTime = mazePlayTime + 180 + Math.floor(Math.random() * 120);
+            }
+
+            // Trigger dizzy effect / maze shift
+            if (mazeShiftsRemaining > 0 && mazePlayTime >= nextShiftTime) {
+                // Start hallucinatory dizzy effect
+                dizzyBlurAmount = 1;
+                dizzyTimer = 120; // Effect lasts 2 seconds
+
+                // Shift the maze walls
+                shiftMazeWalls();
+
+                // Screen shake for impact
+                SeaRanchStyle.shake(4, 0.9);
+
+                mazeShiftsRemaining--;
+
+                // Schedule next shift if any remain (5-8 seconds apart)
+                if (mazeShiftsRemaining > 0) {
+                    nextShiftTime = mazePlayTime + 300 + Math.floor(Math.random() * 180);
+                }
+            }
+
+            // Animate dizzy effect - rises then falls
+            if (dizzyTimer > 0) {
+                dizzyTimer--;
+                // Bell curve: rises to peak at 45 frames, then falls
+                const progress = (90 - dizzyTimer) / 90;
+                dizzyBlurAmount = Math.sin(progress * Math.PI); // 0 -> 1 -> 0
+            } else {
+                dizzyBlurAmount = 0;
+            }
+
+            // Check win
+            if (Math.abs(player.targetX - endPos.x) < 0.5 &&
+                Math.abs(player.targetY - endPos.y) < 0.5) {
+                state = GameState.MAZE_COMPLETE;
+                stateTimer = 0;
+                // Save completion (Level 11 in narrative order)
+                SeaRanchStyle.saveCompletion(11);
+                // Juice effect: success!
+                SeaRanchStyle.shake(3, 0.8);
+                SeaRanchStyle.flash(SeaRanchStyle.colors.cream, 0.15);
+            }
+            break;
+
+        case GameState.MAZE_COMPLETE:
+            break;
+    }
+}
+
+// ============================================================================
+// RENDER
+// ============================================================================
+
+function render() {
+    ctx.clearRect(0, 0, 480, 320);
+    ctx.save();
+    SeaRanchStyle.applyShake(ctx);
+
+    switch (state) {
+        case GameState.TITLE:
+            // HTML overlay handles the title card
+            break;
+
+        case GameState.SAUNA_INTRO:
+        case GameState.GETTING_HOT:
+            drawSaunaScene();
+            break;
+
+        case GameState.DOOR_OPENS:
+            drawDoorScene(Math.min(1, stateTimer / 50));
+            break;
+
+        case GameState.DOLLY_ZOOM:
+            drawDollyZoom(dollyZoom);
+            break;
+
+        case GameState.HAND_RAISE:
+            drawHandRaise(handRaiseProgress);
+            break;
+
+        case GameState.MAZE_PLAYING:
+            // Hallucinatory dizzy effect - subtle and unsettling
+            if (dizzyBlurAmount > 0) {
+                ctx.save();
+
+                // Slight drift/sway - like the room is breathing
+                const sway = Math.sin(mazePlayTime * 0.08) * dizzyBlurAmount * 3;
+                const breathe = Math.sin(mazePlayTime * 0.05) * dizzyBlurAmount * 0.015;
+
+                ctx.translate(240 + sway, 160);
+                ctx.scale(1 + breathe, 1 + breathe);
+                ctx.translate(-240, -160);
+
+                // Very subtle hue shift - things feel "off"
+                ctx.filter = `hue-rotate(${dizzyBlurAmount * 8}deg) saturate(${1 + dizzyBlurAmount * 0.3})`;
+            }
+
+            drawMaze();
+
+            if (dizzyBlurAmount > 0) {
+                ctx.filter = 'none';
+
+                // Heat shimmer / mirage effect - wavy distortion feeling
+                const shimmerAlpha = dizzyBlurAmount * 0.08;
+                ctx.fillStyle = `rgba(255, 200, 150, ${shimmerAlpha})`;
+                ctx.fillRect(0, 0, 480, 320);
+
+                // Peripheral darkness creeping in - tunnel vision
+                const tunnelGrad = ctx.createRadialGradient(240, 160, 80, 240, 160, 280);
+                tunnelGrad.addColorStop(0, 'rgba(0,0,0,0)');
+                tunnelGrad.addColorStop(0.7, 'rgba(0,0,0,0)');
+                tunnelGrad.addColorStop(1, `rgba(0,0,0,${dizzyBlurAmount * 0.4})`);
+                ctx.fillStyle = tunnelGrad;
+                ctx.fillRect(0, 0, 480, 320);
+
+                // Occasional "floater" spots in vision
+                if (Math.random() < dizzyBlurAmount * 0.3) {
+                    ctx.fillStyle = `rgba(0, 0, 0, ${0.1 + Math.random() * 0.1})`;
+                    ctx.beginPath();
+                    ctx.arc(
+                        100 + Math.random() * 280,
+                        80 + Math.random() * 160,
+                        3 + Math.random() * 8,
+                        0, Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+            break;
+
+        case GameState.MAZE_COMPLETE:
+            drawMazeComplete();
+            break;
+    }
+
+    SeaRanchStyle.updateJuice(ctx);
+    ctx.restore();
+}
+
+// ============================================================================
+// INPUT
+// ============================================================================
+
+function canMove(nx, ny) {
+    if (nx < 0 || nx >= MAZE_WIDTH || ny < 0 || ny >= MAZE_HEIGHT) return false;
+    return MAZE[ny][nx] !== 0;
+}
+
+document.addEventListener('keydown', (e) => {
+    const isActionKey = e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyA';
+    const isBackKey = e.code === 'Escape' || e.code === 'KeyB';
+
+    // B/ESC always returns to menu (from any state)
+    if (isBackKey) {
+        window.location.href = 'level0-menu.html';
+        return;
+    }
+
+    // Title screen - start game
+    if (state === GameState.TITLE && isActionKey) {
+        document.getElementById('title-card').style.display = 'none';
+        state = GameState.SAUNA_INTRO;
+        stateTimer = 0;
+    }
+
+    if (state === GameState.SAUNA_INTRO && isActionKey) {
+        state = GameState.GETTING_HOT;
+        stateTimer = 0;
+    }
+
+    if (state === GameState.MAZE_PLAYING) {
+        const tx = Math.round(player.targetX);
+        const ty = Math.round(player.targetY);
+
+        switch (e.code) {
+            case 'ArrowUp':
+            case 'KeyW':
+                if (canMove(tx, ty - 1)) player.targetY = ty - 1;
+                break;
+            case 'ArrowDown':
+            case 'KeyS':
+                if (canMove(tx, ty + 1)) player.targetY = ty + 1;
+                break;
+            case 'ArrowLeft':
+                if (canMove(tx - 1, ty)) player.targetX = tx - 1;
+                break;
+            case 'ArrowRight':
+            case 'KeyD':
+                if (canMove(tx + 1, ty)) player.targetX = tx + 1;
+                break;
+        }
+    }
+
+    if (state === GameState.MAZE_COMPLETE && isActionKey) {
+        // Replay the level
+        window.location.reload();
+    }
+});
+
+// ============================================================================
+// GAME LOOP
+// ============================================================================
+
+function gameLoop() {
+    update();
+    render();
+
+    // Apply weathered film grain effect for consistent Sea Ranch aesthetic
+    if (state !== GameState.TITLE) {
+        SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+SeaRanchStyle.setupTouchControls();
+gameLoop();
+</script>
+</body>
+</html>
