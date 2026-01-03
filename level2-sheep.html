@@ -162,6 +162,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
 
         .title-card .wood-bg {
@@ -749,10 +750,10 @@
 
             // Player input with acceleration
             let ax = 0, ay = 0;
-            if (state.keys['ArrowLeft'] || state.keys['a']) { ax -= 1; player.facing = -1; }
-            if (state.keys['ArrowRight'] || state.keys['d']) { ax += 1; player.facing = 1; }
-            if (state.keys['ArrowUp'] || state.keys['w']) ay -= 1;
-            if (state.keys['ArrowDown'] || state.keys['s']) ay += 1;
+            if (state.keys['ArrowLeft']) { ax -= 1; player.facing = -1; }  // 'a' is action key, so left is arrow-only
+            if (state.keys['ArrowRight'] || state.keys['d'] || state.keys['D']) { ax += 1; player.facing = 1; }
+            if (state.keys['ArrowUp'] || state.keys['w'] || state.keys['W']) ay -= 1;
+            if (state.keys['ArrowDown'] || state.keys['s'] || state.keys['S']) ay += 1;
 
             if (ax !== 0 && ay !== 0) {
                 ax *= 0.707;

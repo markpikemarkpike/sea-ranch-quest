@@ -16,13 +16,178 @@ html, body {
 #game-container { width: 640px; height: 480px; position: relative; overflow: hidden; background: #e8e4dc; }
 #gameCanvas { display: block; width: 640px; height: 480px; image-rendering: pixelated; image-rendering: crisp-edges; }
 @media (max-width: 680px) or (max-height: 520px) {
-    #game-container, #gameCanvas { width: 100vw; height: 100vh; }
+}
+
+/* CSS Variables */
+:root {
+    --red: #C41E3A;
+    --blue: #2E5DA8;
+    --black: #1a1a1a;
+    --white: #f5f5f0;
+    --cream: #f5f5f0;
+    --fog: #e8e4dc;
+    --wood: #8b7355;
+    --wood-light: #a89070;
+    --wood-dark: #5c4a3a;
+    --sand: #d4c4a8;
+}
+
+/* Title Card Styles */
+.title-card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.title-card .wood-bg {
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(
+            90deg,
+            transparent 0px,
+            transparent 3px,
+            rgba(139, 115, 85, 0.08) 3px,
+            rgba(139, 115, 85, 0.08) 4px
+        ),
+        radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+        radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+}
+
+.title-card .supergraphic {
+    position: absolute;
+    top: -80px;
+    right: -120px;
+    width: 550px;
+    height: 550px;
+    pointer-events: none;
+}
+
+.title-card .supergraphic::before,
+.title-card .supergraphic::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 36px solid var(--blue);
+}
+
+.title-card .supergraphic::before {
+    width: 420px;
+    height: 420px;
+    top: 0;
+    right: 0;
+    border-color: transparent transparent var(--blue) var(--blue);
+    transform: rotate(-45deg);
+}
+
+.title-card .supergraphic::after {
+    width: 320px;
+    height: 320px;
+    top: 50px;
+    right: 50px;
+    border-color: transparent transparent var(--blue) var(--blue);
+    transform: rotate(-45deg);
+    opacity: 0.7;
+}
+
+.title-card .arrow-accent {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 80px;
+    height: 100px;
+    pointer-events: none;
+}
+
+.title-card .arrow-accent::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 50px solid var(--red);
+    top: 0;
+}
+
+.title-card .arrow-accent::after {
+    content: '';
+    position: absolute;
+    width: 26px;
+    height: 50px;
+    background: var(--red);
+    top: 45px;
+    left: 27px;
+}
+
+.title-card .title-content {
+    position: relative;
+    text-align: center;
+    z-index: 10;
+}
+
+.title-card .level-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--black);
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.title-card .level-subtitle {
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--wood);
+}
+
+.title-card .title-grain {
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+}
+
+.title-card .continue-hint {
+    position: absolute;
+    bottom: 36px;
+    right: 36px;
+    font-size: 10px;
+    color: var(--wood);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 0; }
 }
 </style>
 </head>
 <body>
 <div id="game-container">
 <canvas id="gameCanvas" width="640" height="480"></canvas>
+<!-- Title Card -->
+<div id="title-card" class="title-card">
+    <div class="wood-bg"></div>
+    <div class="title-grain"></div>
+    <div class="supergraphic"></div>
+    <div class="arrow-accent"></div>
+    <div class="title-content">
+        <div class="level-title">Woodblock Print</div>
+        <div class="level-subtitle">Carve a whale watching memory</div>
+    </div>
+    <div class="continue-hint">A to start &bull; B for menu</div>
+</div>
 </div>
 <script>
 const IMAGES = {
@@ -61,6 +226,7 @@ function loadImages() {
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const titleCard = document.getElementById('title-card');
 const W = 640, H = 480;
 
 // Input handling
@@ -69,11 +235,11 @@ const justPressedKeys = {};
 document.addEventListener('keydown', (e) => { if (!keys[e.code]) justPressedKeys[e.code] = true; keys[e.code] = true; e.preventDefault(); });
 document.addEventListener('keyup', (e) => { keys[e.code] = false; });
 function isDown(key) {
-    const codes = { 'left': ['ArrowLeft', 'KeyA'], 'right': ['ArrowRight', 'KeyD'], 'up': ['ArrowUp', 'KeyW'], 'down': ['ArrowDown', 'KeyS'], 'a': ['KeyZ', 'Space', 'Enter'], 'b': ['KeyX', 'Escape'] };
+    const codes = { 'left': ['ArrowLeft'], 'right': ['ArrowRight', 'KeyD'], 'up': ['ArrowUp', 'KeyW'], 'down': ['ArrowDown', 'KeyS'], 'a': ['KeyZ', 'Space', 'Enter', 'KeyA'], 'b': ['KeyX', 'Escape', 'KeyB'] };
     return (codes[key] || []).some(c => keys[c]);
 }
 function justPressed(key) {
-    const codes = { 'left': ['ArrowLeft', 'KeyA'], 'right': ['ArrowRight', 'KeyD'], 'up': ['ArrowUp', 'KeyW'], 'down': ['ArrowDown', 'KeyS'], 'a': ['KeyZ', 'Space', 'Enter'], 'b': ['KeyX', 'Escape'], 'select': ['KeyY', 'Tab'] };
+    const codes = { 'left': ['ArrowLeft'], 'right': ['ArrowRight', 'KeyD'], 'up': ['ArrowUp', 'KeyW'], 'down': ['ArrowDown', 'KeyS'], 'a': ['KeyZ', 'Space', 'Enter', 'KeyA'], 'b': ['KeyX', 'Escape', 'KeyB'], 'select': ['KeyY', 'Tab'] };
     return (codes[key] || []).some(c => justPressedKeys[c]);
 }
 function clearJustPressed() { for (const k in justPressedKeys) justPressedKeys[k] = false; }
@@ -147,7 +313,7 @@ function initDesignMask() {
 function initGame() {
     initDesignMask();
     toolPickedUp = false; toolX = TOOL.restX; toolY = TOOL.restY;
-    cursorX = 320; cursorY = 240;
+    cursorX = TOOL.restX; cursorY = TOOL.restY;
     woodChips = []; printPhase = 0; inkRollerX = 130; paperY = -300; pressTimer = 0;
 }
 
@@ -230,6 +396,14 @@ function drawDeckScene() {
         setColor('#4a3828');
         rect(260, 220, 380, 6);
         rect(260, 280, 380, 6);
+
+        // Adirondack chair silhouette (right side)
+        setColor('#2e261f');
+        rect(480, 260, 80, 100);  // back rest
+        rect(460, 340, 120, 20);   // seat
+        rect(450, 300, 120, 12);   // arm
+        rect(470, 360, 8, 40);     // left leg
+        rect(550, 360, 8, 40);     // right leg
     }
 }
 
@@ -255,8 +429,9 @@ function drawWhale(y, phase) {
             for (let i = 1; i <= 5; i++) circle((Math.random()-0.5)*20, -10-i*8, 3);
         } else if (phase <= 3) {
             ellipse(0, 0, 30, 50);
-            polygon([-15, 40, -35, 60, -10, 50]);
-            polygon([15, 40, 35, 60, 10, 50]);
+            polygon([-15, 40, -35, 60, -10, 50]);  // left fluke
+            polygon([15, 40, 35, 60, 10, 50]);    // right fluke
+            polygon([15, 0, 25, -20, 20, 5]);     // dorsal fin
         } else {
             polygon([-25, -10, 0, 15, 25, -10, 0, 5]);
             ellipse(0, 30, 15, 25);
@@ -337,7 +512,7 @@ function drawCarvingUI() {
     polygon([22, -8, 65, -6, 70, 0, 65, 4, 22, 6, 18, 0]);
     setColor('#a0a0a8');
     polygon([15, -8, 20, -10, 20, 10, 15, 8]);
-    setColor('#7078808');
+    setColor('#707880');
     polygon([-25, 0, 0, -7, 15, -8, 15, 8, 0, 7]);
     setColor('#b8c0c8');
     polygon([-22, 0, -5, -4, -5, 4]);
@@ -364,7 +539,7 @@ function drawCarvingUI() {
     setColor('#808080');
     if (!toolPickedUp) text('Move to chisel, press A to pick up', 25, 375, 'left', 10);
     else if (progress < 1) text('Hold A to carve around the whale design', 25, 375, 'left', 10);
-    else text('Carving complete! Press SELECT to print', 25, 375, 'left', 10);
+    else text('Carving complete! Move to PRINT button, press A', 25, 375, 'left', 10);
     
     // Print button
     if (progress >= 1) {
@@ -486,7 +661,7 @@ function drawCabinInterior(showPrint) {
     } else {
         setColor('#8c6040');
         rect(0, 0, W, H);
-        setColor('#7050308');
+        setColor('#705030');
         for (let x = 0; x < W; x += 80) line(x, 0, x, H, 1);
         setColor('#403020');
         rect(250, 140, 180, 130);
@@ -518,7 +693,8 @@ function update(dt) {
     stateTimer++;
     
     if (gameState === 'title') {
-        if (justPressed('a')) { gameState = 'cutscene_deck'; stateTimer = 0; }
+        if (justPressed('a')) { titleCard.classList.add('hidden'); gameState = 'cutscene_deck'; stateTimer = 0; }
+        if (justPressed('b')) { window.location.href = 'level0-menu.html'; }
         return;
     }
     
@@ -527,6 +703,7 @@ function update(dt) {
             gameState = 'cutscene_whale'; stateTimer = 0;
             whaleY = WHALE_SCENE.waterLine + 30; whalePhase = 0; splashParticles = [];
         }
+        if (justPressed('b')) { window.location.href = 'level0-menu.html'; }
         return;
     }
     
@@ -552,6 +729,7 @@ function update(dt) {
         if ((whalePhase === 5 && stateTimer > 80) || justPressed('a')) {
             gameState = 'carving'; stateTimer = 0; initGame();
         }
+        if (justPressed('b')) { window.location.href = 'level0-menu.html'; }
         return;
     }
     
@@ -569,7 +747,7 @@ function update(dt) {
         
         if (justPressed('a') && !toolPickedUp) {
             const dx = cursorX - TOOL.restX, dy = cursorY - TOOL.restY;
-            if (dx*dx + dy*dy < 60*60) toolPickedUp = true;
+            if (dx*dx + dy*dy < 80*80) toolPickedUp = true;
         }
         
         if (toolPickedUp && isDown('a')) carveAt(toolX - 30, toolY);
@@ -584,10 +762,10 @@ function update(dt) {
                 gameState = 'printing'; stateTimer = 0; printPhase = 0;
             }
         }
-        if (justPressed('b')) gameState = 'title';
+        if (justPressed('b')) { window.location.href = 'level0-menu.html'; }
         return;
     }
-    
+
     if (gameState === 'printing') {
         if (printPhase === 0) {
             if (stateTimer > 90) { printPhase = 1; inkRollerX = 130; stateTimer = 0; }
@@ -603,16 +781,19 @@ function update(dt) {
         } else if (printPhase === 4) {
             if (justPressed('a')) { gameState = 'hanging'; stateTimer = 0; }
         }
+        if (justPressed('b')) { window.location.href = 'level0-menu.html'; }
         return;
     }
-    
+
     if (gameState === 'hanging') {
         if (stateTimer > 60 || justPressed('a')) { gameState = 'done'; stateTimer = 0; }
+        if (justPressed('b')) { window.location.href = 'level0-menu.html'; }
         return;
     }
-    
+
     if (gameState === 'done') {
-        if (justPressed('a')) gameState = 'title';
+        if (justPressed('a')) { titleCard.classList.remove('hidden'); gameState = 'title'; }
+        if (justPressed('b')) { window.location.href = 'level0-menu.html'; }
         return;
     }
 }
@@ -620,7 +801,7 @@ function update(dt) {
 function draw() {
     ctx.globalAlpha = 1;
     
-    if (gameState === 'title') { drawTitleCard(); return; }
+    if (gameState === 'title') { return; } // HTML title card is visible
     
     if (gameState === 'cutscene_deck') {
         drawDeckScene();
@@ -664,6 +845,17 @@ function draw() {
         drawCabinInterior(true);
         setColor('rgba(0,0,0,0.4)');
         rect(0, 0, W, H);
+
+        // Supergraphic accent arcs
+        setColor('rgba(46,92,168,0.12)');
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.arc(665, 60, 150, Math.PI * 0.55, Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(650, 75, 110, Math.PI * 0.55, Math.PI);
+        ctx.stroke();
+
         setColor('#ffffff');
         text('Level Complete', W/2, 200, 'center', 32);
         setColor('#d4c4a8');

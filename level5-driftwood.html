@@ -48,6 +48,146 @@ html, body {
     image-rendering: crisp-edges;
 }
 
+/* Title Card Styles */
+.title-card {
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.title-card.hidden {
+    display: none;
+}
+
+
+.title-card .wood-bg {
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(
+            90deg,
+            transparent 0px,
+            transparent 3px,
+            rgba(139, 115, 85, 0.08) 3px,
+            rgba(139, 115, 85, 0.08) 4px
+        ),
+        radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+        radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+}
+
+.title-card .supergraphic {
+    position: absolute;
+    top: -80px;
+    right: -120px;
+    width: 550px;
+    height: 550px;
+    pointer-events: none;
+}
+
+.title-card .supergraphic::before,
+.title-card .supergraphic::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 36px solid var(--blue);
+}
+
+.title-card .supergraphic::before {
+    width: 420px;
+    height: 420px;
+    top: 0;
+    right: 0;
+    border-color: transparent transparent var(--blue) var(--blue);
+    transform: rotate(-45deg);
+}
+
+.title-card .supergraphic::after {
+    width: 320px;
+    height: 320px;
+    top: 50px;
+    right: 50px;
+    border-color: transparent transparent var(--blue) var(--blue);
+    transform: rotate(-45deg);
+    opacity: 0.7;
+}
+
+.title-card .arrow-accent {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 80px;
+    height: 100px;
+    pointer-events: none;
+}
+
+.title-card .arrow-accent::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 50px solid var(--red);
+    top: 0;
+}
+
+.title-card .arrow-accent::after {
+    content: '';
+    position: absolute;
+    width: 26px;
+    height: 50px;
+    background: var(--red);
+    top: 45px;
+    left: 27px;
+}
+
+.title-card .title-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+}
+.title-card .level-title {
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--black);
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 12px;
+}
+
+.title-card .level-subtitle {
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--wood);
+}
+
+.title-card .continue-hint {
+    position: absolute;
+    bottom: 36px;
+    right: 36px;
+    font-size: 12px;
+    color: var(--wood);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.title-card .title-grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.4;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
 @media (max-width: 680px) or (max-height: 520px) {
     #game-container, #gameCanvas {
         width: 100vw;
@@ -58,6 +198,17 @@ html, body {
 </head>
 <body>
 <div id="game-container">
+<div class="title-card" id="titleCard">
+    <div class="wood-bg"></div>
+    <div class="supergraphic"></div>
+    <div class="arrow-accent"></div>
+    <div class="title-content">
+        <div class="level-title">Driftwood Fort</div>
+        <div class="level-subtitle">Build Beach Shelters</div>
+    </div>
+    <div class="continue-hint">A to start · B to menu</div>
+    <div class="title-grain"></div>
+</div>
 <canvas id="gameCanvas" width="640" height="480"></canvas>
 </div>
 
@@ -96,6 +247,7 @@ function loadImages() {
 // ============ CANVAS SETUP ============
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const titleCard = document.getElementById('titleCard');
 const W = 640, H = 480;
 
 // ============ COLORS ============
@@ -131,24 +283,24 @@ document.addEventListener('keyup', (e) => {
 
 function isDown(key) {
     const codes = {
-        'left': ['ArrowLeft', 'KeyA'],
+        'left': ['ArrowLeft'],  // 'A' key is action button, not left
         'right': ['ArrowRight', 'KeyD'],
         'up': ['ArrowUp', 'KeyW'],
         'down': ['ArrowDown', 'KeyS'],
-        'a': ['KeyZ', 'Space', 'Enter'],
-        'b': ['KeyX', 'Escape', 'Backspace']
+        'a': ['KeyZ', 'Space', 'Enter', 'KeyA'],  // Added KeyA
+        'b': ['KeyX', 'Escape', 'Backspace', 'KeyB']
     };
     return (codes[key] || []).some(c => keys[c]);
 }
 
 function justPressed(key) {
     const codes = {
-        'left': ['ArrowLeft', 'KeyA'],
+        'left': ['ArrowLeft'],  // 'A' key is action button, not left
         'right': ['ArrowRight', 'KeyD'],
         'up': ['ArrowUp', 'KeyW'],
         'down': ['ArrowDown', 'KeyS'],
-        'a': ['KeyZ', 'Space', 'Enter'],
-        'b': ['KeyX', 'Escape', 'Backspace']
+        'a': ['KeyZ', 'Space', 'Enter', 'KeyA'],  // Added KeyA
+        'b': ['KeyX', 'Escape', 'Backspace', 'KeyB']
     };
     return (codes[key] || []).some(c => justPressedKeys[c]);
 }
@@ -237,7 +389,7 @@ const GROUND_Y = 440;
 const FORT_LEFT = 120;
 const FORT_RIGHT = 520;
 const FORT_CENTER = 320;
-const DROP_SPEED = 2.5;
+const DROP_SPEED = 1.0;
 const MAX_PIECES = 10;
 const MOVE_SPEED = 6;
 const PIECE_SCALE = 0.75;
@@ -414,17 +566,31 @@ function wouldLandOn(piece, other) {
     const dx = Math.abs(piece.x - other.x);
     const overlapX = (dims.w + otherDims.w) / 2 * 0.5;
     if (dx >= overlapX) return false;
-    
+
     const pieceBottom = piece.y + dims.h / 2;
+    const pieceTop = piece.y - dims.h / 2;
     const otherTop = other.y - otherDims.h / 2;
-    return pieceBottom >= otherTop - 3 && pieceBottom <= otherTop + 12;
+    const otherBottom = other.y + otherDims.h / 2;
+
+    // Normal landing: bottom of piece near top of other
+    if (pieceBottom >= otherTop - 3 && pieceBottom <= otherTop + 15) {
+        return true;
+    }
+    // Piece spawned inside or passed through other - also count as landing
+    if (pieceTop < otherBottom && pieceBottom > otherTop) {
+        return true;
+    }
+    return false;
 }
 
 function getGhostY(piece) {
     const dims = getEffectiveDims(piece);
     let testY = piece.y;
-    
-    while (testY + dims.h / 2 < GROUND_Y) {
+    let iterations = 0;
+    const maxIterations = 200; // Safety limit
+
+    while (testY + dims.h / 2 < GROUND_Y && iterations < maxIterations) {
+        iterations++;
         testY += 4;
         for (const other of placedPieces) {
             if (other !== piece && other.settled) {
@@ -453,7 +619,7 @@ function spawnPiece() {
         endGame();
         return;
     }
-    
+
     const nameIndex = nextPieceIndex !== null ? nextPieceIndex : getRandomPieceIndex();
     nextPieceIndex = getRandomPieceIndex();
     currentPiece = createPiece(nameIndex, FORT_CENTER, 50);
@@ -551,6 +717,7 @@ function initGame() {
 }
 
 function startNewGame() {
+    titleCard.classList.add('hidden');
     currentLevel = 0;
     totalStarfish = 0;
     initGame();
@@ -952,12 +1119,18 @@ function drawTitleCard() {
 // ============ UPDATE ============
 function update(dt) {
     time++;
-    
+
+    // Global B button check - always allow returning to menu
+    if (justPressed('b')) {
+        window.location.href = 'level0-menu.html';
+        return;
+    }
+
     if (shakeDuration > 0) {
         shakeDuration -= dt;
         if (shakeDuration <= 0) shakeAmount = 0;
     }
-    
+
     if (gameState === 'title') {
         if (justPressed('a')) {
             startNewGame();
@@ -966,52 +1139,48 @@ function update(dt) {
     }
     
     if (gameState === 'playing') {
-        if (currentPiece && !currentPiece.settled) {
-            const dims = getEffectiveDims(currentPiece);
-            
-            if (isDown('left')) {
-                currentPiece.x = Math.max(FORT_LEFT + dims.w/2, currentPiece.x - MOVE_SPEED);
+        // Failsafe: if no active piece, try to spawn one or end game
+        if (!currentPiece || currentPiece.settled) {
+            if (piecesPlaced >= MAX_PIECES) {
+                endGame();
+            } else {
+                spawnPiece();
             }
-            if (isDown('right')) {
-                currentPiece.x = Math.min(FORT_RIGHT - dims.w/2, currentPiece.x + MOVE_SPEED);
-            }
-            if (justPressed('up')) {
-                currentPiece.rotation -= Math.PI / 6;
-            }
-            if (justPressed('down')) {
-                currentPiece.rotation += Math.PI / 6;
-            }
-            if (justPressed('a')) {
-                hardDrop();
-            }
-            
-            updatePiece(currentPiece);
+            return;
         }
-        
-        if (justPressed('b')) {
-            // Return to menu - would need parent communication
-            gameState = 'title';
+
+        const dims = getEffectiveDims(currentPiece);
+
+        if (isDown('left')) {
+            currentPiece.x = Math.max(FORT_LEFT + dims.w/2, currentPiece.x - MOVE_SPEED);
         }
+        if (isDown('right')) {
+            currentPiece.x = Math.min(FORT_RIGHT - dims.w/2, currentPiece.x + MOVE_SPEED);
+        }
+        if (justPressed('up')) {
+            currentPiece.rotation -= Math.PI / 6;
+        }
+        if (justPressed('down')) {
+            currentPiece.rotation += Math.PI / 6;
+        }
+        if (justPressed('a')) {
+            hardDrop();
+        }
+
+        updatePiece(currentPiece);
         return;
     }
-    
+
     if (gameState === 'complete') {
         if (justPressed('a')) {
             nextLevel();
         }
-        if (justPressed('b')) {
-            totalStarfish -= starfish;
-            initGame();
-        }
         return;
     }
-    
+
     if (gameState === 'gameover') {
         if (justPressed('a')) {
             startNewGame();
-        }
-        if (justPressed('b')) {
-            gameState = 'title';
         }
         return;
     }
@@ -1030,7 +1199,9 @@ function draw() {
     }
     
     if (gameState === 'title') {
-        drawTitleCard();
+        // Using HTML title card instead of canvas
+        setColor(COLORS.cream);
+        rect(0, 0, W, H);
     } else if (gameState === 'playing') {
         drawBackground();
         drawFortOutline();
@@ -1051,11 +1222,20 @@ let lastTime = performance.now();
 function gameLoop(currentTime) {
     const dt = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
-    
-    update(dt);
-    draw();
+
+    try {
+        update(dt);
+        draw();
+    } catch (e) {
+        console.error('Game error:', e);
+        // On error, allow B to still work
+        if (justPressed('b')) {
+            window.location.href = 'level0-menu.html';
+            return;
+        }
+    }
     clearJustPressed();
-    
+
     requestAnimationFrame(gameLoop);
 }
 

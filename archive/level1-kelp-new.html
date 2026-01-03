@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Kelp Forest</title>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* HTML/CSS Title Card - Barbara Stauffacher Solomon style */
+        .title-card {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-card .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(139, 115, 85, 0.08) 3px,
+                    rgba(139, 115, 85, 0.08) 4px
+                ),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+
+        .title-card .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+
+        .title-card .supergraphic::before,
+        .title-card .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+
+        .title-card .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+
+        .title-card .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+
+        .title-card .arrow-accent {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 80px;
+            height: 100px;
+            pointer-events: none;
+        }
+
+        .title-card .arrow-accent::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red);
+            top: 0;
+        }
+
+        .title-card .arrow-accent::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 50px;
+            background: var(--red);
+            top: 45px;
+            left: 27px;
+        }
+
+        .title-card .title-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .title-card .level-title {
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .title-card .level-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--wood);
+        }
+
+        .title-card .continue-hint {
+            position: absolute;
+            bottom: 36px;
+            right: 36px;
+            font-size: 12px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .title-card .title-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* Touch Controls */
+        .touch-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            pointer-events: none;
+            z-index: 9999;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .touch-dpad {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            position: absolute;
+            background: rgba(245, 245, 240, 0.85);
+            border: 3px solid #1a1a1a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: bold;
+            font-size: 18px;
+            color: #1a1a1a;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: transform 0.05s, background 0.05s;
+        }
+
+        .touch-btn.active {
+            background: #2E5DA8;
+            color: #f5f5f0;
+            transform: scale(0.95);
+        }
+
+        .touch-dpad .touch-btn {
+            width: 44px;
+            height: 44px;
+        }
+
+        .touch-dpad .touch-up { top: 0; left: 50%; transform: translateX(-50%); }
+        .touch-dpad .touch-up.active { transform: translateX(-50%) scale(0.95); }
+        .touch-dpad .touch-down { bottom: 0; left: 50%; transform: translateX(-50%); }
+        .touch-dpad .touch-down.active { transform: translateX(-50%) scale(0.95); }
+        .touch-dpad .touch-left { left: 0; top: 50%; transform: translateY(-50%); }
+        .touch-dpad .touch-left.active { transform: translateY(-50%) scale(0.95); }
+        .touch-dpad .touch-right { right: 0; top: 50%; transform: translateY(-50%); }
+        .touch-dpad .touch-right.active { transform: translateY(-50%) scale(0.95); }
+
+        .touch-dpad::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            background: rgba(139, 115, 85, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .touch-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+            pointer-events: auto;
+        }
+
+        .touch-actions-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .touch-action-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 20px;
+        }
+
+        .touch-btn-a {
+            background: rgba(196, 30, 58, 0.9);
+            color: #f5f5f0;
+            border-color: #a01830;
+        }
+        .touch-btn-a.active {
+            background: #C41E3A;
+            transform: scale(0.92);
+        }
+
+        .touch-btn-b {
+            background: rgba(46, 93, 168, 0.9);
+            color: #f5f5f0;
+            border-color: #1e4d88;
+        }
+        .touch-btn-b.active {
+            background: #2E5DA8;
+            transform: scale(0.92);
+        }
+
+        .touch-menu-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: auto;
+            z-index: 9999;
+            display: none;
+        }
+
+        .arrow-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        @media (max-height: 400px) and (orientation: landscape) {
+            .touch-controls {
+                height: 120px;
+                padding: 10px;
+            }
+            .touch-dpad {
+                width: 100px;
+                height: 100px;
+            }
+            .touch-dpad .touch-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            .touch-action-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- HTML/CSS Title Card -->
+        <div class="title-card" id="title-card">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="arrow-accent"></div>
+            <div class="title-content">
+                <div class="level-title">Kelp Forest</div>
+                <div class="level-subtitle">Restore the Balance</div>
+            </div>
+            <div class="continue-hint">A to start - B to menu</div>
+            <div class="title-grain"></div>
+        </div>
+
+        <canvas id="game" width="640" height="480"></canvas>
+    </div>
+
+    <!-- Touch Controls -->
+    <div class="touch-controls" id="touch-controls">
+        <div class="touch-dpad">
+            <div class="touch-btn touch-up" data-key="ArrowUp"><span class="arrow-icon">&#9650;</span></div>
+            <div class="touch-btn touch-down" data-key="ArrowDown"><span class="arrow-icon">&#9660;</span></div>
+            <div class="touch-btn touch-left" data-key="ArrowLeft"><span class="arrow-icon">&#9664;</span></div>
+            <div class="touch-btn touch-right" data-key="ArrowRight"><span class="arrow-icon">&#9654;</span></div>
+        </div>
+        <div class="touch-actions">
+            <div class="touch-actions-row">
+                <div class="touch-btn touch-action-btn touch-btn-b" data-key="b">B</div>
+                <div class="touch-btn touch-action-btn touch-btn-a" data-key="a">A</div>
+            </div>
+        </div>
+    </div>
+    <div class="touch-btn touch-menu-btn" id="touch-menu-btn">ESC</div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        // Colors - calm Pacific ocean palette (from Lua)
+        const COLORS = {
+            oceanDeep: { r: 0.10, g: 0.23, b: 0.29 },
+            oceanMid: { r: 0.16, g: 0.29, b: 0.35 },
+            oceanLight: { r: 0.23, g: 0.35, b: 0.41 },
+            shimmer: { r: 0.29, g: 0.41, b: 0.47 },
+            foam: 'rgba(255, 255, 255, 0.12)',
+            foamBright: 'rgba(255, 255, 255, 0.25)',
+            rock: '#1a1a1a',
+            rockLight: '#292929',
+            kelp: '#5a7a5c',
+            kelpLight: '#7a9c6e',
+            otter: '#8c7354',
+            otterLight: '#a88f70',
+            otterBelly: '#d4c4b0',
+            urchin: '#4a3a3a',
+            urchinSpine: '#5a4a4a'
+        };
+
+        // Game constants
+        const KELP_COUNT = 10;
+        const STARTING_URCHINS = 4;
+        const MAX_URCHINS = 12;
+        const SURVIVAL_TIME = 60 * 60; // 60 seconds at 60fps
+
+        // Game state
+        let gameState = 'title';
+        let time = 0;
+
+        // Otter
+        const otter = {
+            x: 320, y: 390,
+            vx: 0, vy: 0,
+            facing: 0,
+            swimFrame: 0
+        };
+
+        // Game objects
+        let rocks = [];
+        let kelpPatches = [];
+        let urchins = [];
+        let urchinsCollected = 0;
+        let kelpRemaining = KELP_COUNT;
+        let survivalTimer = 0;
+        let urchinSpawnTimer = 0;
+
+        // Sparkle particles for collection feedback
+        let sparkles = [];
+
+        // Ocean currents (from Lua)
+        const currents = [
+            { dirX: 0.6, dirY: 0.5, strength: 0.006, zoneX: 133, zoneY: 120 },
+            { dirX: -0.7, dirY: 0.3, strength: 0.005, zoneX: 533, zoneY: 150 },
+            { dirX: 0.4, dirY: 0.6, strength: 0.004, zoneX: 107, zoneY: 270 },
+            { dirX: -0.5, dirY: -0.5, strength: 0.004, zoneX: 320, zoneY: 240 },
+            { dirX: 0.3, dirY: 0.7, strength: 0.004, zoneX: 507, zoneY: 270 },
+            { dirX: 0.8, dirY: -0.2, strength: 0.005, zoneX: 160, zoneY: 390 },
+            { dirX: -0.6, dirY: -0.4, strength: 0.004, zoneX: 507, zoneY: 390 }
+        ];
+
+        // Input handling
+        const keys = {};
+        let justPressedA = false;
+        let justPressedB = false;
+
+        document.addEventListener('keydown', e => {
+            if (!keys[e.key]) {
+                keys[e.key] = true;
+
+                // Check for A button (Enter, Space, a, A)
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'a' || e.key === 'A') {
+                    justPressedA = true;
+                }
+                // Check for B button (Escape, b, B, x, X)
+                if (e.key === 'Escape' || e.key === 'b' || e.key === 'B' || e.key === 'x' || e.key === 'X') {
+                    justPressedB = true;
+                }
+            }
+        });
+        document.addEventListener('keyup', e => keys[e.key] = false);
+
+        // Check if direction is pressed (arrows or WASD - but NOT 'a' since it's the A button)
+        function isDown(direction) {
+            switch(direction) {
+                case 'up': return keys['ArrowUp'] || keys['w'] || keys['W'];
+                case 'down': return keys['ArrowDown'] || keys['s'] || keys['S'];
+                case 'left': return keys['ArrowLeft'];
+                case 'right': return keys['ArrowRight'];
+            }
+            return false;
+        }
+
+        // Audio
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+
+            if (type === 'collect') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'sine';
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.15);
+
+                osc.frequency.setValueAtTime(280, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.12);
+
+                gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'success') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'sine';
+                filter.type = 'lowpass';
+                filter.frequency.value = 800;
+
+                osc.frequency.value = 440;
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'error') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.3);
+
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+
+        // Spawn sparkles for visual feedback
+        function spawnSparkles(x, y) {
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const speed = 2 + Math.random() * 2;
+                sparkles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 25,
+                    maxLife: 25,
+                    size: 2 + Math.random() * 2
+                });
+            }
+        }
+
+        function generateRocks() {
+            rocks = [];
+            const rockPositions = [
+                { x: 80, y: 105 }, { x: 240, y: 135 }, { x: 533, y: 90 },
+                { x: 133, y: 270 }, { x: 373, y: 225 }, { x: 560, y: 270 },
+                { x: 80, y: 390 }, { x: 267, y: 360 }, { x: 467, y: 375 }
+            ];
+
+            for (const pos of rockPositions) {
+                if (Math.random() > 0.15) {
+                    const baseR = 33 + Math.random() * 27;
+                    const points = [];
+                    const numPoints = 8 + Math.floor(Math.random() * 4);
+
+                    for (let i = 0; i < numPoints; i++) {
+                        const angle = (i / numPoints) * Math.PI * 2;
+                        const variance = 0.7 + Math.random() * 0.6;
+                        points.push({
+                            x: Math.cos(angle) * baseR * variance,
+                            y: Math.sin(angle) * baseR * variance * 0.7
+                        });
+                    }
+
+                    rocks.push({
+                        x: pos.x + (Math.random() - 0.5) * 53,
+                        y: pos.y + (Math.random() - 0.5) * 45,
+                        r: baseR,
+                        points: points
+                    });
+                }
+            }
+        }
+
+        function spawnUrchin() {
+            const activeCount = urchins.filter(u => !u.collected).length;
+            if (activeCount >= MAX_URCHINS) return;
+
+            const validKelp = kelpPatches.filter(k => !k.eaten);
+            if (validKelp.length === 0) return;
+
+            let placed = false;
+            let attempts = 0;
+
+            while (!placed && attempts < 30) {
+                const x = 67 + Math.random() * 507;
+                const y = 75 + Math.random() * 270;
+                let valid = true;
+
+                for (const rock of rocks) {
+                    const dx = x - rock.x;
+                    const dy = y - rock.y;
+                    if (Math.sqrt(dx * dx + dy * dy) < rock.r + 27) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                const dxOtter = x - otter.x;
+                const dyOtter = y - otter.y;
+                if (Math.sqrt(dxOtter * dxOtter + dyOtter * dyOtter) < 107) {
+                    valid = false;
+                }
+
+                if (valid) {
+                    const targetKelp = validKelp[Math.floor(Math.random() * validKelp.length)];
+                    urchins.push({
+                        x, y,
+                        targetKelp,
+                        speed: 0.2 + Math.random() * 0.15,
+                        collected: false
+                    });
+                    placed = true;
+                }
+                attempts++;
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            gameState = 'playing';
+            otter.x = 320;
+            otter.y = 390;
+            otter.vx = 0;
+            otter.vy = 0;
+            urchinsCollected = 0;
+            survivalTimer = 0;
+            urchinSpawnTimer = 0;
+            sparkles = [];
+
+            generateRocks();
+
+            // Generate kelp
+            kelpPatches = [];
+            for (let i = 0; i < KELP_COUNT; i++) {
+                let placed = false;
+                let attempts = 0;
+
+                while (!placed && attempts < 30) {
+                    const x = 67 + Math.random() * 507;
+                    const y = 75 + Math.random() * 300;
+                    let valid = true;
+
+                    for (const rock of rocks) {
+                        const dx = x - rock.x;
+                        const dy = y - rock.y;
+                        if (Math.sqrt(dx * dx + dy * dy) < rock.r + 40) {
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if (valid) {
+                        kelpPatches.push({
+                            x, y,
+                            health: 100,
+                            eaten: false,
+                            height: 45 + Math.random() * 30,
+                            swaySpeed: 0.02 + Math.random() * 0.015,
+                            swayAmount: 5 + Math.random() * 5,
+                            thickness: 3 + Math.random() * 3,
+                            numFronds: 2 + Math.floor(Math.random() * 3),
+                            bulbSize: 6 + Math.random() * 4
+                        });
+                        placed = true;
+                    }
+                    attempts++;
+                }
+            }
+            kelpRemaining = kelpPatches.length;
+
+            // Generate starting urchins
+            urchins = [];
+            for (let i = 0; i < STARTING_URCHINS; i++) {
+                spawnUrchin();
+            }
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+
+            time++;
+
+            // Otter movement
+            const accel = 0.18;
+            const maxSpeed = 2.4;
+            const friction = 0.95;
+
+            if (isDown('up')) otter.vy -= accel;
+            if (isDown('down')) otter.vy += accel;
+            if (isDown('left')) otter.vx -= accel;
+            if (isDown('right')) otter.vx += accel;
+
+            otter.vx *= friction;
+            otter.vy *= friction;
+
+            // Apply ocean currents
+            for (const current of currents) {
+                const distFromZone = Math.sqrt(
+                    Math.pow(otter.x - current.zoneX, 2) +
+                    Math.pow(otter.y - current.zoneY, 2)
+                );
+                const currentStrength = current.strength * Math.max(0, 1 - distFromZone / 200);
+                otter.vx += current.dirX * currentStrength;
+                otter.vy += current.dirY * currentStrength;
+            }
+
+            const speed = Math.sqrt(otter.vx * otter.vx + otter.vy * otter.vy);
+            if (speed > maxSpeed) {
+                otter.vx = (otter.vx / speed) * maxSpeed;
+                otter.vy = (otter.vy / speed) * maxSpeed;
+            }
+
+            if (speed > 0.1) {
+                otter.facing = Math.atan2(otter.vy, otter.vx);
+                otter.swimFrame++;
+            }
+
+            // Move with collision
+            let newX = otter.x + otter.vx;
+            let newY = otter.y + otter.vy;
+
+            for (const rock of rocks) {
+                const dx = newX - rock.x;
+                const dy = newY - rock.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < rock.r + 16) {
+                    const pushX = (dx / dist) * (rock.r + 16 - dist);
+                    const pushY = (dy / dist) * (rock.r + 16 - dist);
+                    newX += pushX * 0.5;
+                    newY += pushY * 0.5;
+                    otter.vx *= 0.5;
+                    otter.vy *= 0.5;
+                }
+            }
+
+            otter.x = Math.max(27, Math.min(613, newX));
+            otter.y = Math.max(30, Math.min(450, newY));
+
+            // Collect urchins
+            for (const urchin of urchins) {
+                if (!urchin.collected) {
+                    const dx = otter.x - urchin.x;
+                    const dy = otter.y - urchin.y;
+                    if (Math.sqrt(dx * dx + dy * dy) < 24) {
+                        urchin.collected = true;
+                        urchinsCollected++;
+                        spawnSparkles(urchin.x, urchin.y);
+                        playSound('collect');
+                    }
+                }
+            }
+
+            // Urchins move toward kelp
+            for (const urchin of urchins) {
+                if (urchin.collected) continue;
+
+                if (urchin.targetKelp.eaten) {
+                    const validKelp = kelpPatches.filter(k => !k.eaten);
+                    if (validKelp.length > 0) {
+                        urchin.targetKelp = validKelp[Math.floor(Math.random() * validKelp.length)];
+                    }
+                }
+
+                const dx = urchin.targetKelp.x - urchin.x;
+                const dy = urchin.targetKelp.y - urchin.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 5) {
+                    urchin.x += (dx / dist) * urchin.speed;
+                    urchin.y += (dy / dist) * urchin.speed;
+                } else {
+                    urchin.targetKelp.health -= 0.3;
+                    if (urchin.targetKelp.health <= 0 && !urchin.targetKelp.eaten) {
+                        urchin.targetKelp.eaten = true;
+                        kelpRemaining--;
+                    }
+                }
+            }
+
+            // Spawn new urchins
+            urchinSpawnTimer++;
+            const activeUrchins = urchins.filter(u => !u.collected).length;
+            const progressPressure = Math.min(survivalTimer / SURVIVAL_TIME, 1) * 30;
+            const baseInterval = 90 - progressPressure;
+            const spawnInterval = baseInterval + Math.random() * 50;
+
+            if (urchinSpawnTimer > spawnInterval && activeUrchins < MAX_URCHINS) {
+                spawnUrchin();
+                urchinSpawnTimer = 0;
+            }
+
+            // Kelp recovery
+            for (const kelp of kelpPatches) {
+                if (kelp.health < 100 && !kelp.eaten) {
+                    let beingEaten = false;
+                    for (const u of urchins) {
+                        if (!u.collected && u.targetKelp === kelp) {
+                            const dist = Math.sqrt(Math.pow(u.x - kelp.x, 2) + Math.pow(u.y - kelp.y, 2));
+                            if (dist < 8) {
+                                beingEaten = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!beingEaten) {
+                        kelp.health = Math.min(100, kelp.health + 0.03);
+                    }
+                }
+            }
+
+            // Kelp regrowth
+            for (const kelp of kelpPatches) {
+                if (kelp.eaten) {
+                    if (Math.random() < 0.002) {
+                        kelp.eaten = false;
+                        kelp.health = 20;
+                        kelpRemaining++;
+                    }
+                }
+            }
+
+            // Update sparkles
+            sparkles = sparkles.filter(s => {
+                s.x += s.vx;
+                s.y += s.vy;
+                s.vx *= 0.95;
+                s.vy *= 0.95;
+                s.life--;
+                return s.life > 0;
+            });
+
+            // Win/lose conditions
+            survivalTimer++;
+            if (survivalTimer >= SURVIVAL_TIME && kelpRemaining > 0) {
+                gameState = 'win';
+                saveCompletion(1);
+                playSound('success');
+            } else if (kelpRemaining === 0) {
+                gameState = 'lose';
+                playSound('error');
+            }
+        }
+
+        // Drawing functions (converted from Lua)
+        function drawOcean() {
+            // Deep base with gradient
+            for (let y = 0; y < 480; y++) {
+                const t = y / 480;
+                const r = Math.floor((COLORS.oceanLight.r * (1 - t) + COLORS.oceanDeep.r * t) * 255);
+                const g = Math.floor((COLORS.oceanLight.g * (1 - t) + COLORS.oceanDeep.g * t) * 255);
+                const b = Math.floor((COLORS.oceanLight.b * (1 - t) + COLORS.oceanDeep.b * t) * 255);
+                ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(640, y);
+                ctx.stroke();
+            }
+
+            // Ripple lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+            ctx.lineWidth = 1;
+            for (let y = 30; y < 480; y += 45) {
+                const wavePhase = time * 0.012 + y * 0.02;
+                ctx.beginPath();
+                for (let x = 0; x <= 640; x += 20) {
+                    const yOff = Math.sin(wavePhase + x * 0.015) * 3;
+                    if (x === 0) {
+                        ctx.moveTo(x, y + yOff);
+                    } else {
+                        ctx.lineTo(x, y + yOff);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // Bubbles
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            for (let i = 0; i < 20; i++) {
+                const baseX = 40 + (i % 7) * 90;
+                const baseY = 60 + Math.floor(i / 7) * 140;
+                const size = 1.5 + (i % 3) * 0.8;
+                const bobY = Math.sin(time * 0.02 + i) * 5;
+
+                ctx.beginPath();
+                ctx.arc(baseX, baseY + bobY, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawRocks() {
+            for (const rock of rocks) {
+                ctx.save();
+                ctx.translate(rock.x, rock.y);
+
+                // Shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.beginPath();
+                ctx.moveTo(rock.points[0].x + 4, rock.points[0].y + 4);
+                for (let i = 1; i < rock.points.length; i++) {
+                    ctx.lineTo(rock.points[i].x + 4, rock.points[i].y + 4);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // Rock body
+                ctx.fillStyle = COLORS.rock;
+                ctx.beginPath();
+                ctx.moveTo(rock.points[0].x, rock.points[0].y);
+                for (let i = 1; i < rock.points.length; i++) {
+                    ctx.lineTo(rock.points[i].x, rock.points[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // Highlight
+                ctx.fillStyle = COLORS.rockLight;
+                ctx.beginPath();
+                const halfPoints = Math.floor(rock.points.length / 2);
+                if (halfPoints >= 3) {
+                    ctx.moveTo(rock.points[0].x * 0.6, rock.points[0].y * 0.6);
+                    for (let i = 1; i < halfPoints; i++) {
+                        ctx.lineTo(rock.points[i].x * 0.6, rock.points[i].y * 0.6);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        function drawKelp() {
+            for (const kelp of kelpPatches) {
+                if (kelp.eaten) continue;
+
+                const healthRatio = kelp.health / 100;
+                const sway = Math.sin(time * kelp.swaySpeed + kelp.x * 0.01) * kelp.swayAmount;
+                const height = kelp.height * healthRatio;
+
+                ctx.save();
+                ctx.translate(kelp.x, kelp.y);
+
+                // Main stalk using bezier curve
+                ctx.strokeStyle = COLORS.kelp;
+                ctx.lineWidth = kelp.thickness;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(
+                    sway * 0.3, -height * 0.3,
+                    sway * 0.7, -height * 0.6,
+                    sway, -height
+                );
+                ctx.stroke();
+
+                // Fronds
+                for (let f = 0; f < kelp.numFronds; f++) {
+                    const frondY = -height * (0.3 + f * 0.25);
+                    const frondSway = sway * (0.3 + f * 0.2);
+                    const frondLen = 8 + f * 3;
+                    const side = (f % 2 === 0) ? 1 : -1;
+                    const frondWave = Math.sin(time * 0.03 + f) * 2;
+
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(frondSway, frondY);
+                    ctx.lineTo(frondSway + side * frondLen, frondY + frondWave);
+                    ctx.stroke();
+                }
+
+                // Bulb at top
+                ctx.fillStyle = COLORS.kelpLight;
+                ctx.beginPath();
+                ctx.ellipse(sway, -height - kelp.bulbSize, kelp.bulbSize, kelp.bulbSize * 1.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Highlight on bulb
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.beginPath();
+                ctx.ellipse(sway - kelp.bulbSize * 0.3, -height - kelp.bulbSize - 1, kelp.bulbSize * 0.3, kelp.bulbSize * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        function drawUrchins() {
+            for (const urchin of urchins) {
+                if (urchin.collected) continue;
+
+                ctx.save();
+                ctx.translate(urchin.x, urchin.y);
+
+                const pulse = Math.sin(time * 0.05 + urchin.x) * 0.1 + 1;
+
+                // Spines
+                ctx.strokeStyle = COLORS.urchinSpine;
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 10; i++) {
+                    const angle = (i / 10) * Math.PI * 2 + time * 0.01;
+                    const len = 11 * pulse;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+                    ctx.stroke();
+                }
+
+                // Body
+                ctx.fillStyle = COLORS.urchin;
+                ctx.beginPath();
+                ctx.arc(0, 0, 7, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        function drawOtter() {
+            const speed = Math.sqrt(otter.vx * otter.vx + otter.vy * otter.vy);
+            const bob = Math.sin(otter.swimFrame * 0.1) * 3;
+
+            ctx.save();
+            ctx.translate(otter.x, otter.y + bob);
+            ctx.rotate(otter.facing);
+
+            // Wake
+            if (speed > 0.5) {
+                ctx.fillStyle = COLORS.foam;
+                ctx.beginPath();
+                ctx.ellipse(-20, 0, 11, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Tail
+            const tailWave = Math.sin(otter.swimFrame * 0.15) * 4;
+            ctx.fillStyle = COLORS.otter;
+            ctx.beginPath();
+            ctx.ellipse(-19 + tailWave * 0.3, tailWave * 0.5, 8, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body
+            ctx.fillStyle = COLORS.otter;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Belly
+            ctx.fillStyle = COLORS.otterBelly;
+            ctx.beginPath();
+            ctx.ellipse(0, 1, 11, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = COLORS.otterLight;
+            ctx.beginPath();
+            ctx.ellipse(13, 0, 8, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.arc(16, -3, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(16, 3, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = '#291a1a';
+            ctx.beginPath();
+            ctx.ellipse(20, 0, 3, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawSparkles() {
+            for (const s of sparkles) {
+                const alpha = s.life / s.maxLife;
+                ctx.fillStyle = `rgba(245, 245, 240, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size * alpha, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawUI() {
+            // Moon cycle indicator (top left)
+            const progress = survivalTimer / SURVIVAL_TIME;
+            const moonX = 28, moonY = 28;
+            const moonRadius = 12;
+
+            // Moon glow
+            const glowRadius = moonRadius + 4 + progress * 3;
+            const gradient = ctx.createRadialGradient(moonX, moonY, moonRadius, moonX, moonY, glowRadius);
+            gradient.addColorStop(0, `rgba(255, 255, 220, ${0.1 + progress * 0.15})`);
+            gradient.addColorStop(1, 'rgba(255, 255, 220, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Moon dark side
+            ctx.fillStyle = 'rgba(40, 50, 60, 0.8)';
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Moon illuminated portion
+            if (progress > 0) {
+                ctx.fillStyle = 'rgba(240, 238, 220, 0.9)';
+                ctx.beginPath();
+                ctx.arc(moonX, moonY, moonRadius, -Math.PI / 2, Math.PI / 2, false);
+                if (progress < 0.5) {
+                    const curveX = moonRadius * (1 - progress * 2);
+                    ctx.quadraticCurveTo(moonX + curveX, moonY, moonX, moonY - moonRadius);
+                } else {
+                    const curveX = moonRadius * ((progress - 0.5) * 2);
+                    ctx.quadraticCurveTo(moonX - curveX, moonY, moonX, moonY - moonRadius);
+                }
+                ctx.fill();
+            }
+
+            // Kelp warning
+            if (kelpRemaining <= 3 && kelpRemaining > 0) {
+                const pulse = Math.sin(time * 0.08) * 0.5 + 0.5;
+                ctx.fillStyle = `rgba(150, 80, 80, ${0.03 + pulse * 0.04})`;
+                ctx.fillRect(0, 0, 640, 480);
+            }
+
+            // Control hints
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.font = "bold 10px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+            ctx.textAlign = 'center';
+            ctx.fillText('D-PAD: SWIM   B: MENU', 320, 470);
+        }
+
+        function drawWinScreen() {
+            // Weathered cream background
+            drawMenuBackground();
+            drawMenuCurves();
+
+            // Message
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = "bold 32px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Kelp Forest Thriving', 320, 168);
+
+            // Subtitle
+            ctx.fillStyle = '#8b7355';
+            ctx.font = "400 18px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+            ctx.fillText('Thanks Otter', 320, 208);
+
+            // Options
+            ctx.font = "400 12px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+            ctx.fillText('A: REPLAY', 260, 430);
+            ctx.fillText('B: MENU', 380, 430);
+
+            // Blinking hint
+            if (Math.floor(Date.now() / 500) % 2) {
+                ctx.globalAlpha = 0.5;
+                ctx.font = "400 10px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+                ctx.fillText('SELECT AN OPTION', 320, 455);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function drawLoseScreen() {
+            drawMenuBackground();
+
+            // Dimmed curves
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            drawMenuCurves();
+            ctx.restore();
+
+            // Message
+            ctx.fillStyle = '#8b7355';
+            ctx.font = "bold 32px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('URCHIN BARREN', 320, 192);
+
+            // Options
+            ctx.font = "400 12px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+            ctx.fillText('A: RETRY', 260, 430);
+            ctx.fillText('B: MENU', 380, 430);
+
+            // Blinking hint
+            if (Math.floor(Date.now() / 500) % 2) {
+                ctx.globalAlpha = 0.5;
+                ctx.font = "400 10px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+                ctx.fillText('SELECT AN OPTION', 320, 455);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function drawMenuBackground() {
+            // Base gradient - cream to sand
+            const grad = ctx.createLinearGradient(0, 0, 0, 480);
+            grad.addColorStop(0, '#f5f5f0');
+            grad.addColorStop(1, '#d4c4a8');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 640, 480);
+
+            // Subtle wood grain lines
+            ctx.strokeStyle = 'rgba(139, 115, 85, 0.08)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < 640; x += 4) {
+                if (Math.random() > 0.7) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, 480);
+                    ctx.stroke();
+                }
+            }
+
+            // Weathering spots
+            ctx.fillStyle = 'rgba(139, 115, 85, 0.06)';
+            ctx.beginPath();
+            ctx.ellipse(128, 144, 80, 50, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(448, 288, 60, 40, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawMenuCurves() {
+            ctx.save();
+            ctx.strokeStyle = '#2E5DA8';
+            ctx.lineWidth = 28;
+            ctx.lineCap = 'round';
+
+            // Outer curve
+            ctx.beginPath();
+            ctx.arc(700, -60, 200, Math.PI * 0.5, Math.PI * 0.95);
+            ctx.stroke();
+
+            // Inner curve
+            ctx.globalAlpha = 0.7;
+            ctx.beginPath();
+            ctx.arc(700, -60, 140, Math.PI * 0.5, Math.PI * 0.95);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Grain canvas for film effect
+        let grainCanvas = null;
+        function getGrainCanvas() {
+            if (!grainCanvas) {
+                grainCanvas = document.createElement('canvas');
+                grainCanvas.width = 640;
+                grainCanvas.height = 480;
+                const gCtx = grainCanvas.getContext('2d');
+                const imageData = gCtx.createImageData(640, 480);
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    const v = Math.random() * 255;
+                    imageData.data[i] = v;
+                    imageData.data[i + 1] = v;
+                    imageData.data[i + 2] = v;
+                    imageData.data[i + 3] = 40;
+                }
+                gCtx.putImageData(imageData, 0, 0);
+            }
+            return grainCanvas;
+        }
+
+        function drawGrain(opacity = 0.06) {
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            ctx.globalCompositeOperation = 'overlay';
+            ctx.drawImage(getGrainCanvas(), 0, 0);
+            ctx.restore();
+        }
+
+        // Save completion to localStorage
+        function saveCompletion(levelNumber) {
+            try {
+                const completed = JSON.parse(localStorage.getItem('seaRanchQuestCompleted') || '[]');
+                if (!completed.includes(levelNumber)) {
+                    completed.push(levelNumber);
+                    localStorage.setItem('seaRanchQuestCompleted', JSON.stringify(completed));
+                }
+            } catch (e) {
+                console.warn('Could not save progress');
+            }
+        }
+
+        // Handle input for game state transitions
+        function handleInput() {
+            if (gameState === 'title') {
+                if (justPressedA) {
+                    document.getElementById('title-card').style.display = 'none';
+                    startGame();
+                }
+                if (justPressedB) {
+                    window.location.href = 'index.html';
+                }
+            } else if (gameState === 'playing') {
+                if (justPressedB) {
+                    window.location.href = 'index.html';
+                }
+            } else if (gameState === 'win' || gameState === 'lose') {
+                if (justPressedA) {
+                    startGame();
+                }
+                if (justPressedB) {
+                    window.location.href = 'index.html';
+                }
+            }
+
+            // Reset just pressed flags
+            justPressedA = false;
+            justPressedB = false;
+        }
+
+        // Main game loop
+        function gameLoop() {
+            handleInput();
+
+            if (gameState === 'title') {
+                // Title card is shown via HTML/CSS overlay
+            } else if (gameState === 'playing') {
+                update();
+                drawOcean();
+                drawKelp();
+                drawRocks();
+                drawUrchins();
+                drawOtter();
+                drawSparkles();
+                drawUI();
+                drawGrain(0.06);
+            } else if (gameState === 'win') {
+                drawOcean();
+                drawKelp();
+                drawRocks();
+                drawOtter();
+                drawWinScreen();
+                drawGrain(0.06);
+            } else if (gameState === 'lose') {
+                drawOcean();
+                drawRocks();
+                drawUrchins();
+                drawOtter();
+                drawLoseScreen();
+                drawGrain(0.06);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Touch and mouse controls setup
+        function setupTouchControls() {
+            const isTouchDevice = ('ontouchstart' in window) ||
+                                  (navigator.maxTouchPoints > 0) ||
+                                  (navigator.msMaxTouchPoints > 0);
+
+            // Always show controls and set up handlers
+            document.getElementById('touch-controls').style.display = 'flex';
+            document.getElementById('touch-menu-btn').style.display = 'flex';
+
+            const buttons = document.querySelectorAll('.touch-btn');
+
+            function handleButtonDown(btn, key) {
+                btn.classList.add('active');
+                if (key === 'a') {
+                    justPressedA = true;
+                    keys['a'] = true;
+                    keys['Enter'] = true;
+                    keys[' '] = true;
+                } else if (key === 'b') {
+                    justPressedB = true;
+                    keys['b'] = true;
+                    keys['Escape'] = true;
+                } else {
+                    keys[key] = true;
+                }
+            }
+
+            function handleButtonUp(btn, key) {
+                btn.classList.remove('active');
+                if (key === 'a') {
+                    keys['a'] = false;
+                    keys['Enter'] = false;
+                    keys[' '] = false;
+                } else if (key === 'b') {
+                    keys['b'] = false;
+                    keys['Escape'] = false;
+                } else {
+                    keys[key] = false;
+                }
+            }
+
+            buttons.forEach(btn => {
+                const key = btn.dataset.key;
+                if (!key) return;
+
+                // Touch events
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleButtonDown(btn, key);
+                    if (navigator.vibrate) navigator.vibrate(10);
+                }, { passive: false });
+
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    handleButtonUp(btn, key);
+                }, { passive: false });
+
+                btn.addEventListener('touchcancel', (e) => {
+                    handleButtonUp(btn, key);
+                });
+
+                // Mouse events
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    handleButtonDown(btn, key);
+                });
+
+                btn.addEventListener('mouseup', (e) => {
+                    e.preventDefault();
+                    handleButtonUp(btn, key);
+                });
+
+                btn.addEventListener('mouseleave', (e) => {
+                    handleButtonUp(btn, key);
+                });
+            });
+
+            // Menu button
+            const menuBtn = document.getElementById('touch-menu-btn');
+            menuBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                menuBtn.classList.add('active');
+                justPressedB = true;
+                keys['Escape'] = true;
+                if (navigator.vibrate) navigator.vibrate(10);
+            }, { passive: false });
+
+            menuBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                menuBtn.classList.remove('active');
+                keys['Escape'] = false;
+            }, { passive: false });
+
+            menuBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                menuBtn.classList.add('active');
+                justPressedB = true;
+                keys['Escape'] = true;
+            });
+
+            menuBtn.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                menuBtn.classList.remove('active');
+                keys['Escape'] = false;
+            });
+
+            menuBtn.addEventListener('mouseleave', (e) => {
+                menuBtn.classList.remove('active');
+                keys['Escape'] = false;
+            });
+        }
+
+        // Initialize
+        generateRocks();
+        setupTouchControls();
+        gameLoop();
+    </script>
+</body>
+</html>

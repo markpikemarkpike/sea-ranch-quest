@@ -1435,11 +1435,23 @@ const SeaRanchStyle = {
                 height: 180px;
                 pointer-events: none;
                 z-index: 9999;
-                display: flex;
+                display: none;  /* Hidden by default on desktop */
                 justify-content: space-between;
                 align-items: flex-end;
                 padding: 20px;
                 box-sizing: border-box;
+            }
+
+            /* Show touch controls only on mobile/touch devices */
+            @media (max-width: 768px) {
+                .touch-controls {
+                    display: flex;
+                }
+            }
+            @media (pointer: coarse) {
+                .touch-controls {
+                    display: flex;
+                }
             }
 
             .touch-dpad {
@@ -1581,6 +1593,19 @@ const SeaRanchStyle = {
                 font-size: 12px;
                 pointer-events: auto;
                 z-index: 9999;
+                display: none;  /* Hidden by default on desktop */
+            }
+
+            /* Show menu button only on mobile/touch devices */
+            @media (max-width: 768px) {
+                .touch-menu-btn {
+                    display: flex;
+                }
+            }
+            @media (pointer: coarse) {
+                .touch-menu-btn {
+                    display: flex;
+                }
             }
 
             /* Rotate button (for driftwood level) */

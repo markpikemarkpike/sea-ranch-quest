@@ -48,6 +48,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
 
         .title-card .wood-bg {
@@ -301,6 +302,7 @@
         let crashed = false;
         let crashTimer = 0;
         let invincibleTimer = 0;
+        let guardrailCooldown = 0;  // Prevent guardrail spazzing
 
         // Ocean waves (persistent)
         let waves = [];
@@ -597,18 +599,41 @@
             // Wheel spin
             wheelSpin += playerSpeed * dt * 0.08;
 
+            // Guardrail cooldown
+            if (guardrailCooldown > 0) {
+                guardrailCooldown -= dt;
+            }
+
             // Lane boundaries - stay on the road!
             if (playerX < -0.65) {
                 playerX = -0.65;
-                playerVelX = Math.max(0, playerVelX * -0.5);
-                SeaRanchStyle.shake(6, 0.88);
-                SeaRanchStyle.playSound('soft');
+                // Gentle resistance instead of hard bounce
+                if (keys.left) {
+                    playerVelX = 0; // Just stop, don't bounce
+                } else {
+                    playerVelX = Math.max(0, playerVelX * -0.3);
+                }
+                // Only shake/sound on initial impact
+                if (guardrailCooldown <= 0) {
+                    SeaRanchStyle.shake(4, 0.9);
+                    SeaRanchStyle.playSound('soft');
+                    guardrailCooldown = 0.3; // 300ms cooldown
+                }
             }
             if (playerX > 0.65) {
                 playerX = 0.65;
-                playerVelX = Math.min(0, playerVelX * -0.5);
-                SeaRanchStyle.shake(6, 0.88);
-                SeaRanchStyle.playSound('soft');
+                // Gentle resistance instead of hard bounce
+                if (keys.right) {
+                    playerVelX = 0; // Just stop, don't bounce
+                } else {
+                    playerVelX = Math.min(0, playerVelX * -0.3);
+                }
+                // Only shake/sound on initial impact
+                if (guardrailCooldown <= 0) {
+                    SeaRanchStyle.shake(4, 0.9);
+                    SeaRanchStyle.playSound('soft');
+                    guardrailCooldown = 0.3; // 300ms cooldown
+                }
             }
 
             // Trail effect when swerving hard
@@ -1169,35 +1194,77 @@
                 const roadW = getRoadWidth(tree.depth);
 
                 const x = roadX + roadW + tree.offset * scale;
-                if (x > W - 15) continue;  // Skip if off screen
+                if (x > W - 15) continue;
                 const h = tree.height * scale;
-                const w = h * 0.3;
+                const w = h * 0.5;
 
-                // Trunk
-                ctx.fillStyle = '#3a2a20';
                 ctx.save();
                 ctx.translate(x, y);
                 ctx.rotate(tree.lean);
-                ctx.fillRect(-w * 0.15, -h * 0.4, w * 0.3, h * 0.4);
 
-                // Wind-sculpted canopy
-                ctx.fillStyle = '#2a4a3a';
+                // Gnarled trunk with character
+                const trunkW = w * 0.12;
+                ctx.fillStyle = '#2a1f18';
                 ctx.beginPath();
-                ctx.moveTo(-w * 0.3, -h * 0.3);
-                ctx.quadraticCurveTo(-w * 0.4, -h * 0.7, -w * 0.2, -h);
-                ctx.quadraticCurveTo(w * 0.3, -h * 1.1, w * 0.8, -h * 0.6);
-                ctx.quadraticCurveTo(w * 0.6, -h * 0.4, w * 0.3, -h * 0.3);
+                ctx.moveTo(-trunkW, 0);
+                ctx.quadraticCurveTo(-trunkW * 1.5, -h * 0.25, -trunkW * 0.8, -h * 0.45);
+                ctx.lineTo(trunkW * 0.8, -h * 0.45);
+                ctx.quadraticCurveTo(trunkW * 1.2, -h * 0.2, trunkW, 0);
                 ctx.closePath();
                 ctx.fill();
 
-                // Secondary foliage
-                ctx.fillStyle = '#3a5a4a';
+                // Main branch reaching windward
+                ctx.strokeStyle = '#2a1f18';
+                ctx.lineWidth = trunkW * 0.6;
+                ctx.lineCap = 'round';
                 ctx.beginPath();
-                ctx.ellipse(w * 0.2, -h * 0.55, w * 0.5, h * 0.25, 0.2, 0, Math.PI * 2);
+                ctx.moveTo(0, -h * 0.4);
+                ctx.quadraticCurveTo(w * 0.4, -h * 0.55, w * 0.7, -h * 0.5);
+                ctx.stroke();
+
+                // Deepest foliage layer (shadow/depth)
+                ctx.fillStyle = '#1a3328';
+                drawFoliageCluster(w * 0.65, -h * 0.52, w * 0.45, h * 0.28, 0.3);
+                drawFoliageCluster(w * 0.2, -h * 0.7, w * 0.35, h * 0.22, 0.2);
+                drawFoliageCluster(-w * 0.1, -h * 0.55, w * 0.25, h * 0.18, 0.1);
+
+                // Mid foliage layer
+                ctx.fillStyle = '#234a38';
+                drawFoliageCluster(w * 0.55, -h * 0.55, w * 0.4, h * 0.25, 0.25);
+                drawFoliageCluster(w * 0.15, -h * 0.72, w * 0.32, h * 0.2, 0.15);
+                drawFoliageCluster(w * 0.35, -h * 0.65, w * 0.28, h * 0.18, 0.2);
+
+                // Top highlight foliage (catches light)
+                ctx.fillStyle = '#2d5a45';
+                drawFoliageCluster(w * 0.5, -h * 0.58, w * 0.32, h * 0.2, 0.2);
+                drawFoliageCluster(w * 0.25, -h * 0.75, w * 0.25, h * 0.16, 0.1);
+
+                // Windswept tips (trailing wisps)
+                ctx.fillStyle = '#1a3328';
+                ctx.beginPath();
+                ctx.moveTo(w * 0.7, -h * 0.48);
+                ctx.quadraticCurveTo(w * 0.9, -h * 0.45, w * 1.0, -h * 0.42);
+                ctx.quadraticCurveTo(w * 0.85, -h * 0.5, w * 0.7, -h * 0.52);
                 ctx.fill();
 
                 ctx.restore();
             }
+        }
+
+        // Helper for organic foliage clusters
+        function drawFoliageCluster(cx, cy, rx, ry, wobble) {
+            ctx.beginPath();
+            const points = 8;
+            for (let i = 0; i <= points; i++) {
+                const angle = (i / points) * Math.PI * 2;
+                const radiusVar = 1 + Math.sin(angle * 3 + wobble * 10) * 0.15;
+                const px = cx + Math.cos(angle) * rx * radiusVar;
+                const py = cy + Math.sin(angle) * ry * radiusVar;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
         }
 
         function drawFencePosts() {

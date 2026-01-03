@@ -48,6 +48,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
 
         .title-card .wood-bg {
@@ -576,10 +577,10 @@
             const maxSpeed = 2.4;
             const friction = 0.95; // Smooth glide
 
-            if (keys['ArrowUp']) otter.vy -= accel;
-            if (keys['ArrowDown']) otter.vy += accel;
-            if (keys['ArrowLeft']) otter.vx -= accel;
-            if (keys['ArrowRight']) otter.vx += accel;
+            if (keys['ArrowUp'] || keys['w'] || keys['W']) otter.vy -= accel;
+            if (keys['ArrowDown'] || keys['s'] || keys['S']) otter.vy += accel;
+            if (keys['ArrowLeft']) otter.vx -= accel;  // 'a' is action key, so left is arrow-only
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) otter.vx += accel;
 
             otter.vx *= friction;
             otter.vy *= friction;

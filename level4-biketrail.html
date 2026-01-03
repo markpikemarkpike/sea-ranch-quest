@@ -56,6 +56,7 @@ html, body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
 }
 
 .title-card .wood-bg {
@@ -105,34 +106,75 @@ html, body {
     opacity: 0.7;
 }
 
-.title-card .content {
+.title-card .arrow-accent {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 80px;
+    height: 100px;
+    pointer-events: none;
+}
+
+.title-card .arrow-accent::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 50px solid var(--red);
+    top: 0;
+}
+
+.title-card .arrow-accent::after {
+    content: '';
+    position: absolute;
+    width: 26px;
+    height: 50px;
+    background: var(--red);
+    top: 45px;
+    left: 27px;
+}
+
+.title-card .title-content {
     position: relative;
     z-index: 10;
-    text-align: left;
-    padding: 0 60px;
-    width: 100%;
+    text-align: center;
 }
 
-.title-card h1 {
-    font-size: 48px;
+.title-card .level-title {
+    font-size: 56px;
     font-weight: 700;
     color: var(--black);
-    margin-bottom: 8px;
-    letter-spacing: -1px;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 12px;
 }
 
-.title-card .subtitle {
+.title-card .level-subtitle {
     font-size: 18px;
-    color: var(--wood);
     font-weight: 400;
-    margin-bottom: 40px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--wood);
 }
 
-.title-card .prompt {
-    font-size: 14px;
-    color: var(--blue);
-    font-weight: 500;
+.title-card .continue-hint {
+    position: absolute;
+    bottom: 36px;
+    right: 36px;
+    font-size: 12px;
+    color: var(--wood);
+    text-transform: uppercase;
     letter-spacing: 1px;
+}
+
+.title-card .title-grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.4;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 </style>
 </head>
@@ -141,11 +183,13 @@ html, body {
     <div class="title-card" id="titleCard">
         <div class="wood-bg"></div>
         <div class="supergraphic"></div>
-        <div class="content">
-            <h1>Naturalist Trail</h1>
-            <p class="subtitle">A 10-Mile Photo Journey</p>
-            <p class="prompt">PRESS ENTER TO START</p>
+        <div class="arrow-accent"></div>
+        <div class="title-content">
+            <div class="level-title">Naturalist Trail</div>
+            <div class="level-subtitle">A 10-Mile Photo Journey</div>
         </div>
+        <div class="continue-hint">A to start · B to menu</div>
+        <div class="title-grain"></div>
     </div>
     <canvas id="gameCanvas" width="640" height="480"></canvas>
 </div>
@@ -300,6 +344,12 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const titleCard = document.getElementById('titleCard');
 
+// Cached canvas for binocular overlay
+const binocularCanvas = document.createElement('canvas');
+binocularCanvas.width = W;
+binocularCanvas.height = H;
+const binocularCtx = binocularCanvas.getContext('2d');
+
 // ============ INPUT HANDLING ============
 const keys = {};
 const justPressed = {};
@@ -314,24 +364,24 @@ document.addEventListener('keyup', (e) => {
 
 function isDown(key) {
     const map = {
-        'left': ['ArrowLeft', 'KeyA'],
+        'left': ['ArrowLeft'],  // 'A' key is action button, not left
         'right': ['ArrowRight', 'KeyD'],
         'up': ['ArrowUp', 'KeyW'],
         'down': ['ArrowDown', 'KeyS'],
-        'a': ['Enter', 'Space', 'KeyZ'],
-        'b': ['Escape', 'KeyX', 'Backspace']
+        'a': ['Enter', 'Space', 'KeyZ', 'KeyA'],  // Added KeyA for 'A' key
+        'b': ['Escape', 'KeyX', 'Backspace', 'KeyB']
     };
     return (map[key] || []).some(k => keys[k]);
 }
 
 function wasJustPressed(key) {
     const map = {
-        'left': ['ArrowLeft', 'KeyA'],
+        'left': ['ArrowLeft'],  // 'A' key is action button, not left
         'right': ['ArrowRight', 'KeyD'],
         'up': ['ArrowUp', 'KeyW'],
         'down': ['ArrowDown', 'KeyS'],
-        'a': ['Enter', 'Space', 'KeyZ'],
-        'b': ['Escape', 'KeyX', 'Backspace']
+        'a': ['Enter', 'Space', 'KeyZ', 'KeyA'],  // Added KeyA for 'A' key
+        'b': ['Escape', 'KeyX', 'Backspace', 'KeyB']
     };
     return (map[key] || []).some(k => justPressed[k]);
 }
@@ -385,6 +435,21 @@ function line(x1, y1, x2, y2) {
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
+}
+
+// Organic foliage cluster for cypress trees
+function drawCypressFoliage(cx, cy, rx, ry) {
+    ctx.beginPath();
+    // Create organic blobby shape with slight variations
+    for (let a = 0; a <= Math.PI * 2; a += 0.3) {
+        const wobble = 0.85 + Math.sin(a * 5 + cx * 0.1) * 0.15;
+        const px = cx + Math.cos(a) * rx * wobble;
+        const py = cy + Math.sin(a) * ry * wobble;
+        if (a === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
 }
 
 function setFont(size, weight = 400) {
@@ -664,220 +729,568 @@ function drawHabitatBackground() {
 function drawWildlife() {
     const wx = wildlife.x;
     const wy = wildlife.y;
-    
+
     ctx.save();
     ctx.translate(wx, wy);
-    
-    // Draw different wildlife based on current stop (simplified versions)
+
     const stop = currentStop;
-    
-    if (stop === 0) { // Black Phoebe
+
+    if (stop === 0) { // Black Phoebe - Charlie Harper style
         const tailBob = Math.sin(time * 4) * 3;
-        
+
         // Shadow
         setColor(0, 0, 0, 0.2);
         ellipse(2, 18, 15, 5);
-        
-        // Tail
+
+        // Tail (bobbing!) - draw first so body overlaps
         ctx.save();
         ctx.translate(10, 2);
         ctx.rotate(tailBob * 0.08);
         setColor(0.1, 0.1, 0.1);
         polygon([0, 0, 18, -2, 20, 2, 18, 4, 0, 3]);
         ctx.restore();
-        
+
         // Body
         setColor(0.1, 0.1, 0.1);
         ellipse(0, 0, 12, 9);
-        
+
         // White belly
         setColor(0.91, 0.91, 0.91);
         ellipse(0, 4, 7, 5);
-        
+
         // Wing
         setColor(0.16, 0.16, 0.16);
         ellipse(2, -2, 9, 6);
-        
+
         // Head
         setColor(0.1, 0.1, 0.1);
         circle(-8, -6, 7);
-        
+
+        // Small crest
+        polygon([-10, -12, -7, -13, -6, -10]);
+
+        // Beak
+        setColor(0.16, 0.16, 0.16);
+        polygon([-14, -6, -20, -5, -14, -4]);
+
         // Eye
+        setColor(0.1, 0.1, 0.1);
+        circle(-10, -7, 2);
         setColor(1, 1, 1);
         circle(-10.5, -7.5, 0.8);
-        
-    } else if (stop === 1) { // Red-tailed Hawk
+
+        // Legs
+        setColor(0.16, 0.16, 0.16);
+        ctx.lineWidth = 1.5;
+        line(-2, 8, -3, 16);
+        line(3, 8, 4, 16);
+
+    } else if (stop === 1) { // Red-tailed Hawk - soaring majesty
         const soar = Math.sin(time * 0.5);
+        const wingAngle = soar * 0.15;
+
         ctx.rotate(soar * 0.05);
-        
-        // Wings
+
+        // Left wing - soaring with curve
+        ctx.save();
+        ctx.rotate(-wingAngle);
         setColor(0.35, 0.25, 0.19);
         polygon([0, 0, -30, -8, -50, 5, -30, 8, 0, 5]);
+        ctx.restore();
+
+        // Right wing
+        ctx.save();
+        ctx.rotate(wingAngle);
+        setColor(0.35, 0.25, 0.19);
         polygon([0, 0, 30, -8, 50, 5, 30, 8, 0, 5]);
-        
+        ctx.restore();
+
         // Body
         setColor(0.42, 0.31, 0.25);
         ellipse(0, 3, 8, 15);
-        
-        // Red tail
+
+        // Head
+        setColor(0.48, 0.38, 0.31);
+        circle(-12, 2, 6);
+
+        // Beak - hooked
+        setColor(0.23, 0.19, 0.19);
+        polygon([-17, 1, -22, 3, -17, 4]);
+
+        // Red tail - the key feature!
         setColor(0.65, 0.29, 0.19);
         polygon([8, 0, 25, -3, 28, 3, 25, 8, 8, 5]);
-        
-    } else if (stop === 2) { // Lizard
+
+        // Eye
+        setColor(1, 0.8, 0);
+        circle(-13, 1, 1.5);
+
+    } else if (stop === 2) { // Western Fence Lizard - doing push-ups!
         const pushUp = Math.sin(time * 2) * 3;
+        const breathing = Math.sin(time * 1.5) * 0.5;
+
         ctx.translate(0, pushUp);
-        
-        // Body
-        setColor(0.42, 0.38, 0.31);
-        ellipse(0, 0, 18, 8);
-        
-        // Tail
+
+        // Shadow
+        setColor(0, 0, 0, 0.2);
+        ellipse(2, 8 - pushUp, 20, 5);
+
+        // Tail - long and tapering with stripes
         setColor(0.35, 0.31, 0.25);
         polygon([15, 0, 35, -2, 50, 5, 35, 8, 15, 3]);
-        
-        // Blue belly
+        // Tail stripes
+        setColor(0.29, 0.25, 0.19);
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 3; i++) {
+            line(20 + i * 8, -1 + i * 0.5, 22 + i * 8, 4 + i * 0.3);
+        }
+
+        // Back legs
+        setColor(0.35, 0.31, 0.25);
+        polygon([10, 2, 18, 10, 25, 12, 18, 8, 10, 4]);
+
+        // Body with dorsal scales
+        setColor(0.42, 0.38, 0.31);
+        ellipse(0, 0, 18, 8 + breathing);
+
+        // Dorsal scale pattern
+        setColor(0.35, 0.31, 0.25);
+        for (let i = -12; i <= 12; i += 4) {
+            circle(i, -2, 2);
+        }
+
+        // Blue belly patches (visible during push-up)
         if (pushUp > 1) {
             setColor(0.29, 0.48, 0.67);
             ellipse(-5, 5, 6, 3);
             ellipse(5, 5, 6, 3);
         }
-        
-    } else if (stop === 3) { // Hummingbird
+
+        // Front legs (doing push-ups!)
+        setColor(0.35, 0.31, 0.25);
+        polygon([-12, 0, -20, 6 - pushUp * 0.5, -25, 4 - pushUp * 0.5, -20, 4 - pushUp * 0.5, -12, 2]);
+        polygon([-12, 0, -18, -6 + pushUp * 0.3, -24, -8 + pushUp * 0.3, -18, -5 + pushUp * 0.3]);
+
+        // Head with scales
+        setColor(0.42, 0.38, 0.31);
+        ellipse(-18, -1, 8, 6);
+
+        // Head scales
+        setColor(0.35, 0.31, 0.25);
+        circle(-20, -3, 2);
+        circle(-16, -4, 1.5);
+
+        // Eye with golden iris
+        setColor(0.1, 0.1, 0.1);
+        circle(-22, -2, 2);
+        setColor(1, 0.84, 0);
+        circle(-22.5, -2.5, 0.8);
+
+    } else if (stop === 3) { // Anna's Hummingbird - iridescent jewel
         const hover = Math.sin(time * 6) * 3;
+
         ctx.translate(0, hover);
-        
-        // Wing blur
+
+        // Wing blur effect (rapid beating)
         setColor(0.39, 0.47, 0.39, 0.4);
         ellipse(-8, 0, 15, 5);
         ellipse(8, 0, 15, 5);
-        
-        // Body
+
+        // Tail feathers
+        setColor(0.23, 0.29, 0.23);
+        polygon([0, 8, -5, 22, 0, 20, 5, 22, 0, 8]);
+
+        // Body - iridescent green
         setColor(0.29, 0.35, 0.29);
         ellipse(0, 5, 6, 10);
-        
+
+        // Lighter belly
+        setColor(0.48, 0.54, 0.48);
+        ellipse(0, 8, 4, 6);
+
         // Head
+        setColor(0.23, 0.29, 0.23);
         circle(0, -6, 6);
-        
-        // Gorget
+
+        // Gorget - iridescent magenta/rose (the key feature!)
         const shimmer = Math.sin(time * 1.5) * 0.3 + 0.7;
         setColor(0.86 * shimmer, 0.2 * shimmer, 0.39 * shimmer);
         ellipse(0, -3, 5, 4);
-        
-    } else if (stop === 4) { // Woodpecker
+
+        // Crown - also iridescent on males
+        setColor(0.78 * shimmer, 0.16 * shimmer, 0.35 * shimmer);
+        ellipse(0, -9, 4, 2);
+
+        // Long thin beak
+        setColor(0.1, 0.1, 0.1);
+        ctx.lineWidth = 1.5;
+        line(0, -6, -18, -8);
+
+        // Eye
+        setColor(0.1, 0.1, 0.1);
+        circle(3, -7, 1.5);
+
+    } else if (stop === 4) { // Acorn Woodpecker - clown face
+        const headBob = Math.sin(time * 2.5) * 2;
+
+        // Tail
+        setColor(0.1, 0.1, 0.1);
+        polygon([5, 10, 0, 28, 10, 28, 10, 10]);
+
         // Body
         setColor(0.1, 0.1, 0.1);
         ellipse(5, 5, 10, 15);
-        
+
+        // White rump patch
+        setColor(1, 1, 1);
+        ellipse(5, 12, 6, 5);
+
+        // Wing with white patch
+        setColor(0.16, 0.16, 0.16);
+        ellipse(8, 5, 8, 12);
+        setColor(1, 1, 1);
+        ellipse(12, 8, 3, 5);
+
+        // Head
+        ctx.save();
+        ctx.translate(0, headBob);
+
+        setColor(0.1, 0.1, 0.1);
+        circle(0, -12, 10);
+
         // Red cap
         setColor(0.8, 0.13, 0.13);
         ellipse(0, -18, 6, 4);
-        
-        // White face
+
+        // White face - the "clown" pattern
         setColor(0.96, 0.96, 0.94);
         ellipse(-3, -10, 5, 6);
-        
-    } else if (stop === 5) { // Oystercatcher
-        // Body
+
+        // Yellow/white forehead
+        setColor(0.91, 0.88, 0.63);
+        ellipse(0, -15, 4, 3);
+
+        // Eye - staring, wild look
+        setColor(1, 1, 1);
+        circle(-5, -11, 3);
+        setColor(0.1, 0.1, 0.1);
+        circle(-5, -11, 1.5);
+
+        // Beak
+        setColor(0.23, 0.23, 0.23);
+        polygon([-8, -10, -20, -8, -8, -7]);
+
+        ctx.restore();
+
+    } else if (stop === 5) { // Black Oystercatcher - iconic orange beak
+        const bob = Math.sin(time * 1.2) * 1;
+
+        ctx.translate(0, bob);
+
+        // Legs - pink/orange
+        setColor(0.91, 0.63, 0.5);
+        ctx.lineWidth = 2;
+        line(-5, 12, -5, 22);
+        line(5, 12, 5, 22);
+
+        // Body - jet black
         setColor(0.1, 0.1, 0.1);
         ellipse(0, 5, 15, 12);
-        
-        // Orange beak
+
+        // Wing
+        setColor(0.16, 0.16, 0.16);
+        ellipse(5, 5, 12, 10);
+
+        // Head
+        setColor(0.1, 0.1, 0.1);
+        circle(-12, -3, 8);
+
+        // Eye ring - red
+        setColor(0.8, 0.19, 0.19);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(-14, -4, 3, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Eye
+        setColor(1, 0.84, 0);
+        circle(-14, -4, 2);
+        setColor(0.1, 0.1, 0.1);
+        circle(-14, -4, 1);
+
+        // BEAK - the iconic orange chisel beak!
         setColor(1, 0.38, 0.19);
         polygon([-18, -3, -45, -1, -45, 1, -18, 0]);
-        
-    } else if (stop === 6) { // Monarch
+
+        // Beak highlight
+        setColor(1, 0.5, 0.31);
+        polygon([-18, -3, -40, -2, -18, -1]);
+
+    } else if (stop === 6) { // Monarch Butterfly - flutter effect
         const flutter = Math.sin(time * 4) * 0.4;
+        const drift = Math.sin(time * 0.6) * 10;
         const wingScale = Math.cos(flutter);
-        
+
+        ctx.translate(drift, 0);
+
+        // Left wing
         ctx.save();
         ctx.scale(1, wingScale);
         setColor(0.91, 0.44, 0.13);
         ellipse(-12, 0, 15, 12);
-        ellipse(12, 0, 15, 12);
+
+        // Black border and veins
+        setColor(0.1, 0.1, 0.1);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(-12, 0, 15, 12, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        line(-5, 0, -20, -5);
+        line(-5, 0, -22, 3);
+        line(-5, 0, -15, 8);
+
+        // White spots
+        setColor(1, 1, 1);
+        circle(-20, -8, 2);
+        circle(-22, -3, 1.5);
+        circle(-18, 8, 2);
         ctx.restore();
-        
+
+        // Right wing
+        ctx.save();
+        ctx.scale(1, wingScale);
+        setColor(0.91, 0.44, 0.13);
+        ellipse(12, 0, 15, 12);
+        setColor(0.1, 0.1, 0.1);
+        ctx.lineWidth = 2;
+        line(5, 0, 20, -5);
+        line(5, 0, 22, 3);
+        line(5, 0, 15, 8);
+        setColor(1, 1, 1);
+        circle(20, -8, 2);
+        circle(22, -3, 1.5);
+        circle(18, 8, 2);
+        ctx.restore();
+
         // Body
         setColor(0.1, 0.1, 0.1);
         ellipse(0, 0, 3, 12);
-        
-    } else if (stop === 7) { // Newt
-        // Body
+
+        // Head
+        circle(0, -12, 3);
+
+        // Antennae with curved tips
+        ctx.lineWidth = 1;
+        line(-1, -14, -5, -20);
+        circle(-5, -21, 1);
+        line(1, -14, 5, -20);
+        circle(5, -21, 1);
+
+    } else if (stop === 7) { // Rough-skinned Newt - warning colors
+        const walk = Math.sin(time * 1.2) * 2;
+
+        // Shadow
+        setColor(0, 0, 0, 0.15);
+        ellipse(2, 10, 25, 6);
+
+        // Tail - tapered with slight curve
+        setColor(0.35, 0.25, 0.19);
+        polygon([15, 0, 35, -5, 45, 0, 35, 5, 15, 2]);
+
+        // Back legs
+        ellipse(10 + walk, 8, 8, 4);
+        ellipse(10 - walk, -6, 8, 4);
+
+        // Body - brown/olive
         setColor(0.42, 0.31, 0.25);
         ellipse(0, 0, 18, 8);
-        
-        // Orange belly
+
+        // Warty texture
+        setColor(0.35, 0.25, 0.19);
+        for (let i = 0; i <= 7; i++) {
+            circle(-10 + i * 3, -2 + (i % 2) * 4, 1.5);
+        }
+
+        // Orange belly (visible on sides) - warning coloration!
         setColor(1, 0.5, 0.25);
         ellipse(0, 5, 12, 3);
-        
-    } else if (stop === 8) { // Heron
-        // Legs
+
+        // Front legs
+        setColor(0.35, 0.25, 0.19);
+        ellipse(-12 - walk, 6, 7, 3);
+        ellipse(-12 + walk, -5, 7, 3);
+
+        // Head
+        setColor(0.42, 0.31, 0.25);
+        ellipse(-18, 0, 8, 6);
+
+        // Bulging eyes
+        setColor(0.1, 0.1, 0.1);
+        circle(-20, -4, 2.5);
+        circle(-20, 4, 2.5);
+
+    } else if (stop === 8) { // Great Blue Heron - patient hunter
+        const neckMove = Math.sin(time * 0.6) * 5;
+
+        // Long legs - yellow-gray
         setColor(0.54, 0.54, 0.38);
         ctx.lineWidth = 3;
         line(-5, 30, -5, 70);
         line(5, 30, 5, 70);
-        
-        // Body
+
+        // Body - blue-gray
         setColor(0.35, 0.42, 0.48);
         ellipse(0, 20, 20, 15);
-        
+
+        // Wing
+        setColor(0.29, 0.35, 0.42);
+        ellipse(8, 20, 18, 12);
+
+        // S-curved neck
+        setColor(0.42, 0.48, 0.54);
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        for (let i = 0; i <= 10; i++) {
+            const t = i / 10;
+            const nx = -5 + Math.sin(t * 3.14) * (10 + neckMove * 0.3);
+            const ny = 10 - t * 60;
+            if (i === 0) ctx.moveTo(nx, ny);
+            else ctx.lineTo(nx, ny);
+        }
+        ctx.stroke();
+
+        // Neck feathers - white/cream
+        setColor(0.96, 0.96, 0.94);
+        ellipse(-8, 0, 6, 10);
+
         // Head
         setColor(0.96, 0.96, 0.94);
-        ellipse(-10, -55, 8, 6);
-        
-        // Beak
+        ellipse(-10 + neckMove * 0.3, -55, 8, 6);
+
+        // Black crown stripe
+        setColor(0.1, 0.1, 0.1);
+        ellipse(-8 + neckMove * 0.3, -60, 10, 3);
+
+        // Plume feathers trailing back
+        ctx.lineWidth = 2;
+        line(-5 + neckMove * 0.3, -62, 10, -65);
+        line(-5 + neckMove * 0.3, -60, 8, -62);
+
+        // Dagger-like beak
         setColor(0.82, 0.63, 0.25);
-        polygon([-15, -55, -45, -52, -15, -50]);
-        
-    } else if (stop === 9) { // Seal
+        polygon([-15 + neckMove * 0.3, -55, -45 + neckMove * 0.3, -52, -15 + neckMove * 0.3, -50]);
+
+        // Eye
+        setColor(1, 0.84, 0);
+        circle(-5 + neckMove * 0.3, -55, 2);
+
+    } else if (stop === 9) { // Harbor Seal - soulful eyes
         const breathe = Math.sin(time * 0.5) * 2;
+
+        // Shadow
+        setColor(0, 0, 0, 0.15);
+        ellipse(5, 12, 35, 8);
+
         ctx.translate(0, breathe);
-        
-        // Body
+
+        // Body - elongated blob shape
         setColor(0.48, 0.48, 0.44);
         ellipse(0, 0, 35, 15 + breathe * 0.5);
-        
+
+        // Spots - the distinctive pattern
+        setColor(0.35, 0.35, 0.31);
+        const spots = [[-15, -5], [-8, 3], [5, -3], [12, 5], [20, -2], [-20, 2]];
+        for (const spot of spots) {
+            ellipse(spot[0], spot[1], 4, 3);
+        }
+
+        // Lighter belly
+        setColor(0.6, 0.6, 0.56);
+        ellipse(0, 8, 25, 6);
+
+        // Back flippers
+        setColor(0.42, 0.42, 0.38);
+        ellipse(30, 5, 12, 6);
+
         // Head
+        setColor(0.48, 0.48, 0.44);
         ellipse(-35, -5, 12, 10);
-        
-        // Eye
+
+        // Snout - dog-like
+        setColor(0.54, 0.54, 0.5);
+        ellipse(-45, -3, 8, 6);
+
+        // Nostrils
+        setColor(0.23, 0.23, 0.19);
+        ellipse(-50, -4, 2, 1);
+        ellipse(-50, -1, 2, 1);
+
+        // Whiskers
+        setColor(0.29, 0.29, 0.25);
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 3; i++) {
+            line(-48, -2 + i * 2, -58, -4 + i * 3);
+        }
+
+        // Eye - large, dark, soulful
         setColor(0.1, 0.1, 0.1);
         ellipse(-38, -8, 4, 5);
+
+        // Eye shine
+        setColor(1, 1, 1);
+        circle(-39, -9, 1.5);
+
+        // Front flipper
+        setColor(0.42, 0.42, 0.38);
+        ellipse(-25, 10, 10, 5);
     }
-    
+
     ctx.restore();
 }
 
 function drawBinoculars() {
     if (binocularProgress <= 0) return;
-    
+
     const alpha = binocularProgress;
     const liftOffset = (1 - binocularProgress) * 100;
-    
+
+    const leftX = focusX - BINOCULAR_RADIUS * 0.6;
+    const rightX = focusX + BINOCULAR_RADIUS * 0.6;
+
     ctx.save();
     ctx.translate(0, liftOffset);
-    
-    // Create binocular mask
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(focusX - BINOCULAR_RADIUS * 0.6, focusY, BINOCULAR_RADIUS, 0, Math.PI * 2);
-    ctx.arc(focusX + BINOCULAR_RADIUS * 0.6, focusY, BINOCULAR_RADIUS, 0, Math.PI * 2);
-    ctx.rect(0, 0, W, H);
-    ctx.clip('evenodd');
-    
-    setColor(0, 0, 0, 0.92 * alpha);
-    rect(0, 0, W, H);
-    ctx.restore();
-    
+
+    // Clear and redraw the binocular mask on cached canvas
+    binocularCtx.clearRect(0, 0, W, H);
+
+    // Very light tint outside binoculars - just enough to show focus area
+    binocularCtx.globalCompositeOperation = 'source-over';
+    binocularCtx.fillStyle = `rgba(0, 0, 0, ${0.25 * alpha})`;
+    binocularCtx.fillRect(0, 0, W, H);
+
+    // Cut out binocular circles
+    binocularCtx.globalCompositeOperation = 'destination-out';
+    binocularCtx.fillStyle = '#fff';
+    binocularCtx.beginPath();
+    binocularCtx.arc(leftX, focusY, BINOCULAR_RADIUS, 0, Math.PI * 2);
+    binocularCtx.fill();
+    binocularCtx.beginPath();
+    binocularCtx.arc(rightX, focusY, BINOCULAR_RADIUS, 0, Math.PI * 2);
+    binocularCtx.fill();
+
+    // Draw the mask onto main canvas
+    ctx.drawImage(binocularCanvas, 0, 0);
+
     // Binocular rim
-    setColor(0.2, 0.2, 0.2, alpha);
-    ctx.lineWidth = 6;
-    circle(focusX - BINOCULAR_RADIUS * 0.6, focusY, BINOCULAR_RADIUS, false);
-    circle(focusX + BINOCULAR_RADIUS * 0.6, focusY, BINOCULAR_RADIUS, false);
-    
-    // Center bridge
     setColor(0.15, 0.15, 0.15, alpha);
-    rect(focusX - 12, focusY - 8, 24, 16);
-    
+    ctx.lineWidth = 4;
+    circle(leftX, focusY, BINOCULAR_RADIUS, false);
+    circle(rightX, focusY, BINOCULAR_RADIUS, false);
+
+    // Center bridge
+    setColor(0.1, 0.1, 0.1, alpha);
+    rect(focusX - 8, focusY - 5, 16, 10);
+
     ctx.restore();
 }
 
@@ -1027,7 +1440,90 @@ function drawBikingCutscene() {
     rect(0, roadY + roadHeight, W, 50);
     setColor(0.29, 0.23, 0.19);
     rect(0, roadY + roadHeight + 50, W, H - roadY - roadHeight - 50);
-    
+
+    // Windswept coastal cypress trees - simple silhouette style
+    for (let i = 1; i <= 6; i++) {
+        const tx = 50 + i * 90;
+        const th = 50 + Math.sin(i * 2) * 12;
+        const lean = 10 + (i % 2) * 5;
+        const baseY = roadY - 8;
+
+        // Curved trunk leaning with the wind
+        setColor(0.25, 0.18, 0.12);
+        ctx.beginPath();
+        ctx.moveTo(tx - 3, baseY);
+        ctx.quadraticCurveTo(tx + lean * 0.3, baseY - th * 0.5, tx + lean * 0.4, baseY - th * 0.65);
+        ctx.lineTo(tx + lean * 0.4 + 4, baseY - th * 0.65);
+        ctx.quadraticCurveTo(tx + lean * 0.3 + 3, baseY - th * 0.5, tx + 3, baseY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Canopy - flat-topped asymmetric shape typical of coastal cypress
+        setColor(0.12, 0.22, 0.17);
+        ctx.beginPath();
+        // Start from trunk top
+        ctx.moveTo(tx + lean * 0.35, baseY - th * 0.65);
+        // Sweep up and to the left (windward)
+        ctx.quadraticCurveTo(tx - 15, baseY - th * 0.7, tx - 20, baseY - th * 0.85);
+        // Flat top across
+        ctx.quadraticCurveTo(tx + lean * 0.2, baseY - th, tx + lean + 15, baseY - th * 0.85);
+        // Trailing edge downwind
+        ctx.quadraticCurveTo(tx + lean + 30, baseY - th * 0.75, tx + lean + 35, baseY - th * 0.6);
+        // Back down to trunk
+        ctx.quadraticCurveTo(tx + lean + 20, baseY - th * 0.55, tx + lean * 0.5, baseY - th * 0.6);
+        ctx.closePath();
+        ctx.fill();
+
+        // Lighter foliage accent
+        setColor(0.16, 0.28, 0.22);
+        ctx.beginPath();
+        ctx.ellipse(tx + lean * 0.3, baseY - th * 0.85, 12, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(tx + lean + 10, baseY - th * 0.72, 10, 6, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Wayfinding post (animated, moving from right to left)
+    const postProgress = ((time * 21 + 200) % 500) / 500;
+    const postX = W + 50 - postProgress * (W + 100);
+    const postLabel = STOPS[currentStop].shortName || STOPS[currentStop].name.substring(0, 7);
+
+    if (postX > -30 && postX < W + 30) {
+        const postHeight = 110;
+        if (postImage.complete && postImage.naturalWidth > 0) {
+            const scale = postHeight / postImage.height;
+            const drawWidth = postImage.width * scale;
+            const postDrawX = postX - drawWidth / 2;
+            const postDrawY = roadY - postHeight + 15;
+            ctx.drawImage(postImage, postDrawX, postDrawY, drawWidth, postHeight);
+
+            // Draw stop name vertically on the post
+            setColor(0.15, 0.15, 0.15);
+            setFont(9, 600);
+            ctx.textAlign = 'center';
+            const letters = postLabel.split('');
+            const letterSpacing = 9;
+            const startY = postDrawY + 14;
+            const centerX = postDrawX + drawWidth / 2 + 2;
+            for (let j = 0; j < letters.length; j++) {
+                ctx.fillText(letters[j], centerX, startY + j * letterSpacing);
+            }
+            ctx.textAlign = 'left';  // Reset
+        } else {
+            // Fallback post
+            setColor(COLORS.cream);
+            rect(postX - 8, roadY - postHeight + 15, 16, postHeight);
+            setColor(0.1, 0.1, 0.1);
+            setFont(10, 600);
+            ctx.save();
+            ctx.translate(postX - 6, roadY - postHeight + 25);
+            ctx.rotate(Math.PI / 2);
+            ctx.fillText(postLabel, 0, 0);
+            ctx.restore();
+        }
+    }
+
     // Cyclist
     const bobY = Math.sin(time * 4) * 2;
     if (cyclistImage.complete) {
@@ -1238,6 +1734,67 @@ function gameLoop(currentTime) {
     
     requestAnimationFrame(gameLoop);
 }
+
+// ============ CLICK/TOUCH SUPPORT ============
+// Use document-level handler to ensure clicks are captured
+document.addEventListener('click', (e) => {
+    console.log('Document clicked, gameState:', gameState);
+    if (gameState === 'title') {
+        justPressed['Space'] = true;
+    } else if (gameState === 'photo') {
+        if (!binocularsRaised) {
+            binocularsRaised = true;
+            console.log('Binoculars raised!');
+        } else if (!photoTaken) {
+            // Take photo if binoculars are raised (even if still animating)
+            if (binocularProgress < 0.3) {
+                binocularProgress = 0.3; // Force minimum progress
+            }
+            takePhoto();
+            console.log('Photo taken!');
+        }
+    } else if (gameState === 'departure' || gameState === 'biking') {
+        // Do nothing, wait for animation
+    } else if (gameState === 'results') {
+        // Advance to next stop
+        currentStop++;
+        if (currentStop >= STOPS.length) {
+            gameState = 'complete';
+        } else {
+            gameState = 'biking';
+            bikeProgress = 0;
+        }
+    } else if (gameState === 'complete') {
+        window.location.href = 'level0-menu.html';
+    } else {
+        justPressed['Space'] = true;
+    }
+});
+
+document.addEventListener('touchstart', (e) => {
+    if (gameState === 'photo') {
+        if (!binocularsRaised) {
+            binocularsRaised = true;
+        } else if (!photoTaken) {
+            if (binocularProgress < 0.3) {
+                binocularProgress = 0.3;
+            }
+            takePhoto();
+        }
+    } else if (gameState === 'results') {
+        currentStop++;
+        if (currentStop >= STOPS.length) {
+            gameState = 'complete';
+        } else {
+            gameState = 'biking';
+            bikeProgress = 0;
+        }
+    } else if (gameState === 'complete') {
+        window.location.href = 'level0-menu.html';
+    } else {
+        justPressed['Space'] = true;
+    }
+});
 
 // ============ START ============
 loadImages();

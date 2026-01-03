@@ -105,24 +105,24 @@ document.addEventListener('keyup', (e) => {
 
 function isDown(key) {
     const codes = {
-        'left': ['ArrowLeft', 'KeyA'],
+        'left': ['ArrowLeft'],  // 'A' key is action button, not left
         'right': ['ArrowRight', 'KeyD'],
         'up': ['ArrowUp', 'KeyW'],
         'down': ['ArrowDown', 'KeyS'],
-        'a': ['KeyZ', 'Space', 'Enter'],
-        'b': ['KeyX', 'Escape', 'Backspace']
+        'a': ['KeyZ', 'Space', 'Enter', 'KeyA'],  // Added KeyA
+        'b': ['KeyX', 'Escape', 'Backspace', 'KeyB']
     };
     return (codes[key] || []).some(c => keys[c]);
 }
 
 function justPressed(key) {
     const codes = {
-        'left': ['ArrowLeft', 'KeyA'],
+        'left': ['ArrowLeft'],  // 'A' key is action button, not left
         'right': ['ArrowRight', 'KeyD'],
         'up': ['ArrowUp', 'KeyW'],
         'down': ['ArrowDown', 'KeyS'],
-        'a': ['KeyZ', 'Space', 'Enter'],
-        'b': ['KeyX', 'Escape', 'Backspace']
+        'a': ['KeyZ', 'Space', 'Enter', 'KeyA'],  // Added KeyA
+        'b': ['KeyX', 'Escape', 'Backspace', 'KeyB']
     };
     return (codes[key] || []).some(c => justPressedKeys[c]);
 }
@@ -1060,6 +1060,9 @@ function update(dt) {
             cutsceneTime = 0;
             manX = -60;
         }
+        if (justPressed('b')) {
+            window.location.href = 'level0-menu.html';
+        }
         return;
     }
     
@@ -1123,20 +1126,20 @@ function update(dt) {
         }
         
         if (justPressed('b')) {
-            gameState = 'title';
+            window.location.href = 'level0-menu.html';
         }
         return;
     }
-    
+
     if (gameState === 'complete') {
         if (justPressed('a')) nextRound();
-        if (justPressed('b')) initRound();
+        if (justPressed('b')) window.location.href = 'level0-menu.html';
         return;
     }
-    
+
     if (gameState === 'gameover') {
         if (justPressed('a')) startNewGame();
-        if (justPressed('b')) gameState = 'title';
+        if (justPressed('b')) window.location.href = 'level0-menu.html';
         return;
     }
 }

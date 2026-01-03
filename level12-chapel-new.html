@@ -1,97 +1,259 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Level 12: Chapel Meditation - Sea Ranch Quest</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body {
-            width: 100%; height: 100%;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            touch-action: none;
-        }
-        #gameCanvas {
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
-            max-width: 100%;
-            max-height: 100%;
-        }
-        #touchControls {
-            position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            display: none;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 100;
-        }
-        .dpad {
-            display: grid;
-            grid-template-columns: repeat(3, 50px);
-            grid-template-rows: repeat(3, 50px);
-            gap: 4px;
-        }
-        .dpad-btn {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.4);
-            border-radius: 8px;
-            color: white;
-            font-size: 24px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .dpad-btn:active { background: rgba(255,255,255,0.4); }
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            align-items: flex-end;
-        }
-        .action-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 3px solid rgba(255,255,255,0.5);
-            background: rgba(255,255,255,0.2);
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        .action-btn:active { background: rgba(255,255,255,0.4); }
-        @media (pointer: coarse) {
-            #touchControls { display: flex; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sea Ranch Quest - Level 12: Chapel Meditation</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #1a1a1a;
+    display: flex; justify-content: center; align-items: center;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+#game-container { width: 640px; height: 480px; position: relative; overflow: hidden; background: #e8e4dc; }
+#gameCanvas { display: block; width: 640px; height: 480px; }
+@media (max-width: 680px) or (max-height: 520px) {
+    #game-container, #gameCanvas { width: 100vw; height: 100vh; }
+}
+
+/* Sea Ranch Supergraphic Title Card */
+:root {
+    --black: #1a1a1a;
+    --white: #f5f5f0;
+    --red: #C41E3A;
+    --blue: #2E5DA8;
+    --wood: #8b7355;
+    --sand: #d4c4a8;
+    --fog: #e8e4dc;
+}
+
+.title-card {
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.title-card.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.title-card .wood-bg {
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(
+            90deg,
+            transparent 0px,
+            transparent 3px,
+            rgba(139, 115, 85, 0.08) 3px,
+            rgba(139, 115, 85, 0.08) 4px
+        ),
+        radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+        radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+}
+
+.title-card .supergraphic {
+    position: absolute;
+    top: -80px;
+    right: -120px;
+    width: 550px;
+    height: 550px;
+    pointer-events: none;
+}
+
+.title-card .supergraphic::before,
+.title-card .supergraphic::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 36px solid var(--blue);
+}
+
+.title-card .supergraphic::before {
+    width: 420px;
+    height: 420px;
+    top: 0;
+    right: 0;
+    border-color: transparent transparent var(--blue) var(--blue);
+    transform: rotate(-45deg);
+}
+
+.title-card .supergraphic::after {
+    width: 320px;
+    height: 320px;
+    top: 50px;
+    right: 50px;
+    border-color: transparent transparent var(--blue) var(--blue);
+    transform: rotate(-45deg);
+    opacity: 0.7;
+}
+
+.title-card .arrow-accent {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 80px;
+    height: 100px;
+    pointer-events: none;
+}
+
+.title-card .arrow-accent::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 50px solid var(--red);
+    top: 0;
+}
+
+.title-card .arrow-accent::after {
+    content: '';
+    position: absolute;
+    width: 26px;
+    height: 50px;
+    background: var(--red);
+    top: 45px;
+    left: 27px;
+}
+
+.title-card .title-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+}
+
+.title-card .level-title {
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--black);
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 12px;
+}
+
+.title-card .level-subtitle {
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--wood);
+}
+
+.title-card .title-grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.4;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+.title-card .continue-hint {
+    position: absolute;
+    bottom: 36px;
+    right: 36px;
+    font-size: 12px;
+    color: var(--wood);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Touch Controls - hidden on desktop, shown on mobile */
+#touchControls {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    display: none;
+    justify-content: space-between;
+    z-index: 50;
+    pointer-events: none;
+}
+@media (pointer: coarse) {
+    #touchControls { display: flex; }
+}
+.dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 40px);
+    grid-template-rows: repeat(3, 40px);
+    gap: 2px;
+    pointer-events: auto;
+}
+.dpad-btn {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    color: white;
+    font-size: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.dpad-btn:active { background: rgba(255,255,255,0.4); }
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    pointer-events: auto;
+}
+.action-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    background: rgba(0,0,0,0.3);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+}
+.action-btn:active { background: rgba(255,255,255,0.4); }
+</style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="640" height="480"></canvas>
-    <div id="touchControls">
-        <div class="dpad">
-            <div></div>
-            <button class="dpad-btn" data-key="up">▲</button>
-            <div></div>
-            <button class="dpad-btn" data-key="left">◀</button>
-            <div></div>
-            <button class="dpad-btn" data-key="right">▶</button>
-            <div></div>
-            <button class="dpad-btn" data-key="down">▼</button>
-            <div></div>
-        </div>
-        <div class="action-buttons">
-            <button class="action-btn" data-key="b">B</button>
-            <button class="action-btn" data-key="y">Y</button>
-            <button class="action-btn" data-key="a">A</button>
-        </div>
+<div id="game-container">
+<canvas id="gameCanvas" width="640" height="480"></canvas>
+<div id="title-card" class="title-card">
+    <div class="wood-bg"></div>
+    <div class="title-grain"></div>
+    <div class="supergraphic"></div>
+    <div class="arrow-accent"></div>
+    <div class="title-content">
+        <div class="level-title">Chapel Meditation</div>
+        <div class="level-subtitle">A peaceful meditation</div>
     </div>
-
-    <script>
+    <div class="continue-hint">A to start · B to menu</div>
+</div>
+<div id="touchControls">
+    <div class="dpad">
+        <div></div>
+        <button class="dpad-btn" data-key="up">&#9650;</button>
+        <div></div>
+        <button class="dpad-btn" data-key="left">&#9664;</button>
+        <div></div>
+        <button class="dpad-btn" data-key="right">&#9654;</button>
+        <div></div>
+        <button class="dpad-btn" data-key="down">&#9660;</button>
+        <div></div>
+    </div>
+    <div class="action-buttons">
+        <button class="action-btn" data-key="b">B</button>
+        <button class="action-btn" data-key="y">Y</button>
+        <button class="action-btn" data-key="a">A</button>
+    </div>
+</div>
+</div>
+<script>
     // Sea Ranch Quest - Level 12: Chapel Meditation
     // Complete 6 breath cycles to illuminate the stained glass
     // Faithful conversion from Love2D Lua
@@ -99,6 +261,7 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const W = 640, H = 480;
+    const titleCard = document.getElementById('title-card');
 
     // Input state
     const keys = { up: false, down: false, left: false, right: false, a: false, b: false, y: false };
@@ -134,8 +297,8 @@
     let unlockedSections = 0;
 
     // Breath timing (in frames at 60fps)
-    const INHALE_DURATION = 180; // 3 seconds
-    const EXHALE_DURATION = 240; // 4 seconds
+    const INHALE_DURATION = 300; // 5 seconds
+    const EXHALE_DURATION = 300; // 5 seconds
 
     // Shake effect
     let shakeAmount = 0;
@@ -216,9 +379,13 @@
 
         if (gameState === STATES.TITLE) {
             if (justPressed.a) {
+                titleCard.classList.add('hidden');
                 initGame();
                 gameState = STATES.WALKING_TO_CHAPEL;
                 stateTimer = 0;
+            }
+            if (justPressed.b) {
+                window.location.href = 'level0-menu.html';
             }
             return;
         }
@@ -264,7 +431,6 @@
         // Meditation
         if (gameState === STATES.MEDITATION) {
             const aHeld = keys.a;
-            const yPressed = justPressed.y;
 
             if (aHeld && breathPhase !== "exhale") {
                 // Inhaling (hold A)
@@ -276,7 +442,7 @@
                 breathProgress = Math.min(1, breathProgress + 1 / INHALE_DURATION);
                 currentGlow = Math.min(1, breathProgress * 1.2);
 
-            } else if ((!aHeld || yPressed) && breathPhase === "inhale" && breathProgress > 0.7) {
+            } else if (!aHeld && breathPhase === "inhale" && breathProgress > 0.7) {
                 // Transition to exhale after good inhale
                 breathPhase = "exhale";
                 breathProgress = 0;
@@ -313,10 +479,10 @@
                     stateTimer = 0;
                     // Save completion
                     try {
-                        const completed = JSON.parse(localStorage.getItem('seaRanchCompleted') || '[]');
+                        const completed = JSON.parse(localStorage.getItem('seaRanchQuestCompleted') || '[]');
                         if (!completed.includes(12)) {
                             completed.push(12);
-                            localStorage.setItem('seaRanchCompleted', JSON.stringify(completed));
+                            localStorage.setItem('seaRanchQuestCompleted', JSON.stringify(completed));
                         }
                     } catch (e) {}
                 }
@@ -324,7 +490,7 @@
 
             // B button to return to menu
             if (justPressed.b) {
-                window.location.href = 'index.html';
+                window.location.href = 'level0-menu.html';
             }
             return;
         }
@@ -332,7 +498,10 @@
         // Level complete
         if (gameState === STATES.LEVEL_COMPLETE) {
             if (justPressed.a) {
-                window.location.href = 'index.html';
+                window.location.href = 'level0-menu.html';
+            }
+            if (justPressed.b) {
+                window.location.href = 'level0-menu.html';
             }
             return;
         }
@@ -477,219 +646,243 @@
         }
 
         // Title
-        setFont(28, 'bold');
+        setFont(16);
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillText("Sea Ranch Chapel", W/2 + 2, 32);
-        ctx.fillStyle = 'white';
-        ctx.fillText("Sea Ranch Chapel", W/2, 30);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillText("sea ranch chapel", W/2, 30);
 
         // Draw character
         draw8BitCharacterBack(playerX, playerY, playerWalkFrame, playerScale);
     }
 
     function drawStainedGlassWindow(x, y, w, h, glow, sectionsLit) {
-        // Deep window recess shadow
-        ctx.fillStyle = 'rgb(20, 31, 36)';
-        ctx.fillRect(x - 8, y + h * 0.3, w + 16, h * 0.72);
+        // sectionsLit: 0-6, controls both which sections are visible AND overall brightness
+        // glow: for breathing animation pulse (0-1)
+        ctx.save();
+
+        const cx = x + w/2;
+        const cy = y + h/2;
+
+        // Overall brightness increases with sections (0.25 to 1.0)
+        const baseBright = 0.25 + (sectionsLit / 6) * 0.75;
+
+        // Create clipping path for elliptical window
         ctx.beginPath();
-        ctx.ellipse(x + w/2, y + h * 0.3, w/2 + 8, h * 0.32, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy, w/2, h/2, 0, 0, Math.PI * 2);
+        ctx.clip();
+
+        // Sky/nature background - always visible but gets brighter
+        const b0 = baseBright;
+        ctx.fillStyle = `rgb(${Math.floor(80 + 120 * b0)}, ${Math.floor(100 + 120 * b0)}, ${Math.floor(90 + 100 * b0)})`;
+        ctx.fillRect(x, y, w, h);
+
+        // Green foliage at bottom - always visible
+        ctx.fillStyle = `rgb(${Math.floor(50 + 50 * b0)}, ${Math.floor(80 + 70 * b0)}, ${Math.floor(40 + 40 * b0)})`;
+        ctx.beginPath();
+        ctx.ellipse(cx, y + h * 0.95, w * 0.6, h * 0.25, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner dark backing
-        ctx.fillStyle = 'rgb(31, 46, 51)';
-        ctx.fillRect(x, y + h * 0.35, w, h * 0.65);
-        ctx.beginPath();
-        ctx.ellipse(x + w/2, y + h * 0.35, w/2, h * 0.35, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        const pixelSize = 6;
-
-        // Section 1: Left turquoise wave
-        const sec1Alpha = sectionsLit >= 1 ? 1 : glow * 0.8;
-        if (sec1Alpha > 0) {
-            for (let py = 0; py <= h; py += pixelSize) {
-                const waveX = Math.sin((py / h) * Math.PI * 2) * 30 + 35;
-                for (let px = 0; px <= waveX + 20; px += pixelSize) {
-                    const depth = 1 - (px / (waveX + 20)) * 0.3;
-                    const color = sectionsLit >= 1 ? COLORS.turquoiseLight : COLORS.turquoise;
-                    ctx.fillStyle = `rgba(${color[0] * depth}, ${color[1] * depth}, ${color[2] * depth}, ${sec1Alpha})`;
-                    ctx.fillRect(x + px, y + py, pixelSize - 1, pixelSize - 1);
-                }
-            }
-        }
-
-        // Section 2: Right turquoise wave
-        const sec2Alpha = sectionsLit >= 2 ? 1 : (sectionsLit >= 1 ? glow * 0.8 : 0);
-        if (sec2Alpha > 0) {
-            for (let py = 0; py <= h; py += pixelSize) {
-                const waveX = Math.sin((py / h) * Math.PI * 2 + 1) * 30;
-                for (let px = w - 55 + waveX; px <= w; px += pixelSize) {
-                    const depth = ((px - (w - 55 + waveX)) / 55) * 0.3 + 0.7;
-                    const color = sectionsLit >= 2 ? COLORS.turquoiseLight : COLORS.turquoise;
-                    ctx.fillStyle = `rgba(${color[0] * depth}, ${color[1] * depth}, ${color[2] * depth}, ${sec2Alpha})`;
-                    ctx.fillRect(x + px, y + py, pixelSize - 1, pixelSize - 1);
-                }
-            }
-        }
-
-        // Section 3: Left golden sun rays
-        const sec3Alpha = sectionsLit >= 3 ? 1 : (sectionsLit >= 2 ? glow * 0.9 : 0);
-        if (sec3Alpha > 0) {
-            const sunX = w * 0.25;
-            const sunY = h * 0.35;
-            const color = sectionsLit >= 3 ? COLORS.yellowLight : COLORS.yellow;
-            ctx.fillStyle = rgb(color, sec3Alpha);
+        // SECTION 1: Left teal wave
+        const s1 = sectionsLit >= 1 ? 1 : glow * 0.6;
+        if (s1 > 0.05) {
+            const b1 = baseBright * s1;
+            // Dark teal layer
+            ctx.globalAlpha = s1;
+            ctx.fillStyle = `rgb(${Math.floor(30 + 40 * b1)}, ${Math.floor(70 + 60 * b1)}, ${Math.floor(80 + 60 * b1)})`;
             ctx.beginPath();
-            ctx.arc(x + sunX, y + sunY, 18, 0, Math.PI * 2);
+            ctx.moveTo(x - 10, y + h + 10);
+            ctx.bezierCurveTo(x + w * 0.1, y + h * 0.3, x + w * 0.25, y + h * 0.05, x + w * 0.42, y + h * 0.25);
+            ctx.bezierCurveTo(x + w * 0.38, y + h * 0.45, x + w * 0.2, y + h * 0.55, x + w * 0.1, y + h * 0.7);
+            ctx.lineTo(x - 10, y + h * 0.8);
+            ctx.closePath();
             ctx.fill();
-            // Sun rays
-            ctx.strokeStyle = rgb(color, sec3Alpha);
+            // Bright teal highlight
+            ctx.fillStyle = `rgb(${Math.floor(50 + 150 * b1)}, ${Math.floor(120 + 100 * b1)}, ${Math.floor(130 + 90 * b1)})`;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.02, y + h * 0.92);
+            ctx.bezierCurveTo(x + w * 0.12, y + h * 0.4, x + w * 0.22, y + h * 0.15, x + w * 0.36, y + h * 0.3);
+            ctx.bezierCurveTo(x + w * 0.32, y + h * 0.48, x + w * 0.18, y + h * 0.58, x + w * 0.08, y + h * 0.72);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        // SECTION 2: Right teal wave
+        const s2 = sectionsLit >= 2 ? 1 : (sectionsLit >= 1 ? glow * 0.6 : 0);
+        if (s2 > 0.05) {
+            const b2 = baseBright * s2;
+            ctx.globalAlpha = s2;
+            ctx.fillStyle = `rgb(${Math.floor(30 + 40 * b2)}, ${Math.floor(70 + 60 * b2)}, ${Math.floor(80 + 60 * b2)})`;
+            ctx.beginPath();
+            ctx.moveTo(x + w + 10, y + h + 10);
+            ctx.bezierCurveTo(x + w * 0.9, y + h * 0.3, x + w * 0.75, y + h * 0.05, x + w * 0.58, y + h * 0.25);
+            ctx.bezierCurveTo(x + w * 0.62, y + h * 0.45, x + w * 0.8, y + h * 0.55, x + w * 0.9, y + h * 0.7);
+            ctx.lineTo(x + w + 10, y + h * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            // Bright teal highlight
+            ctx.fillStyle = `rgb(${Math.floor(50 + 150 * b2)}, ${Math.floor(120 + 100 * b2)}, ${Math.floor(130 + 90 * b2)})`;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.98, y + h * 0.92);
+            ctx.bezierCurveTo(x + w * 0.88, y + h * 0.4, x + w * 0.78, y + h * 0.15, x + w * 0.64, y + h * 0.3);
+            ctx.bezierCurveTo(x + w * 0.68, y + h * 0.48, x + w * 0.82, y + h * 0.58, x + w * 0.92, y + h * 0.72);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        // SECTION 3: Left flame (orange/yellow)
+        const s3 = sectionsLit >= 3 ? 1 : (sectionsLit >= 2 ? glow * 0.7 : 0);
+        if (s3 > 0.05) {
+            const b3 = baseBright * s3;
+            const lf = cx - w * 0.12;
+            ctx.globalAlpha = s3;
+            // Orange outer
+            ctx.fillStyle = `rgb(${Math.floor(180 + 60 * b3)}, ${Math.floor(80 + 40 * b3)}, ${Math.floor(20 + 20 * b3)})`;
+            ctx.beginPath();
+            ctx.moveTo(lf - 22, y + h * 0.88);
+            ctx.bezierCurveTo(lf - 28, y + h * 0.55, lf - 18, y + h * 0.25, lf, y + h * 0.08);
+            ctx.bezierCurveTo(lf + 18, y + h * 0.25, lf + 22, y + h * 0.55, lf + 18, y + h * 0.88);
+            ctx.closePath();
+            ctx.fill();
+            // Yellow middle
+            ctx.fillStyle = `rgb(${Math.floor(200 + 50 * b3)}, ${Math.floor(160 + 60 * b3)}, ${Math.floor(40 + 30 * b3)})`;
+            ctx.beginPath();
+            ctx.moveTo(lf - 14, y + h * 0.85);
+            ctx.bezierCurveTo(lf - 18, y + h * 0.52, lf - 10, y + h * 0.28, lf, y + h * 0.14);
+            ctx.bezierCurveTo(lf + 10, y + h * 0.28, lf + 14, y + h * 0.52, lf + 10, y + h * 0.85);
+            ctx.closePath();
+            ctx.fill();
+            // Light yellow core
+            ctx.fillStyle = `rgb(${Math.floor(230 + 25 * b3)}, ${Math.floor(200 + 40 * b3)}, ${Math.floor(100 + 50 * b3)})`;
+            ctx.beginPath();
+            ctx.moveTo(lf - 6, y + h * 0.8);
+            ctx.bezierCurveTo(lf - 8, y + h * 0.5, lf - 4, y + h * 0.32, lf, y + h * 0.22);
+            ctx.bezierCurveTo(lf + 4, y + h * 0.32, lf + 6, y + h * 0.5, lf + 4, y + h * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        // SECTION 4: Right flame (red/pink)
+        const s4 = sectionsLit >= 4 ? 1 : (sectionsLit >= 3 ? glow * 0.7 : 0);
+        if (s4 > 0.05) {
+            const b4 = baseBright * s4;
+            const rf = cx + w * 0.12;
+            ctx.globalAlpha = s4;
+            // Red outer
+            ctx.fillStyle = `rgb(${Math.floor(160 + 60 * b4)}, ${Math.floor(40 + 30 * b4)}, ${Math.floor(50 + 30 * b4)})`;
+            ctx.beginPath();
+            ctx.moveTo(rf - 18, y + h * 0.88);
+            ctx.bezierCurveTo(rf - 22, y + h * 0.55, rf - 18, y + h * 0.25, rf, y + h * 0.08);
+            ctx.bezierCurveTo(rf + 18, y + h * 0.25, rf + 28, y + h * 0.55, rf + 22, y + h * 0.88);
+            ctx.closePath();
+            ctx.fill();
+            // Pink/magenta middle
+            ctx.fillStyle = `rgb(${Math.floor(190 + 50 * b4)}, ${Math.floor(70 + 50 * b4)}, ${Math.floor(90 + 50 * b4)})`;
+            ctx.beginPath();
+            ctx.moveTo(rf - 10, y + h * 0.85);
+            ctx.bezierCurveTo(rf - 14, y + h * 0.52, rf - 10, y + h * 0.28, rf, y + h * 0.14);
+            ctx.bezierCurveTo(rf + 10, y + h * 0.28, rf + 18, y + h * 0.52, rf + 14, y + h * 0.85);
+            ctx.closePath();
+            ctx.fill();
+            // Light pink core
+            ctx.fillStyle = `rgb(${Math.floor(220 + 30 * b4)}, ${Math.floor(140 + 70 * b4)}, ${Math.floor(150 + 70 * b4)})`;
+            ctx.beginPath();
+            ctx.moveTo(rf - 4, y + h * 0.8);
+            ctx.bezierCurveTo(rf - 6, y + h * 0.5, rf - 4, y + h * 0.32, rf, y + h * 0.22);
+            ctx.bezierCurveTo(rf + 4, y + h * 0.32, rf + 8, y + h * 0.5, rf + 6, y + h * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        // SECTION 5: Golden tendrils connecting flames
+        const s5 = sectionsLit >= 5 ? 1 : (sectionsLit >= 4 ? glow * 0.8 : 0);
+        if (s5 > 0.05) {
+            const b5 = baseBright * s5;
+            ctx.globalAlpha = s5;
+            ctx.strokeStyle = `rgb(${Math.floor(200 + 50 * b5)}, ${Math.floor(150 + 50 * b5)}, ${Math.floor(50 + 30 * b5)})`;
             ctx.lineWidth = 4;
-            for (let i = 0; i < 8; i++) {
-                const angle = i * Math.PI / 4;
-                const rayLen = 25 + Math.sin(time * 0.05 + i) * 5;
-                ctx.beginPath();
-                ctx.moveTo(x + sunX + Math.cos(angle) * 20, y + sunY + Math.sin(angle) * 20);
-                ctx.lineTo(x + sunX + Math.cos(angle) * rayLen, y + sunY + Math.sin(angle) * rayLen);
-                ctx.stroke();
-            }
-        }
-
-        // Section 4: Right golden sun rays
-        const sec4Alpha = sectionsLit >= 4 ? 1 : (sectionsLit >= 3 ? glow * 0.9 : 0);
-        if (sec4Alpha > 0) {
-            const sunX = w * 0.75;
-            const sunY = h * 0.35;
-            const color = sectionsLit >= 4 ? COLORS.yellowLight : COLORS.yellow;
-            ctx.fillStyle = rgb(color, sec4Alpha);
+            ctx.lineCap = 'round';
+            // Left tendril
             ctx.beginPath();
-            ctx.arc(x + sunX, y + sunY, 18, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = rgb(color, sec4Alpha);
-            ctx.lineWidth = 4;
-            for (let i = 0; i < 8; i++) {
-                const angle = i * Math.PI / 4;
-                const rayLen = 25 + Math.sin(time * 0.05 + i + 2) * 5;
-                ctx.beginPath();
-                ctx.moveTo(x + sunX + Math.cos(angle) * 20, y + sunY + Math.sin(angle) * 20);
-                ctx.lineTo(x + sunX + Math.cos(angle) * rayLen, y + sunY + Math.sin(angle) * rayLen);
-                ctx.stroke();
-            }
-        }
-
-        // Section 5: Center dove/peace symbol
-        const sec5Alpha = sectionsLit >= 5 ? 1 : (sectionsLit >= 4 ? glow * 0.9 : 0);
-        if (sec5Alpha > 0) {
-            const centerX = w / 2;
-            const centerY = h / 2 + 20;
-            const color = sectionsLit >= 5 ? COLORS.turquoiseLight : COLORS.turquoise;
-            ctx.strokeStyle = rgb(color, sec5Alpha);
-            ctx.lineWidth = 6;
-            // Dove wings
-            ctx.beginPath();
-            ctx.arc(x + centerX - 15, y + centerY, 30, -Math.PI * 0.7, Math.PI * 0.2);
+            ctx.moveTo(cx - w * 0.12, y + h * 0.25);
+            ctx.bezierCurveTo(cx - w * 0.08, y + h * 0.18, cx - w * 0.04, y + h * 0.12, cx, y + h * 0.08);
             ctx.stroke();
+            // Right tendril
             ctx.beginPath();
-            ctx.arc(x + centerX + 15, y + centerY, 30, Math.PI * 0.8, Math.PI * 1.7);
+            ctx.moveTo(cx + w * 0.12, y + h * 0.25);
+            ctx.bezierCurveTo(cx + w * 0.08, y + h * 0.18, cx + w * 0.04, y + h * 0.12, cx, y + h * 0.08);
             ctx.stroke();
-            // Body
-            ctx.fillStyle = rgb(color, sec5Alpha);
-            ctx.beginPath();
-            ctx.ellipse(x + centerX, y + centerY + 10, 15, 25, 0, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.globalAlpha = 1;
         }
 
-        // Section 6: Pink/coral flowers
-        const sec6Alpha = sectionsLit >= 6 ? 1 : (sectionsLit >= 5 ? glow : 0);
-        if (sec6Alpha > 0) {
-            for (let i = -1; i <= 1; i++) {
-                const fx = w/2 + i * 45;
-                const fy = h * 0.7;
-                const color = sectionsLit >= 6 ? COLORS.pinkLight : COLORS.pink;
-                ctx.fillStyle = rgb(color, sec6Alpha);
-                for (let p = 0; p < 6; p++) {
-                    const pAngle = p * Math.PI / 3;
-                    const px = Math.cos(pAngle) * 10;
-                    const py = Math.sin(pAngle) * 10;
-                    ctx.beginPath();
-                    ctx.arc(x + fx + px, y + fy + py, 8, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                // Flower center
-                ctx.fillStyle = rgb(COLORS.yellow, sec6Alpha);
-                ctx.beginPath();
-                ctx.arc(x + fx, y + fy, 5, 0, Math.PI * 2);
-                ctx.fill();
-            }
+        // SECTION 6: Full radiance - bright center glow
+        const s6 = sectionsLit >= 6 ? 1 : (sectionsLit >= 5 ? glow : 0);
+        if (s6 > 0.05) {
+            ctx.globalAlpha = s6 * 0.4;
+            const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.4);
+            gradient.addColorStop(0, 'rgba(255, 255, 220, 0.6)');
+            gradient.addColorStop(1, 'rgba(255, 255, 220, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, w, h);
+            ctx.globalAlpha = 1;
         }
 
-        // Lead lines (dark metal frames)
-        ctx.strokeStyle = 'rgb(20, 20, 20)';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(x + w * 0.33, y + h);
-        ctx.lineTo(x + w * 0.33, y + h * 0.2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x + w * 0.67, y + h);
-        ctx.lineTo(x + w * 0.67, y + h * 0.2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x + 8, y + h * 0.55);
-        ctx.lineTo(x + w - 8, y + h * 0.55);
-        ctx.stroke();
+        // Lead lines (dark dividers) - always visible
+        ctx.strokeStyle = `rgba(30, 25, 20, ${0.5 + baseBright * 0.4})`;
         ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(x + w/2, y + h * 0.35, w * 0.25, Math.PI, 0);
+        ctx.moveTo(cx, y + h * 0.05);
+        ctx.lineTo(cx, y + h * 0.95);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.2, y + h * 0.1);
+        ctx.lineTo(cx - 20, y + h * 0.85);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.8, y + h * 0.1);
+        ctx.lineTo(cx + 20, y + h * 0.85);
         ctx.stroke();
 
-        // Stone frame
-        ctx.strokeStyle = 'rgb(107, 102, 92)';
-        ctx.lineWidth = 14;
-        ctx.beginPath();
-        ctx.moveTo(x - 6, y + h + 2);
-        ctx.lineTo(x - 6, y + h * 0.35);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(x + w/2, y + h * 0.35, w/2 + 6, Math.PI, 0);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x + w + 6, y + h * 0.35);
-        ctx.lineTo(x + w + 6, y + h + 2);
-        ctx.stroke();
+        ctx.restore();
 
-        // Stone texture
-        ctx.strokeStyle = 'rgb(89, 84, 77)';
+        // Stone arch frame
+        ctx.strokeStyle = '#6a6560';
         ctx.lineWidth = 12;
         ctx.beginPath();
-        ctx.moveTo(x - 5, y + h + 1);
-        ctx.lineTo(x - 5, y + h * 0.36);
+        ctx.ellipse(cx, cy, w/2 + 6, h/2 + 6, 0, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.strokeStyle = '#8a8580';
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(x + w/2, y + h * 0.35, w/2 + 5, Math.PI, 0);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x + w + 5, y + h * 0.36);
-        ctx.lineTo(x + w + 5, y + h + 1);
+        ctx.ellipse(cx, cy, w/2 + 2, h/2 + 2, 0, 0, Math.PI * 2);
         ctx.stroke();
 
         // Stone sill
-        ctx.fillStyle = 'rgb(97, 92, 82)';
-        ctx.fillRect(x - 18, y + h, w + 36, 18);
-        ctx.fillStyle = 'rgb(82, 77, 69)';
-        ctx.fillRect(x - 18, y + h + 14, w + 36, 4);
+        ctx.fillStyle = '#5a5550';
+        ctx.beginPath();
+        ctx.moveTo(x - 20, y + h);
+        ctx.lineTo(x + w + 20, y + h);
+        ctx.lineTo(x + w + 15, y + h + 22);
+        ctx.lineTo(x - 15, y + h + 22);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#4a4540';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - 15, y + h + 8);
+        ctx.lineTo(x + w + 15, y + h + 8);
+        ctx.stroke();
 
-        // Full window divine glow when complete
+        // Divine outer glow when fully lit
         if (sectionsLit >= 6) {
-            const pulse = 0.5 + Math.sin(time * 0.04) * 0.15;
-            ctx.fillStyle = `rgba(255, 250, 230, ${pulse * 0.35})`;
+            const pulse = 0.15 + Math.sin(time * 0.03) * 0.05;
+            ctx.fillStyle = `rgba(255, 250, 220, ${pulse})`;
             ctx.beginPath();
-            ctx.ellipse(x + w/2, y + h/2, w/2 + 30, h/2 + 25, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.2})`;
-            ctx.beginPath();
-            ctx.ellipse(x + w/2, y + h * 0.4, w/4, h/4, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx, cy, w/2 + 40, h/2 + 30, 0, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -773,7 +966,7 @@
     function drawSittingScene(sitProgress) {
         drawChapelInterior();
 
-        // Stained glass window (dim)
+        // Stained glass window (dim, no sections lit)
         drawStainedGlassWindow(120, 20, 400, 220, 0, 0);
 
         // Pew
@@ -848,13 +1041,13 @@
         ctx.fillRect(328, personY + 68, 18, 10);
 
         // Text
-        setFont(28, 'bold');
+        setFont(14);
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
         if (sitProgress < 0.5) {
-            ctx.fillText("Taking a seat...", W/2, 30);
+            ctx.fillText("taking a seat...", W/2, 30);
         } else {
-            ctx.fillText("Beginning meditation...", W/2, 30);
+            ctx.fillText("beginning meditation...", W/2, 30);
         }
     }
 
@@ -884,7 +1077,7 @@
             }
         }
 
-        // Stained glass window
+        // Stained glass window - sections light up with breath cycles
         drawStainedGlassWindow(windowX, windowY, windowW, windowH, currentGlow, unlockedSections);
 
         // Color spots on floor
@@ -934,26 +1127,22 @@
         }
 
         // Breath count
-        setFont(36, 'bold');
+        setFont(20);
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'white';
-        ctx.fillText(breathCycleCount.toString(), centerX, centerY + 12);
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillText(breathCycleCount.toString(), centerX, centerY + 8);
 
         // Breath instructions
-        setFont(28, 'bold');
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        setFont(16);
         if (breathPhase === "waiting") {
-            ctx.fillText("Hold A to breathe in", W/2 + 2, 272);
-            ctx.fillStyle = 'rgba(255,255,255,0.9)';
-            ctx.fillText("Hold A to breathe in", W/2, 270);
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fillText("hold a to breathe in", W/2, 270);
         } else if (breathPhase === "inhale") {
-            ctx.fillText("Breathing in...", W/2 + 2, 272);
-            ctx.fillStyle = rgb(COLORS.turquoiseLight);
-            ctx.fillText("Breathing in...", W/2, 270);
+            ctx.fillStyle = rgb(COLORS.turquoiseLight, 0.8);
+            ctx.fillText("breathing in...", W/2, 270);
         } else if (breathPhase === "exhale") {
-            ctx.fillText("Breathing out...", W/2 + 2, 272);
-            ctx.fillStyle = rgb(COLORS.yellow);
-            ctx.fillText("Breathing out...", W/2, 270);
+            ctx.fillStyle = rgb(COLORS.yellow, 0.8);
+            ctx.fillText("breathing out...", W/2, 270);
         }
 
         // Section progress dots
@@ -976,15 +1165,15 @@
         }
 
         // Hint text
-        setFont(14);
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        setFont(12);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
         if (breathPhase === "inhale" && breathProgress > 0.8) {
-            ctx.fillText("Release A or press Y to exhale", W/2, 412);
+            ctx.fillText("release to exhale", W/2, 412);
         }
 
         // Control hints
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.fillText("HOLD A: INHALE   Y: EXHALE   B: MENU", W/2, 460);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillText("a: breathe   b: menu", W/2, 460);
     }
 
     function drawLevelComplete() {
@@ -1026,28 +1215,26 @@
         }
 
         // Completion text
-        setFont(48, 'bold');
+        setFont(28);
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillText("Namaste", W/2 + 2, 302);
-        ctx.fillStyle = 'white';
-        ctx.fillText("Namaste", W/2, 300);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillText("namaste", W/2, 300);
 
-        setFont(28, 'bold');
-        ctx.fillStyle = rgb(COLORS.turquoiseLight);
-        ctx.fillText("Your meditation is complete", W/2, 350);
+        setFont(14);
+        ctx.fillStyle = rgb(COLORS.turquoiseLight, 0.7);
+        ctx.fillText("your meditation is complete", W/2, 340);
 
-        setFont(16);
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
-        ctx.fillText(breathCycleCount + " breath cycles", W/2, 385);
-
-        setFont(18, 'bold');
-        ctx.fillStyle = rgb(COLORS.cream);
-        ctx.fillText("Thank you for visiting Sea Ranch", W/2, 420);
-
-        setFont(16);
+        setFont(12);
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.fillText("Press A to continue", W/2, 455);
+        ctx.fillText(breathCycleCount + " breaths", W/2, 375);
+
+        setFont(14);
+        ctx.fillStyle = rgb(COLORS.cream, 0.6);
+        ctx.fillText("thank you for visiting sea ranch", W/2, 410);
+
+        setFont(12);
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillText("press a to continue", W/2, 450);
     }
 
     function drawTitleCard() {
@@ -1109,8 +1296,11 @@
         ctx.translate(shakeX, shakeY);
 
         if (gameState === STATES.TITLE) {
-            drawTitleCard();
-        } else if (gameState === STATES.WALKING_TO_CHAPEL) {
+            ctx.restore();
+            return; // HTML title card is visible
+        }
+
+        if (gameState === STATES.WALKING_TO_CHAPEL) {
             drawChapelExterior();
         } else if (gameState === STATES.ENTERING_CHAPEL) {
             const fade = Math.min(1, stateTimer / 60);
@@ -1140,8 +1330,8 @@
     // Input handling
     const keyMap = {
         'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right',
-        'w': 'up', 's': 'down', 'a': 'left', 'd': 'right',
-        'Enter': 'a', ' ': 'a', 'z': 'a', 'x': 'b', 'Escape': 'b', 'Backspace': 'b',
+        'w': 'up', 's': 'down',
+        'Enter': 'a', ' ': 'a', 'z': 'a', 'Z': 'a', 'a': 'a', 'A': 'a', 'b': 'b', 'B': 'b', 'x': 'b', 'X': 'b', 'Escape': 'b', 'Backspace': 'b',
         'y': 'y', 'c': 'y'
     };
 
@@ -1155,13 +1345,28 @@
         if (key) { keys[key] = false; e.preventDefault(); }
     });
 
-    // Touch controls
+    // Touch and mouse controls
     document.querySelectorAll('[data-key]').forEach(btn => {
         const key = btn.dataset.key;
         btn.addEventListener('touchstart', e => { keys[key] = true; e.preventDefault(); });
         btn.addEventListener('touchend', e => { keys[key] = false; e.preventDefault(); });
         btn.addEventListener('touchcancel', e => { keys[key] = false; });
+        btn.addEventListener('mousedown', e => { keys[key] = true; e.preventDefault(); });
+        btn.addEventListener('mouseup', e => { keys[key] = false; e.preventDefault(); });
+        btn.addEventListener('mouseleave', () => { keys[key] = false; });
     });
+
+    // Click/touch on title card to start
+    function startFromTitle() {
+        if (gameState === STATES.TITLE) {
+            titleCard.classList.add('hidden');
+            initGame();
+            gameState = STATES.WALKING_TO_CHAPEL;
+            stateTimer = 0;
+        }
+    }
+    titleCard.addEventListener('click', startFromTitle);
+    titleCard.addEventListener('touchend', (e) => { e.preventDefault(); startFromTitle(); });
 
     // Start game
     loadImages();

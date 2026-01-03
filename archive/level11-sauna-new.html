@@ -27,7 +27,7 @@
             bottom: 20px;
             left: 0;
             right: 0;
-            display: none;
+            display: flex;
             justify-content: space-between;
             padding: 0 20px;
             z-index: 100;
@@ -606,10 +606,10 @@
                 shake(3);
                 // Save completion
                 try {
-                    const completed = JSON.parse(localStorage.getItem('seaRanchCompleted') || '[]');
+                    const completed = JSON.parse(localStorage.getItem('seaRanchQuestCompleted') || '[]');
                     if (!completed.includes(11)) {
                         completed.push(11);
-                        localStorage.setItem('seaRanchCompleted', JSON.stringify(completed));
+                        localStorage.setItem('seaRanchQuestCompleted', JSON.stringify(completed));
                     }
                 } catch (e) {}
             }
@@ -1298,7 +1298,7 @@
     // Input handling
     const keyMap = {
         'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right',
-        'w': 'up', 's': 'down', 'a': 'left', 'd': 'right',
+        'w': 'up', 's': 'down',
         'Enter': 'a', ' ': 'a', 'z': 'a', 'x': 'b', 'Escape': 'b', 'Backspace': 'b'
     };
 
@@ -1312,12 +1312,15 @@
         if (key) { keys[key] = false; e.preventDefault(); }
     });
 
-    // Touch controls
+    // Touch and mouse controls
     document.querySelectorAll('[data-key]').forEach(btn => {
         const key = btn.dataset.key;
         btn.addEventListener('touchstart', e => { keys[key] = true; e.preventDefault(); });
         btn.addEventListener('touchend', e => { keys[key] = false; e.preventDefault(); });
         btn.addEventListener('touchcancel', e => { keys[key] = false; });
+        btn.addEventListener('mousedown', e => { keys[key] = true; e.preventDefault(); });
+        btn.addEventListener('mouseup', e => { keys[key] = false; e.preventDefault(); });
+        btn.addEventListener('mouseleave', () => { keys[key] = false; });
     });
 
     // Start game

@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sea Ranch Quest - Sheep Herding</title>
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --white: #f5f5f0;
+            --red: #C41E3A;
+            --blue: #2E5DA8;
+            --wood: #8b7355;
+            --sand: #d4c4a8;
+            --fog: #e8e4dc;
+            --meadow: #c9b896;
+            --meadow-dark: #a69570;
+            --grass-gold: #d4bc6a;
+            --grass-dry: #b8a050;
+            --sky: #8fb4c9;
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+
+        #game-canvas {
+            display: block;
+        }
+
+        .grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 10;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* HTML/CSS Title Card - Barbara Stauffacher Solomon supergraphic style */
+        .title-card {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-card .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(139, 115, 85, 0.08) 3px,
+                    rgba(139, 115, 85, 0.08) 4px
+                ),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139, 115, 85, 0.12) 0%, transparent 45%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+
+        .title-card .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+
+        .title-card .supergraphic::before,
+        .title-card .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+
+        .title-card .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+
+        .title-card .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+
+        .title-card .arrow-accent {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 80px;
+            height: 100px;
+            pointer-events: none;
+        }
+
+        .title-card .arrow-accent::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 50px solid var(--red);
+            top: 0;
+        }
+
+        .title-card .arrow-accent::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 50px;
+            background: var(--red);
+            top: 45px;
+            left: 27px;
+        }
+
+        .title-card .title-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .title-card .level-title {
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .title-card .level-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--wood);
+        }
+
+        .title-card .continue-hint {
+            position: absolute;
+            bottom: 36px;
+            right: 36px;
+            font-size: 12px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .title-card .title-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* Win screen overlay */
+        .win-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            display: none;
+        }
+
+        .win-overlay.visible {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .win-overlay .wood-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(139, 115, 85, 0.08) 3px,
+                    rgba(139, 115, 85, 0.08) 4px
+                ),
+                radial-gradient(ellipse at 20% 30%, rgba(139, 115, 85, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139, 115, 85, 0.1) 0%, transparent 40%),
+                linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
+        }
+
+        .win-overlay .supergraphic {
+            position: absolute;
+            top: -80px;
+            right: -120px;
+            width: 550px;
+            height: 550px;
+            pointer-events: none;
+        }
+
+        .win-overlay .supergraphic::before,
+        .win-overlay .supergraphic::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 36px solid var(--blue);
+        }
+
+        .win-overlay .supergraphic::before {
+            width: 420px;
+            height: 420px;
+            top: 0;
+            right: 0;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+        }
+
+        .win-overlay .supergraphic::after {
+            width: 320px;
+            height: 320px;
+            top: 50px;
+            right: 50px;
+            border-color: transparent transparent var(--blue) var(--blue);
+            transform: rotate(-45deg);
+            opacity: 0.7;
+        }
+
+        .win-overlay .win-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .win-overlay .win-title {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--black);
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 16px;
+        }
+
+        .win-overlay .win-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--wood);
+            margin-bottom: 40px;
+        }
+
+        .win-overlay .win-controls {
+            font-size: 12px;
+            color: var(--wood);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .win-overlay .win-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* Touch controls */
+        .touch-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            pointer-events: none;
+            z-index: 9999;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .touch-controls.visible {
+            display: flex;
+        }
+
+        .touch-dpad {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            position: absolute;
+            background: rgba(245, 245, 240, 0.85);
+            border: 3px solid #1a1a1a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: bold;
+            font-size: 18px;
+            color: #1a1a1a;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: transform 0.05s, background 0.05s;
+        }
+
+        .touch-btn.active {
+            background: #2E5DA8;
+            color: #f5f5f0;
+            transform: scale(0.95);
+        }
+
+        .touch-dpad .touch-btn {
+            width: 44px;
+            height: 44px;
+        }
+
+        .touch-dpad .touch-up {
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .touch-dpad .touch-up.active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .touch-dpad .touch-down {
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .touch-dpad .touch-down.active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .touch-dpad .touch-left {
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .touch-dpad .touch-left.active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .touch-dpad .touch-right {
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .touch-dpad .touch-right.active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .touch-dpad::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            background: rgba(139, 115, 85, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .touch-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+            pointer-events: auto;
+        }
+
+        .touch-actions-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .touch-action-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 20px;
+        }
+
+        .touch-btn-a {
+            background: rgba(196, 30, 58, 0.9);
+            color: #f5f5f0;
+            border-color: #a01830;
+        }
+        .touch-btn-a.active {
+            background: #C41E3A;
+            transform: scale(0.92);
+        }
+
+        .touch-btn-b {
+            background: rgba(46, 93, 168, 0.9);
+            color: #f5f5f0;
+            border-color: #1e4d88;
+        }
+        .touch-btn-b.active {
+            background: #2E5DA8;
+            transform: scale(0.92);
+        }
+
+        .arrow-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        @media (max-height: 400px) and (orientation: landscape) {
+            .touch-controls {
+                height: 120px;
+                padding: 10px;
+            }
+            .touch-dpad {
+                width: 100px;
+                height: 100px;
+            }
+            .touch-dpad .touch-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            .touch-action-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- HTML/CSS Title Card -->
+        <div class="title-card" id="title-card">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="arrow-accent"></div>
+            <div class="title-content">
+                <div class="level-title">Sheep Herding</div>
+                <div class="level-subtitle">Poppy the Border Collie</div>
+            </div>
+            <div class="continue-hint">A to start - B to menu</div>
+            <div class="title-grain"></div>
+        </div>
+
+        <!-- Win screen overlay -->
+        <div class="win-overlay" id="win-overlay">
+            <div class="wood-bg"></div>
+            <div class="supergraphic"></div>
+            <div class="win-content">
+                <div class="win-title">Flock is Safe!</div>
+                <div class="win-subtitle">Great work, Poppy!</div>
+                <div class="win-controls">A: Replay - B: Menu</div>
+            </div>
+            <div class="win-grain"></div>
+        </div>
+
+        <canvas id="game-canvas" width="640" height="480"></canvas>
+        <div class="grain"></div>
+    </div>
+
+    <!-- Touch Controls -->
+    <div class="touch-controls" id="touch-controls">
+        <div class="touch-dpad">
+            <div class="touch-btn touch-up" data-key="ArrowUp"><span class="arrow-icon">&#x25B2;</span></div>
+            <div class="touch-btn touch-down" data-key="ArrowDown"><span class="arrow-icon">&#x25BC;</span></div>
+            <div class="touch-btn touch-left" data-key="ArrowLeft"><span class="arrow-icon">&#x25C0;</span></div>
+            <div class="touch-btn touch-right" data-key="ArrowRight"><span class="arrow-icon">&#x25B6;</span></div>
+        </div>
+        <div class="touch-actions">
+            <div class="touch-actions-row">
+                <div class="touch-btn touch-action-btn touch-btn-b" data-key="b">B</div>
+                <div class="touch-btn touch-action-btn touch-btn-a" data-key="a">A</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =============================================
+        // Sea Ranch Quest - Level 2: Sheep Herding
+        // Converted from Love2D Lua to HTML5 Canvas
+        // =============================================
+
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // =============================================
+        // COLORS (matching Lua COLORS table)
+        // =============================================
+        const COLORS = {
+            black: [0.10, 0.10, 0.10],
+            white: [0.96, 0.96, 0.94],
+            meadow: [0.79, 0.72, 0.59],
+            meadowDark: [0.65, 0.58, 0.44],
+            grassGold: [0.83, 0.74, 0.42],
+            grassDry: [0.72, 0.63, 0.31],
+            sky: [0.56, 0.71, 0.79],
+            skyLight: [0.72, 0.83, 0.89],
+            poppy: [0.94, 0.91, 0.86],
+            poppyDark: [0.83, 0.77, 0.66],
+            sheep: [0.91, 0.88, 0.82],
+            cypress: [0.18, 0.29, 0.23],
+            wood: [0.55, 0.45, 0.33],
+            ocean: [0.29, 0.48, 0.60],
+            red: [0.77, 0.12, 0.23]
+        };
+
+        // Convert color array to CSS
+        function toCSS(colorArr, alpha = 1) {
+            return `rgba(${Math.round(colorArr[0]*255)}, ${Math.round(colorArr[1]*255)}, ${Math.round(colorArr[2]*255)}, ${alpha})`;
+        }
+
+        // =============================================
+        // AUDIO SYSTEM
+        // =============================================
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            switch(type) {
+                case 'bleat':
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(350, now);
+                    osc.frequency.setValueAtTime(400, now + 0.05);
+                    osc.frequency.setValueAtTime(380, now + 0.1);
+                    osc.frequency.setValueAtTime(420, now + 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.25);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                    break;
+                case 'whoosh':
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                    break;
+                case 'success':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(523, now);
+                    osc.frequency.setValueAtTime(659, now + 0.1);
+                    osc.frequency.setValueAtTime(784, now + 0.2);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                    break;
+            }
+        }
+
+        // =============================================
+        // GAME CONSTANTS
+        // =============================================
+        const SHEEP_COUNT = 12;
+        const W = 640;
+        const H = 480;
+
+        // =============================================
+        // JUICE SYSTEM (Shake, Flash, Sparkles)
+        // =============================================
+        const juice = {
+            shakeX: 0,
+            shakeY: 0,
+            shakeIntensity: 0,
+            shakeDecay: 0.9,
+            flashAlpha: 0,
+            flashColor: [1, 1, 1],
+            sparkles: []
+        };
+
+        function shake(intensity, decay = 0.9) {
+            juice.shakeIntensity = intensity;
+            juice.shakeDecay = decay;
+        }
+
+        function flash(color, alpha) {
+            juice.flashColor = color;
+            juice.flashAlpha = alpha;
+        }
+
+        function spawnSparkles(x, y) {
+            for (let i = 0; i < 12; i++) {
+                const angle = (Math.PI * 2 * i) / 12;
+                const speed = 3 + Math.random() * 2;
+                juice.sparkles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1,
+                    size: 3 + Math.random() * 2
+                });
+            }
+        }
+
+        function updateJuice() {
+            // Update shake
+            if (juice.shakeIntensity > 0.5) {
+                juice.shakeX = (Math.random() - 0.5) * juice.shakeIntensity * 2;
+                juice.shakeY = (Math.random() - 0.5) * juice.shakeIntensity * 2;
+                juice.shakeIntensity *= juice.shakeDecay;
+            } else {
+                juice.shakeX = 0;
+                juice.shakeY = 0;
+                juice.shakeIntensity = 0;
+            }
+
+            // Update flash
+            if (juice.flashAlpha > 0.01) {
+                juice.flashAlpha *= 0.85;
+            } else {
+                juice.flashAlpha = 0;
+            }
+
+            // Update sparkles
+            juice.sparkles = juice.sparkles.filter(s => {
+                s.x += s.vx;
+                s.y += s.vy;
+                s.vy += 0.1;
+                s.vx *= 0.98;
+                s.vy *= 0.98;
+                s.life -= 0.04;
+                return s.life > 0;
+            });
+        }
+
+        function applyShake() {
+            ctx.translate(juice.shakeX, juice.shakeY);
+        }
+
+        function drawJuice() {
+            // Draw sparkles
+            juice.sparkles.forEach(s => {
+                ctx.globalAlpha = s.life;
+                ctx.fillStyle = toCSS(COLORS.white);
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size * s.life, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // Draw flash
+            if (juice.flashAlpha > 0) {
+                ctx.globalAlpha = juice.flashAlpha;
+                ctx.fillStyle = toCSS(juice.flashColor);
+                ctx.fillRect(0, 0, W, H);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // =============================================
+        // FILM GRAIN
+        // =============================================
+        let grainCanvas = null;
+        function createGrainCanvas() {
+            grainCanvas = document.createElement('canvas');
+            grainCanvas.width = W;
+            grainCanvas.height = H;
+            const gCtx = grainCanvas.getContext('2d');
+            const imageData = gCtx.createImageData(W, H);
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const v = Math.random() * 255;
+                imageData.data[i] = v;
+                imageData.data[i + 1] = v;
+                imageData.data[i + 2] = v;
+                imageData.data[i + 3] = 40;
+            }
+            gCtx.putImageData(imageData, 0, 0);
+        }
+
+        function drawGrain(opacity = 0.06) {
+            if (!grainCanvas) createGrainCanvas();
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            ctx.globalCompositeOperation = 'overlay';
+            ctx.drawImage(grainCanvas, 0, 0);
+            ctx.restore();
+        }
+
+        // =============================================
+        // GAME STATE
+        // =============================================
+        let gameState = 'title';
+        let time = 0;
+        let sheepInPen = 0;
+        let predatorsScared = 0;
+
+        // Player (Poppy the dog)
+        const player = {
+            x: 67, y: 270,
+            vx: 0, vy: 0,
+            radius: 14,
+            speed: 0.8,
+            maxSpeed: 5.0,
+            friction: 0.85,
+            facing: 1,
+            isMoving: false,
+            bouncePhase: 0
+        };
+
+        // Sheep array
+        let sheep = [];
+
+        // Predators array
+        let predators = [];
+
+        // Pen location
+        const pen = { x: 513, y: 165, width: 113, height: 165 };
+
+        // Cypress trees (static, no randomness)
+        const cypressTrees = [
+            { x: 33, h: 50, lean: -0.1 },
+            { x: 113, h: 55, lean: 0.15 },
+            { x: 193, h: 45, lean: -0.05 },
+            { x: 280, h: 60, lean: 0.25 },
+            { x: 360, h: 48, lean: 0.1 },
+            { x: 440, h: 52, lean: -0.08 },
+            { x: 520, h: 58, lean: 0.2 },
+            { x: 600, h: 42, lean: -0.12 }
+        ];
+
+        // Bobcat spot positions (pre-computed per predator to avoid random in draw)
+        const bobcatSpots = [];
+
+        // =============================================
+        // INPUT HANDLING
+        // =============================================
+        const keys = {
+            left: false,
+            right: false,
+            up: false,
+            down: false,
+            a: false,
+            b: false
+        };
+
+        let justPressedA = false;
+        let justPressedB = false;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') keys.left = true;
+            if (e.key === 'ArrowRight') keys.right = true;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = true;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = true;
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'z' || e.key === 'Z') {
+                if (!keys.a) justPressedA = true;
+                keys.a = true;
+            }
+            if (e.key === 'Escape' || e.key === 'x' || e.key === 'X') {
+                if (!keys.b) justPressedB = true;
+                keys.b = true;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') keys.left = false;
+            if (e.key === 'ArrowRight') keys.right = false;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = false;
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'z' || e.key === 'Z') keys.a = false;
+            if (e.key === 'Escape' || e.key === 'x' || e.key === 'X') keys.b = false;
+        });
+
+        // Touch and mouse controls
+        function setupTouchControls() {
+            // Always show controls and set up handlers
+            document.getElementById('touch-controls').classList.add('visible');
+
+            const buttons = document.querySelectorAll('.touch-btn');
+
+            function handleButtonDown(btn, key) {
+                btn.classList.add('active');
+                if (key === 'ArrowUp') keys.up = true;
+                if (key === 'ArrowDown') keys.down = true;
+                if (key === 'ArrowLeft') keys.left = true;
+                if (key === 'ArrowRight') keys.right = true;
+                if (key === 'a') {
+                    if (!keys.a) justPressedA = true;
+                    keys.a = true;
+                }
+                if (key === 'b') {
+                    if (!keys.b) justPressedB = true;
+                    keys.b = true;
+                }
+            }
+
+            function handleButtonUp(btn, key) {
+                btn.classList.remove('active');
+                if (key === 'ArrowUp') keys.up = false;
+                if (key === 'ArrowDown') keys.down = false;
+                if (key === 'ArrowLeft') keys.left = false;
+                if (key === 'ArrowRight') keys.right = false;
+                if (key === 'a') keys.a = false;
+                if (key === 'b') keys.b = false;
+            }
+
+            buttons.forEach(btn => {
+                const key = btn.dataset.key;
+
+                // Touch events
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleButtonDown(btn, key);
+                    if (navigator.vibrate) navigator.vibrate(10);
+                }, { passive: false });
+
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    handleButtonUp(btn, key);
+                }, { passive: false });
+
+                btn.addEventListener('touchcancel', () => {
+                    handleButtonUp(btn, key);
+                });
+
+                // Mouse events
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    handleButtonDown(btn, key);
+                });
+
+                btn.addEventListener('mouseup', (e) => {
+                    e.preventDefault();
+                    handleButtonUp(btn, key);
+                });
+
+                btn.addEventListener('mouseleave', () => {
+                    handleButtonUp(btn, key);
+                });
+            });
+        }
+
+        // =============================================
+        // GAME INITIALIZATION
+        // =============================================
+        function initGame() {
+            sheep = [];
+            predators = [];
+            sheepInPen = 0;
+            predatorsScared = 0;
+            player.x = 67;
+            player.y = 270;
+            player.vx = 0;
+            player.vy = 0;
+            player.bouncePhase = 0;
+            player.isMoving = false;
+
+            // Create 4 clusters of 3 sheep
+            const clusters = [
+                { x: 80, y: 380, count: 3 },
+                { x: 80, y: 200, count: 3 },
+                { x: 300, y: 420, count: 3 },
+                { x: 350, y: 180, count: 3 }
+            ];
+
+            clusters.forEach((cluster, ci) => {
+                for (let i = 0; i < cluster.count; i++) {
+                    sheep.push({
+                        x: cluster.x + (Math.random() - 0.5) * 40,
+                        y: cluster.y + (Math.random() - 0.5) * 40,
+                        vx: 0, vy: 0,
+                        radius: 10,
+                        inPen: false,
+                        wobble: Math.random() * Math.PI * 2,
+                        cluster: ci
+                    });
+                }
+            });
+
+            // Create 3 predators
+            const predatorTypes = ['bobcat', 'coyote', 'lion'];
+            for (let i = 0; i < 3; i++) {
+                predators.push({
+                    x: 100 + i * 150,
+                    y: 140,
+                    vx: 0, vy: 0,
+                    radius: 12,
+                    type: predatorTypes[i],
+                    scared: false,
+                    scareTimer: 0,
+                    prowlPhase: Math.random() * Math.PI * 2
+                });
+
+                // Pre-compute bobcat spots
+                if (predatorTypes[i] === 'bobcat') {
+                    const spots = [];
+                    for (let j = 0; j < 4; j++) {
+                        spots.push({
+                            x: (Math.random() - 0.5) * 12 * 1.5,
+                            y: (Math.random() - 0.5) * 12 * 0.8
+                        });
+                    }
+                    bobcatSpots[i] = spots;
+                }
+            }
+        }
+
+        // =============================================
+        // SAVE COMPLETION
+        // =============================================
+        function saveCompletion(levelNumber) {
+            try {
+                const completed = JSON.parse(localStorage.getItem('seaRanchQuestCompleted') || '[]');
+                if (!completed.includes(levelNumber)) {
+                    completed.push(levelNumber);
+                    localStorage.setItem('seaRanchQuestCompleted', JSON.stringify(completed));
+                }
+            } catch (e) {
+                console.warn('Could not save progress');
+            }
+        }
+
+        // =============================================
+        // UPDATE FUNCTION
+        // =============================================
+        function update(dt) {
+            // Handle title state
+            if (gameState === 'title') {
+                if (justPressedA) {
+                    initGame();
+                    initAudio();
+                    gameState = 'playing';
+                    document.getElementById('title-card').style.display = 'none';
+                }
+                if (justPressedB) {
+                    window.location.href = 'index.html';
+                }
+                justPressedA = false;
+                justPressedB = false;
+                return;
+            }
+
+            // Handle win state
+            if (gameState === 'win') {
+                if (justPressedA) {
+                    initGame();
+                    gameState = 'playing';
+                    document.getElementById('win-overlay').classList.remove('visible');
+                }
+                if (justPressedB) {
+                    window.location.href = 'index.html';
+                }
+                justPressedA = false;
+                justPressedB = false;
+                return;
+            }
+
+            // B button returns to menu
+            if (justPressedB) {
+                window.location.href = 'index.html';
+            }
+            justPressedA = false;
+            justPressedB = false;
+
+            time += dt;
+
+            // Player movement
+            let ax = 0, ay = 0;
+            if (keys.left) { ax -= 1; player.facing = -1; }
+            if (keys.right) { ax += 1; player.facing = 1; }
+            if (keys.up) ay -= 1;
+            if (keys.down) ay += 1;
+
+            if (ax !== 0 && ay !== 0) {
+                ax *= 0.707;
+                ay *= 0.707;
+            }
+
+            player.vx += ax * player.speed;
+            player.vy += ay * player.speed;
+            player.vx *= player.friction;
+            player.vy *= player.friction;
+
+            const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+            if (speed > player.maxSpeed) {
+                player.vx = (player.vx / speed) * player.maxSpeed;
+                player.vy = (player.vy / speed) * player.maxSpeed;
+            }
+
+            player.x += player.vx;
+            player.y += player.vy;
+            player.isMoving = speed > 0.5;
+
+            if (player.isMoving) {
+                player.bouncePhase += 0.3;
+            }
+
+            // Bounds
+            player.x = Math.max(player.radius, Math.min(W - player.radius, player.x));
+            player.y = Math.max(105 + player.radius, Math.min(H - player.radius, player.y));
+
+            // Update sheep
+            sheep.forEach(s => {
+                s.wobble += 0.1;
+
+                if (s.inPen) {
+                    // Gentle wandering in pen
+                    if (Math.random() < 0.02) {
+                        s.vx += (Math.random() - 0.5) * 0.3;
+                        s.vy += (Math.random() - 0.5) * 0.3;
+                    }
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.vx *= 0.95;
+                    s.vy *= 0.95;
+
+                    // Keep in pen
+                    const padding = 15;
+                    s.x = Math.max(pen.x + padding, Math.min(pen.x + pen.width - padding, s.x));
+                    s.y = Math.max(pen.y + padding, Math.min(pen.y + pen.height - padding, s.y));
+                } else {
+                    // Flee from player
+                    const dx = s.x - player.x;
+                    const dy = s.y - player.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 50) {
+                        const fleeStrength = (50 - dist) / 50;
+                        s.vx += (dx / dist) * fleeStrength * 0.6;
+                        s.vy += (dy / dist) * fleeStrength * 0.6;
+                    }
+
+                    // Flee from predators
+                    predators.forEach(p => {
+                        if (!p.scared) {
+                            const pdx = s.x - p.x;
+                            const pdy = s.y - p.y;
+                            const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+                            if (pdist < 70) {
+                                const fleeStrength = (70 - pdist) / 70;
+                                s.vx += (pdx / pdist) * fleeStrength * 0.9;
+                                s.vy += (pdy / pdist) * fleeStrength * 0.9;
+                            }
+                        }
+                    });
+
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.vx *= 0.96;
+                    s.vy *= 0.96;
+
+                    // Bounds
+                    s.x = Math.max(27, Math.min(620, s.x));
+                    s.y = Math.max(120, Math.min(465, s.y));
+
+                    // SLURP ZONE logic
+                    const gateStart = pen.y + 60;
+                    const gateEnd = gateStart + 85;
+                    const gateCenterY = gateStart + 42.5;
+                    const slurpDistance = 60;
+                    const gateX = pen.x;
+
+                    if (s.x > gateX - slurpDistance && s.x < gateX + 20) {
+                        if (s.y > gateStart - 20 && s.y < gateEnd + 20) {
+                            const targetX = pen.x + 50;
+                            const targetY = gateCenterY;
+                            let pullStrength = 0.15;
+                            if (s.x > gateX - 30) {
+                                pullStrength = 0.25;
+                            }
+                            s.vx += (targetX - s.x) * pullStrength;
+                            s.vy += (targetY - s.y) * pullStrength * 0.5;
+                        }
+                    }
+
+                    // Fence collision - push back if not in gate
+                    if (s.x > pen.x - 20 && s.x < pen.x + 10) {
+                        if (s.y < gateStart || s.y > gateEnd) {
+                            s.x = pen.x - 20;
+                            s.vx = -Math.abs(s.vx) * 0.5;
+                        }
+                    }
+
+                    // Top fence collision
+                    if (s.x > pen.x && s.x < pen.x + pen.width) {
+                        if (s.y < pen.y + 15 && s.y > pen.y - 20) {
+                            s.y = pen.y - 20;
+                            s.vy = -Math.abs(s.vy) * 0.5;
+                        }
+                    }
+
+                    // Check if entered pen through gate
+                    if (s.x > pen.x + 15 && s.x < pen.x + pen.width - 10 &&
+                        s.y > pen.y + 15 && s.y < pen.y + pen.height - 15) {
+                        s.inPen = true;
+                        sheepInPen++;
+                        spawnSparkles(s.x, s.y);
+                        shake(4, 0.85);
+                        playSound('bleat');
+                    }
+                }
+            });
+
+            // Update predators
+            predators.forEach(p => {
+                p.prowlPhase += 0.08;
+
+                if (p.scared) {
+                    p.scareTimer--;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vx *= 0.95;
+                    p.vy *= 0.95;
+                    if (p.scareTimer <= 0) {
+                        p.x = -100;
+                    }
+                } else {
+                    // Check collision with player
+                    const dx = p.x - player.x;
+                    const dy = p.y - player.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 25) {
+                        p.scared = true;
+                        p.scareTimer = 60;
+                        predatorsScared++;
+                        p.vx = (dx / dist) * 6;
+                        p.vy = (dy / dist) * 6;
+                        shake(10, 0.88);
+                        flash(COLORS.red, 0.2);
+                        playSound('whoosh');
+                    } else {
+                        // Hunt nearest sheep
+                        let nearestDist = Infinity;
+                        let nearestSheep = null;
+                        sheep.forEach(s => {
+                            if (!s.inPen) {
+                                const d = Math.sqrt((s.x - p.x) ** 2 + (s.y - p.y) ** 2);
+                                if (d < nearestDist) {
+                                    nearestDist = d;
+                                    nearestSheep = s;
+                                }
+                            }
+                        });
+
+                        if (nearestSheep && nearestDist < 150) {
+                            const sdx = nearestSheep.x - p.x;
+                            const sdy = nearestSheep.y - p.y;
+                            p.vx += (sdx / nearestDist) * 0.06;
+                            p.vy += (sdy / nearestDist) * 0.06;
+                        }
+
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vx *= 0.96;
+                        p.vy *= 0.96;
+
+                        // Keep in bounds, away from pen
+                        p.x = Math.max(40, Math.min(500, p.x));
+                        p.y = Math.max(150, Math.min(465, p.y));
+                    }
+                }
+            });
+
+            // Win condition
+            if (sheepInPen >= SHEEP_COUNT && predatorsScared >= 3) {
+                gameState = 'win';
+                saveCompletion(2);
+                playSound('success');
+                document.getElementById('win-overlay').classList.add('visible');
+            }
+
+            updateJuice();
+        }
+
+        // =============================================
+        // DRAWING FUNCTIONS
+        // =============================================
+
+        function drawMeadow() {
+            // Sky gradient
+            for (let y = 0; y <= 150; y++) {
+                const t = y / 150;
+                const r = COLORS.skyLight[0] * (1 - t) + COLORS.sky[0] * t;
+                const g = COLORS.skyLight[1] * (1 - t) + COLORS.sky[1] * t;
+                const b = COLORS.skyLight[2] * (1 - t) + COLORS.sky[2] * t;
+                ctx.strokeStyle = toCSS([r, g, b]);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+            }
+
+            // Ocean
+            ctx.fillStyle = toCSS(COLORS.ocean);
+            ctx.fillRect(0, 54, W, 18);
+
+            // Bluff
+            ctx.fillStyle = toCSS(COLORS.meadowDark);
+            ctx.fillRect(0, 72, W, 33);
+
+            // Meadow gradient
+            for (let y = 98; y < H; y++) {
+                const t = (y - 98) / (H - 98);
+                const r = COLORS.meadow[0] * (1 - t) + COLORS.grassDry[0] * t;
+                const g = COLORS.meadow[1] * (1 - t) + COLORS.grassDry[1] * t;
+                const b = COLORS.meadow[2] * (1 - t) + COLORS.grassDry[2] * t;
+                ctx.strokeStyle = toCSS([r, g, b]);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+            }
+
+            // Cypress trees
+            cypressTrees.forEach(tree => {
+                const x = tree.x;
+                const baseY = 115;
+                const h = tree.h;
+                const lean = tree.lean;
+
+                // Trunk
+                ctx.strokeStyle = 'rgb(43, 26, 10)';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                const topX = x + lean * h;
+                const topY = baseY - h;
+                ctx.beginPath();
+                ctx.moveTo(x, baseY);
+                ctx.lineTo(topX, topY);
+                ctx.stroke();
+
+                // Foliage - asymmetric, wind-sculpted (very subtle sway)
+                const sway = Math.sin(time * 0.2 + x * 0.01) * 0.3;
+
+                ctx.fillStyle = 'rgb(46, 74, 59)';
+                ctx.beginPath();
+                ctx.ellipse(topX + sway + h * 0.1, topY - h * 0.3, 25, h * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'rgb(33, 59, 43)';
+                ctx.beginPath();
+                ctx.ellipse(topX + sway - h * 0.05, topY - h * 0.25, 18, h * 0.35, 0, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawPen() {
+            const wood = COLORS.wood;
+            const rail = 4;
+            const gateStart = pen.y + 60;
+            const gateSize = 85;
+
+            // Draw fence rails (horizontal)
+            function drawFenceH(x, y, w) {
+                ctx.strokeStyle = toCSS(wood);
+                ctx.lineWidth = rail;
+                // Top rail
+                ctx.beginPath();
+                ctx.moveTo(x, y + 8);
+                ctx.lineTo(x + w, y + 8);
+                ctx.stroke();
+                // Middle rail
+                ctx.beginPath();
+                ctx.moveTo(x, y + 22);
+                ctx.lineTo(x + w, y + 22);
+                ctx.stroke();
+                // Posts
+                ctx.fillStyle = 'rgb(115, 89, 64)';
+                for (let px = x; px <= x + w; px += 30) {
+                    ctx.fillRect(px - 2, y, 4, 35);
+                }
+            }
+
+            // Draw fence rails (vertical)
+            function drawFenceV(x, y, h) {
+                ctx.strokeStyle = toCSS(wood);
+                ctx.lineWidth = rail;
+                // Left rail
+                ctx.beginPath();
+                ctx.moveTo(x + 8, y);
+                ctx.lineTo(x + 8, y + h);
+                ctx.stroke();
+                // Right rail
+                ctx.beginPath();
+                ctx.moveTo(x + 22, y);
+                ctx.lineTo(x + 22, y + h);
+                ctx.stroke();
+                // Posts
+                ctx.fillStyle = 'rgb(115, 89, 64)';
+                for (let py = y; py <= y + h; py += 30) {
+                    ctx.fillRect(x, py - 2, 35, 4);
+                }
+            }
+
+            // TOP wall (full width)
+            drawFenceH(pen.x - rail, pen.y - rail, pen.width + rail * 2);
+
+            // BOTTOM wall (full width)
+            drawFenceH(pen.x - rail, pen.y + pen.height - 30, pen.width + rail * 2);
+
+            // LEFT wall - with gate opening
+            drawFenceV(pen.x - rail, pen.y, gateStart - pen.y);
+            drawFenceV(pen.x - rail, gateStart + gateSize, pen.y + pen.height - gateStart - gateSize + rail);
+
+            // RIGHT wall (full height)
+            drawFenceV(pen.x + pen.width, pen.y, pen.height + rail);
+
+            // Ram's head sign - outside the pen
+            const signX = pen.x - 30;
+            const signY = pen.y - 10;
+
+            // Sign post
+            ctx.fillStyle = 'rgb(89, 74, 59)';
+            ctx.fillRect(signX - 2, signY + 18, 4, 45);
+
+            // Sign board
+            ctx.fillStyle = toCSS(COLORS.white);
+            ctx.fillRect(signX - 19, signY - 15, 37, 36);
+
+            // Ram's head icon
+            ctx.fillStyle = 'rgb(26, 26, 26)';
+            // Head outline
+            ctx.beginPath();
+            ctx.arc(signX, signY + 5, 10, 0, Math.PI * 2);
+            ctx.fill();
+            // Snout
+            ctx.beginPath();
+            ctx.ellipse(signX, signY + 12, 5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Curved horns
+            ctx.strokeStyle = 'rgb(26, 26, 26)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(signX - 8, signY - 2, 10, Math.PI * 0.8, Math.PI * 1.6);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(signX + 8, signY - 2, 10, Math.PI * 1.4, Math.PI * 2.2);
+            ctx.stroke();
+            // Eyes
+            ctx.fillStyle = toCSS(COLORS.white);
+            ctx.beginPath();
+            ctx.arc(signX - 4, signY + 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(signX + 4, signY + 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawSheep(s) {
+            const wobbleX = Math.sin(s.wobble) * 0.5;
+            const wobbleY = Math.cos(s.wobble * 1.3) * 0.3;
+
+            ctx.save();
+            ctx.translate(s.x + wobbleX, s.y + wobbleY);
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.beginPath();
+            ctx.ellipse(0, s.radius + 2, s.radius * 0.8, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Legs
+            ctx.fillStyle = toCSS(COLORS.black);
+            ctx.fillRect(-s.radius * 0.5, s.radius * 0.3, 2, 4);
+            ctx.fillRect(s.radius * 0.3, s.radius * 0.3, 2, 4);
+
+            // Wool fluff
+            const sheepColor = s.inPen ? COLORS.white : COLORS.sheep;
+            ctx.fillStyle = toCSS(sheepColor);
+            for (let i = 0; i < 7; i++) {
+                const angle = (i / 7) * Math.PI * 2 + s.wobble * 0.1;
+                const dist = s.radius * (0.5 + Math.sin(i * 2.3) * 0.15);
+                const bx = Math.cos(angle) * dist;
+                const by = Math.sin(angle) * dist * 0.8;
+                const size = s.radius * (0.45 + Math.sin(i * 1.7) * 0.1);
+                ctx.beginPath();
+                ctx.arc(bx, by, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Main body
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s.radius * 1.1, s.radius * 0.9, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head - darker face
+            ctx.fillStyle = 'rgb(74, 59, 41)';
+            ctx.save();
+            ctx.translate(s.radius * 0.4, s.radius * 0.1);
+            ctx.rotate(0.2);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 4, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Ears
+            ctx.save();
+            ctx.translate(s.radius * 0.2, -s.radius * 0.3);
+            ctx.rotate(-0.5);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 2.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(s.radius * 0.7, -s.radius * 0.2);
+            ctx.rotate(0.5);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 2.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Eyes
+            ctx.fillStyle = toCSS(COLORS.black);
+            ctx.beginPath();
+            ctx.arc(s.radius * 0.25, s.radius * 0.05, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s.radius * 0.55, s.radius * 0.1, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = 'rgb(41, 41, 41)';
+            ctx.beginPath();
+            ctx.ellipse(s.radius * 0.65, s.radius * 0.25, 1.5, 1, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawPredator(p, index) {
+            if (p.x < 0) return;
+
+            const prowl = Math.sin(p.prowlPhase) * 3;
+
+            ctx.save();
+            ctx.translate(p.x, p.y + prowl);
+
+            // Body and accent colors by species
+            let bodyColor, accentColor, tailLength, earSize;
+
+            if (p.type === 'lion') {
+                bodyColor = [0.63, 0.50, 0.25]; // Tawny
+                accentColor = [0.50, 0.38, 0.13];
+                tailLength = 2.2;
+                earSize = 0.5;
+            } else if (p.type === 'coyote') {
+                bodyColor = [0.55, 0.45, 0.33]; // Gray-brown
+                accentColor = [0.42, 0.33, 0.21];
+                tailLength = 1.8;
+                earSize = 0.8;
+            } else { // bobcat
+                bodyColor = [0.69, 0.50, 0.31]; // Reddish-brown
+                accentColor = [0.56, 0.38, 0.19];
+                tailLength = 0.8;
+                earSize = 0.7;
+            }
+
+            if (p.scared) {
+                bodyColor = COLORS.poppyDark;
+                accentColor = COLORS.poppyDark;
+            }
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.beginPath();
+            ctx.ellipse(0, p.radius + 2 - prowl, p.radius, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail with wag
+            const tailWag = Math.sin(p.prowlPhase * 2) * 3;
+            ctx.strokeStyle = toCSS(accentColor);
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-p.radius * 0.8, 0);
+            ctx.quadraticCurveTo(
+                -p.radius * tailLength, -3 + tailWag,
+                -p.radius * tailLength * 0.9, 3 + tailWag
+            );
+            ctx.stroke();
+
+            // Body
+            ctx.fillStyle = toCSS(bodyColor);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.radius * 1.4, p.radius * 0.9, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Legs (animated)
+            const legPhase = p.prowlPhase * 2;
+            ctx.fillStyle = toCSS(accentColor);
+            [-0.4, 0.3].forEach((offset, i) => {
+                const legMove = Math.sin(legPhase + i * Math.PI) * 2;
+                ctx.fillRect(p.radius * offset - 1.5, p.radius * 0.5, 3, 5 + legMove);
+            });
+
+            // Head
+            ctx.fillStyle = toCSS(bodyColor);
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.9, -p.radius * 0.3, p.radius * 0.65, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ears
+            ctx.fillStyle = toCSS(accentColor);
+            const earH = p.radius * earSize;
+            // Left ear
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 0.5, -p.radius * 0.6);
+            ctx.lineTo(p.radius * 0.4, -p.radius * 0.6 - earH);
+            ctx.lineTo(p.radius * 0.8, -p.radius * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            // Right ear
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 1.1, -p.radius * 0.5);
+            ctx.lineTo(p.radius * 1.2, -p.radius * 0.5 - earH);
+            ctx.lineTo(p.radius * 1.4, -p.radius * 0.4);
+            ctx.closePath();
+            ctx.fill();
+
+            // Snout
+            ctx.fillStyle = toCSS(bodyColor);
+            ctx.beginPath();
+            ctx.ellipse(p.radius * 1.3, -p.radius * 0.15, p.radius * 0.35, p.radius * 0.25, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes - fierce!
+            if (p.scared) {
+                ctx.fillStyle = toCSS(COLORS.white);
+            } else {
+                ctx.fillStyle = 'rgb(255, 204, 0)';
+            }
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.7, -p.radius * 0.35, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(p.radius * 1.05, -p.radius * 0.3, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupils
+            ctx.fillStyle = toCSS(COLORS.black);
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.72, -p.radius * 0.35, 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(p.radius * 1.07, -p.radius * 0.3, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.beginPath();
+            ctx.arc(p.radius * 1.5, -p.radius * 0.1, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Spots for bobcat (using pre-computed positions)
+            if (p.type === 'bobcat' && !p.scared && bobcatSpots[index]) {
+                ctx.fillStyle = toCSS(accentColor);
+                bobcatSpots[index].forEach(spot => {
+                    ctx.beginPath();
+                    ctx.arc(spot.x, spot.y, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            ctx.restore();
+
+            // Label
+            if (!p.scared) {
+                ctx.fillStyle = toCSS(COLORS.black);
+                ctx.font = "bold 10px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+                ctx.textAlign = 'center';
+                ctx.fillText(p.type.toUpperCase(), p.x, p.y + p.radius + 15);
+            }
+        }
+
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.scale(player.facing, 1);
+
+            let bounce = 0;
+            if (player.isMoving) {
+                bounce = Math.abs(Math.sin(player.bouncePhase)) * 4;
+            }
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.beginPath();
+            ctx.ellipse(0, player.radius + 2 + bounce, player.radius * 1.2, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.translate(0, -bounce);
+
+            // Body
+            ctx.fillStyle = toCSS(COLORS.poppy);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, player.radius * 1.1, player.radius, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Chest
+            ctx.fillStyle = toCSS(COLORS.white);
+            ctx.beginPath();
+            ctx.ellipse(player.radius * 0.3, player.radius * 0.3, player.radius * 0.5, player.radius * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = toCSS(COLORS.poppy);
+            ctx.beginPath();
+            ctx.arc(player.radius * 0.5, -player.radius * 0.5, player.radius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ears
+            ctx.fillStyle = toCSS(COLORS.poppyDark);
+            ctx.beginPath();
+            ctx.ellipse(player.radius * 0.1, -player.radius * 0.9, player.radius * 0.4, player.radius * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(player.radius * 0.9, -player.radius * 0.8, player.radius * 0.4, player.radius * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = toCSS(COLORS.black);
+            ctx.beginPath();
+            ctx.arc(player.radius * 1.3, -player.radius * 0.25, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.beginPath();
+            ctx.arc(player.radius * 0.4, -player.radius * 0.6, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(player.radius * 0.85, -player.radius * 0.55, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye shine
+            ctx.fillStyle = toCSS(COLORS.white);
+            ctx.beginPath();
+            ctx.arc(player.radius * 0.35, -player.radius * 0.65, 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(player.radius * 0.8, -player.radius * 0.6, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawHUD() {
+            // SHEEP count box
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(15, 15, 110, 28);
+            ctx.fillStyle = '#f5f5f0';
+            ctx.fillRect(12, 12, 110, 28);
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(12, 12, 110, 28);
+
+            ctx.fillStyle = '#8b7355';
+            ctx.font = "bold 12px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+            ctx.textAlign = 'left';
+            ctx.fillText('SHEEP ', 20, 30);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillText(sheepInPen + '/12', 68, 30);
+
+            // PREDATORS count box
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(135, 15, 130, 28);
+            ctx.fillStyle = '#f5f5f0';
+            ctx.fillRect(132, 12, 130, 28);
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(132, 12, 130, 28);
+
+            ctx.fillStyle = '#8b7355';
+            ctx.fillText('PREDATORS ', 140, 30);
+            ctx.fillStyle = '#C41E3A';
+            ctx.fillText(predatorsScared + '/3', 225, 30);
+
+            // Control hints
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.font = "bold 10px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+            ctx.textAlign = 'center';
+            ctx.fillText('D-PAD: RUN   B: MENU', W / 2, 464);
+        }
+
+        // =============================================
+        // MAIN RENDER
+        // =============================================
+        function render() {
+            if (gameState === 'title') {
+                // Title card is HTML, don't render canvas
+                return;
+            }
+
+            ctx.save();
+            applyShake();
+
+            drawMeadow();
+            drawPen();
+
+            // Draw predators
+            predators.forEach((p, i) => drawPredator(p, i));
+
+            // Draw sheep
+            sheep.forEach(s => drawSheep(s));
+
+            // Draw player
+            drawPlayer();
+
+            ctx.restore();
+
+            // Draw juice effects
+            drawJuice();
+
+            // Draw HUD (only when playing)
+            if (gameState === 'playing') {
+                drawHUD();
+            }
+
+            // Draw film grain
+            drawGrain(0.06);
+        }
+
+        // =============================================
+        // GAME LOOP
+        // =============================================
+        let lastTime = 0;
+
+        function gameLoop(timestamp) {
+            const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+            lastTime = timestamp;
+
+            update(dt);
+            render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // =============================================
+        // START
+        // =============================================
+        setupTouchControls();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

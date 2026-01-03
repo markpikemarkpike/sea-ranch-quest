@@ -27,11 +27,14 @@
         .title-card {
             position: absolute; inset: 0; z-index: 200;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
+            overflow: hidden;
         }
         .title-card .wood-bg {
             position: absolute; inset: 0;
             background: repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(139,115,85,0.08) 3px, rgba(139,115,85,0.08) 4px),
                 radial-gradient(ellipse at 20% 30%, rgba(139,115,85,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 60%, rgba(139,115,85,0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 40% 80%, rgba(139,115,85,0.12) 0%, transparent 45%),
                 linear-gradient(180deg, var(--fog) 0%, var(--sand) 100%);
         }
         .title-card .supergraphic {
@@ -48,7 +51,7 @@
             width: 320px; height: 320px; top: 50px; right: 50px;
             border-color: transparent transparent var(--blue) var(--blue); transform: rotate(-45deg); opacity: 0.7;
         }
-        .title-card .arrow-accent { position: absolute; bottom: 30px; left: 30px; width: 80px; height: 100px; }
+        .title-card .arrow-accent { position: absolute; bottom: 30px; left: 30px; width: 80px; height: 100px; pointer-events: none; }
         .title-card .arrow-accent::before {
             content: ''; position: absolute; width: 0; height: 0;
             border-left: 40px solid transparent; border-right: 40px solid transparent;
@@ -59,9 +62,13 @@
             background: var(--red); top: 45px; left: 27px;
         }
         .title-card .title-content { position: relative; z-index: 10; text-align: center; }
-        .title-card .level-title { font-size: 52px; font-weight: 700; color: var(--black); letter-spacing: -2px; }
-        .title-card .level-subtitle { font-size: 16px; letter-spacing: 3px; text-transform: uppercase; color: var(--wood); margin-top: 8px; }
+        .title-card .level-title { font-size: 56px; font-weight: 700; color: var(--black); letter-spacing: -2px; line-height: 1; margin-bottom: 12px; }
+        .title-card .level-subtitle { font-size: 18px; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; color: var(--wood); }
         .title-card .continue-hint { position: absolute; bottom: 36px; right: 36px; font-size: 12px; color: var(--wood); text-transform: uppercase; letter-spacing: 1px; }
+        .title-card .title-grain {
+            position: absolute; inset: 0; opacity: 0.4; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
     </style>
 </head>
 <body>
@@ -75,6 +82,7 @@
                 <div class="level-subtitle">A Year in the Life</div>
             </div>
             <div class="continue-hint">A to start · B to menu</div>
+            <div class="title-grain"></div>
         </div>
         <canvas id="game" width="640" height="480"></canvas>
     </div>
@@ -930,11 +938,15 @@ function update() {
     time++;
 
     updateSeason();
+    if (gameState !== 'playing') return; // Win/lose was triggered
     updateMama();
     updateChicks();
     updateHunger();
+    if (gameState !== 'playing') return; // Starvation loss
     updatePredators();
+    if (gameState !== 'playing') return; // Predator loss
     updateVehicles();
+    if (gameState !== 'playing') return; // Vehicle loss
     updateParticles();
 }
 
@@ -2052,78 +2064,122 @@ function drawPredators() {
 
 function drawQuail(x, y, size, facing, bobPhase, isChick, scared = 0) {
     ctx.save();
-    ctx.translate(x, y + Math.sin(bobPhase) * (isChick ? 0.8 : 1.2));
+    ctx.translate(x, y);
     ctx.scale(facing, 1);
 
     const s = size;
+    const bob = Math.sin(bobPhase) * 2;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
     ctx.beginPath();
-    ctx.ellipse(0, s * 0.5, s * 0.6, s * 0.15, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, s * 0.4, s * 0.7, s * 0.15, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Tail (adults only)
+    if (!isChick) {
+        ctx.fillStyle = '#4d4759';
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.45, bob - s * 0.1);
+        ctx.lineTo(-s * 0.75, bob - s * 0.15);
+        ctx.lineTo(-s * 0.7, bob + s * 0.05);
+        ctx.lineTo(-s * 0.45, bob + s * 0.1);
+        ctx.closePath();
+        ctx.fill();
+    }
 
     // Body
-    ctx.fillStyle = isChick ? '#c8b898' : '#4a3a2a';
+    const bodyR = isChick ? 200 : Math.floor(89 + scared * 51);
+    const bodyG = isChick ? 184 : 89;
+    const bodyB = isChick ? 152 : 107;
+    ctx.fillStyle = `rgb(${bodyR},${bodyG},${bodyB})`;
     ctx.beginPath();
-    ctx.ellipse(0, 0, s * 0.8, s * 0.45, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, bob, s * 0.6, s * 0.45, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    // Wing pattern (adults)
     if (!isChick) {
-        // Wing detail
-        ctx.fillStyle = '#5a4a3a';
+        ctx.fillStyle = '#736b80';
         ctx.beginPath();
-        ctx.ellipse(-s * 0.1, s * 0.05, s * 0.45, s * 0.25, 0.2, 0, Math.PI * 2);
+        ctx.ellipse(-s * 0.15, bob + s * 0.1, s * 0.35, s * 0.25, 0, 0, Math.PI * 2);
         ctx.fill();
+    }
 
-        // Belly
-        ctx.fillStyle = '#b89860';
-        ctx.beginPath();
-        ctx.ellipse(0, s * 0.15, s * 0.4, s * 0.2, 0, 0.2, Math.PI - 0.2);
-        ctx.fill();
+    // Breast
+    ctx.fillStyle = isChick ? '#d8c8a8' : '#8c8073';
+    ctx.beginPath();
+    ctx.ellipse(s * 0.2, bob + s * 0.15, s * 0.25, s * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Belly scales pattern (adults only) - the distinctive quail marking
+    if (!isChick) {
+        ctx.strokeStyle = '#9a8c7a';
+        ctx.lineWidth = 0.8;
+        for (let row = 0; row < 3; row++) {
+            for (let col = -1; col <= 1; col++) {
+                ctx.beginPath();
+                ctx.arc(
+                    s * 0.1 + col * s * 0.12,
+                    bob + s * 0.15 + row * s * 0.08,
+                    s * 0.06, 0, Math.PI
+                );
+                ctx.stroke();
+            }
+        }
     }
 
     // Head
-    ctx.fillStyle = isChick ? '#b8a888' : '#2a2a3a';
+    ctx.fillStyle = isChick ? '#b8a888' : '#29293a';
     ctx.beginPath();
-    ctx.arc(s * 0.45, -s * 0.2, s * 0.28, 0, Math.PI * 2);
+    ctx.arc(s * 0.4, bob - s * 0.25, s * 0.25, 0, Math.PI * 2);
     ctx.fill();
 
-    // Topknot (adults)
+    // Face markings - white X pattern (adults only) - KEY FEATURE
     if (!isChick) {
-        ctx.fillStyle = '#1a1a1a';
+        ctx.strokeStyle = '#f5f5f0';
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+        // First diagonal
         ctx.beginPath();
-        const wobble = scared > 0.3 ? Math.sin(time * 0.4) * 3 : 0;
-        ctx.moveTo(s * 0.38, -s * 0.4);
-        ctx.bezierCurveTo(s * 0.32 + wobble, -s * 0.75, s * 0.5 + wobble, -s * 1.1, s * 0.44, -s * 1.2);
-        ctx.bezierCurveTo(s * 0.38 + wobble, -s * 1.1, s * 0.28 + wobble, -s * 0.75, s * 0.38, -s * 0.4);
-        ctx.fill();
+        ctx.moveTo(s * 0.35, bob - s * 0.35);
+        ctx.lineTo(s * 0.55, bob - s * 0.15);
+        ctx.stroke();
+        // Second diagonal (forming X)
+        ctx.beginPath();
+        ctx.moveTo(s * 0.35, bob - s * 0.15);
+        ctx.lineTo(s * 0.55, bob - s * 0.35);
+        ctx.stroke();
     }
 
     // Eye
-    ctx.fillStyle = scared > 0.3 ? '#5a2a2a' : '#1a1a1a';
-    const eyeSize = isChick ? s * 0.07 : s * 0.05;
+    ctx.fillStyle = '#1a1a1a';
     ctx.beginPath();
-    ctx.arc(s * 0.56, -s * 0.22, eyeSize, 0, Math.PI * 2);
+    ctx.arc(s * 0.48, bob - s * 0.28, s * 0.06, 0, Math.PI * 2);
     ctx.fill();
 
-    // Eye highlight
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(s * 0.58, -s * 0.24, eyeSize * 0.4, 0, Math.PI * 2);
-    ctx.fill();
+    // Topknot plume (adults) - the iconic curved plume
+    if (!isChick) {
+        ctx.fillStyle = '#1a1a1e';
+        const plumeWave = Math.sin(bobPhase * 2) * 0.1;
+        ctx.beginPath();
+        ctx.moveTo(s * 0.35, bob - s * 0.4);
+        ctx.quadraticCurveTo(s * 0.25 + plumeWave * s, bob - s * 0.85, s * 0.30, bob - s * 0.85);
+        ctx.quadraticCurveTo(s * 0.45, bob - s * 0.75, s * 0.45, bob - s * 0.45);
+        ctx.closePath();
+        ctx.fill();
+    }
 
     // Beak
-    ctx.fillStyle = '#4a4030';
+    ctx.fillStyle = '#403832';
     ctx.beginPath();
-    ctx.moveTo(s * 0.7, -s * 0.16);
-    ctx.lineTo(s * 0.88, -s * 0.1);
-    ctx.lineTo(s * 0.7, -s * 0.04);
+    ctx.moveTo(s * 0.55, bob - s * 0.25);
+    ctx.lineTo(s * 0.75, bob - s * 0.22);
+    ctx.lineTo(s * 0.55, bob - s * 0.18);
     ctx.closePath();
     ctx.fill();
 
     // Legs
-    ctx.strokeStyle = '#5a4a3a';
+    ctx.strokeStyle = '#594a3a';
     ctx.lineWidth = isChick ? 1 : 1.5;
     ctx.lineCap = 'round';
     const legMove = Math.sin(bobPhase * 2) * 1.5;

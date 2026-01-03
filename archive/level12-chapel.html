@@ -327,36 +327,93 @@ function drawChapelExterior() {
 }
 
 function drawFallbackExterior() {
+    const W = 480, H = 320;
+
     // Sky gradient
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, 200);
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, 170);
     skyGrad.addColorStop(0, '#87CEEB');
     skyGrad.addColorStop(1, '#b0d4e8');
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, 480, 200);
+    ctx.fillRect(0, 0, W, 170);
 
     // Ground/grass
     ctx.fillStyle = '#6b8b4a';
-    ctx.fillRect(0, 200, 480, 120);
+    ctx.fillRect(0, 170, W, 150);
 
-    // Stone path (perspective - wider at bottom)
+    // Stone path/sidewalk (perspective going up on right side)
     ctx.fillStyle = '#a0a090';
     ctx.beginPath();
-    ctx.moveTo(200, 320);
-    ctx.lineTo(280, 320);
-    ctx.lineTo(255, 250);
-    ctx.lineTo(225, 250);
+    ctx.moveTo(340, 320);  // Bottom right
+    ctx.lineTo(400, 320);  // Bottom far right
+    ctx.lineTo(370, 100);  // Top (narrower)
+    ctx.lineTo(320, 105);  // Top left
     ctx.closePath();
     ctx.fill();
 
-    // Chapel shape
+    // Sidewalk stone pattern (horizontal lines)
+    ctx.strokeStyle = '#888880';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 12; i++) {
+        const t = i / 12;
+        const y = 320 - t * 220;
+        const leftX = 340 - t * 20;
+        const rightX = 400 - t * 30;
+        ctx.beginPath();
+        ctx.moveTo(leftX, y);
+        ctx.lineTo(rightX, y);
+        ctx.stroke();
+    }
+
+    // Chapel shape (on left-center)
     ctx.fillStyle = COLORS.woodDark;
     ctx.beginPath();
-    ctx.moveTo(200, 130);
-    ctx.lineTo(280, 130);
-    ctx.lineTo(300, 200);
-    ctx.lineTo(180, 200);
+    ctx.moveTo(130, 110);
+    ctx.lineTo(260, 110);
+    ctx.lineTo(275, 190);
+    ctx.lineTo(115, 190);
     ctx.closePath();
     ctx.fill();
+
+    // Chapel roof
+    ctx.fillStyle = '#403326';
+    ctx.beginPath();
+    ctx.moveTo(195, 55);   // Apex
+    ctx.lineTo(115, 115);  // Left
+    ctx.lineTo(275, 115);  // Right
+    ctx.closePath();
+    ctx.fill();
+
+    // Stained glass window preview (turquoise)
+    ctx.fillStyle = COLORS.turquoiseDark;
+    ctx.fillRect(170, 120, 45, 45);
+    // Window arch
+    ctx.beginPath();
+    ctx.arc(192, 120, 22, Math.PI, 0);
+    ctx.fill();
+
+    // Door (on right side of chapel, facing sidewalk)
+    ctx.fillStyle = '#4d3824';
+    ctx.fillRect(232, 150, 35, 40);
+
+    // Trees on left side
+    ctx.fillStyle = '#478838';
+    const trees = [55, 90];
+    for (const tx of trees) {
+        // Lower tree
+        ctx.beginPath();
+        ctx.moveTo(tx, 135);
+        ctx.lineTo(tx - 25, 195);
+        ctx.lineTo(tx + 25, 195);
+        ctx.closePath();
+        ctx.fill();
+        // Upper tree
+        ctx.beginPath();
+        ctx.moveTo(tx, 110);
+        ctx.lineTo(tx - 20, 150);
+        ctx.lineTo(tx + 20, 150);
+        ctx.closePath();
+        ctx.fill();
+    }
 }
 
 // ============================================================================
@@ -722,77 +779,115 @@ function drawStainedGlassWindow(x, y, w, h, glow, sectionsLit) {
         ctx.globalAlpha = 1;
     }
 
-    // === SECTION 3: Left yellow flame ===
+    // === SECTION 3: Left animated sun rays ===
     const sec3Alpha = sectionsLit >= 3 ? 1 : (sectionsLit >= 2 ? glow * 0.9 : 0);
     if (sec3Alpha > 0) {
         ctx.globalAlpha = sec3Alpha;
         ctx.fillStyle = sectionsLit >= 3 ? COLORS.yellowLight : COLORS.yellow;
+        ctx.strokeStyle = sectionsLit >= 3 ? COLORS.yellowLight : COLORS.yellow;
 
-        // Flame shape
-        const flame1 = [
-            {x: 55, y: 25}, {x: 65, y: 15}, {x: 75, y: 25}, {x: 80, y: 40},
-            {x: 75, y: 55}, {x: 65, y: 70}, {x: 55, y: 85}, {x: 50, y: 70},
-            {x: 45, y: 55}, {x: 50, y: 40}, {x: 55, y: 30}
-        ];
-        flame1.forEach(p => {
-            ctx.fillRect(x + p.x, y + p.y, pixelSize + 2, pixelSize + 2);
-        });
-        ctx.globalAlpha = 1;
-    }
-
-    // === SECTION 4: Right yellow flame ===
-    const sec4Alpha = sectionsLit >= 4 ? 1 : (sectionsLit >= 3 ? glow * 0.9 : 0);
-    if (sec4Alpha > 0) {
-        ctx.globalAlpha = sec4Alpha;
-        ctx.fillStyle = sectionsLit >= 4 ? COLORS.yellowLight : COLORS.yellow;
-
-        const flame2 = [
-            {x: w - 70, y: 25}, {x: w - 60, y: 15}, {x: w - 50, y: 25}, {x: w - 45, y: 40},
-            {x: w - 50, y: 55}, {x: w - 60, y: 70}, {x: w - 70, y: 85}, {x: w - 75, y: 70},
-            {x: w - 80, y: 55}, {x: w - 75, y: 40}
-        ];
-        flame2.forEach(p => {
-            ctx.fillRect(x + p.x, y + p.y, pixelSize + 2, pixelSize + 2);
-        });
-        ctx.globalAlpha = 1;
-    }
-
-    // === SECTION 5: Center wave (darker turquoise) ===
-    const sec5Alpha = sectionsLit >= 5 ? 1 : (sectionsLit >= 4 ? glow * 0.9 : 0);
-    if (sec5Alpha > 0) {
-        ctx.globalAlpha = sec5Alpha;
-        ctx.fillStyle = sectionsLit >= 5 ? COLORS.turquoise : COLORS.turquoiseDark;
-
-        for (let py = 0; py < h; py += pixelSize) {
-            const wave = Math.sin((py / h) * Math.PI * 2) * 25;
-            const waveStart = w/2 - 25 + wave;
-            const waveEnd = w/2 + 5 + wave;
-            for (let px = waveStart; px < waveEnd; px += pixelSize) {
-                ctx.fillRect(x + px, y + py, pixelSize - 1, pixelSize - 1);
-            }
+        const sunX = w * 0.25;
+        const sunY = h * 0.35;
+        // Sun circle
+        ctx.beginPath();
+        ctx.arc(x + sunX, y + sunY, 14, 0, Math.PI * 2);
+        ctx.fill();
+        // Animated sun rays
+        ctx.lineWidth = 3;
+        for (let i = 0; i < 8; i++) {
+            const angle = i * Math.PI / 4;
+            const rayLen = 20 + Math.sin(stateTimer * 0.05 + i) * 4;
+            ctx.beginPath();
+            ctx.moveTo(x + sunX + Math.cos(angle) * 16, y + sunY + Math.sin(angle) * 16);
+            ctx.lineTo(x + sunX + Math.cos(angle) * rayLen, y + sunY + Math.sin(angle) * rayLen);
+            ctx.stroke();
         }
         ctx.globalAlpha = 1;
     }
 
-    // === SECTION 6: Pink/red flowers in center ===
+    // === SECTION 4: Right animated sun rays ===
+    const sec4Alpha = sectionsLit >= 4 ? 1 : (sectionsLit >= 3 ? glow * 0.9 : 0);
+    if (sec4Alpha > 0) {
+        ctx.globalAlpha = sec4Alpha;
+        ctx.fillStyle = sectionsLit >= 4 ? COLORS.yellowLight : COLORS.yellow;
+        ctx.strokeStyle = sectionsLit >= 4 ? COLORS.yellowLight : COLORS.yellow;
+
+        const sunX = w * 0.75;
+        const sunY = h * 0.35;
+        // Sun circle
+        ctx.beginPath();
+        ctx.arc(x + sunX, y + sunY, 14, 0, Math.PI * 2);
+        ctx.fill();
+        // Animated sun rays (phase offset)
+        ctx.lineWidth = 3;
+        for (let i = 0; i < 8; i++) {
+            const angle = i * Math.PI / 4;
+            const rayLen = 20 + Math.sin(stateTimer * 0.05 + i + 2) * 4;
+            ctx.beginPath();
+            ctx.moveTo(x + sunX + Math.cos(angle) * 16, y + sunY + Math.sin(angle) * 16);
+            ctx.lineTo(x + sunX + Math.cos(angle) * rayLen, y + sunY + Math.sin(angle) * rayLen);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // === SECTION 5: Dove/peace symbol (flowing curves) ===
+    const sec5Alpha = sectionsLit >= 5 ? 1 : (sectionsLit >= 4 ? glow * 0.9 : 0);
+    if (sec5Alpha > 0) {
+        ctx.globalAlpha = sec5Alpha;
+        ctx.fillStyle = sectionsLit >= 5 ? COLORS.turquoiseLight : COLORS.turquoise;
+        ctx.strokeStyle = sectionsLit >= 5 ? COLORS.turquoiseLight : COLORS.turquoise;
+
+        const doveX = x + w / 2;
+        const doveY = y + h / 2 + 15;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+
+        // Left wing curve
+        ctx.beginPath();
+        ctx.arc(doveX - 18, doveY - 8, 20, -Math.PI * 0.7, Math.PI * 0.2, false);
+        ctx.stroke();
+
+        // Right wing curve
+        ctx.beginPath();
+        ctx.arc(doveX + 18, doveY - 8, 20, Math.PI * 0.8, Math.PI * 1.7, false);
+        ctx.stroke();
+
+        // Body ellipse
+        ctx.beginPath();
+        ctx.ellipse(doveX, doveY, 12, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = 1;
+    }
+
+    // === SECTION 6: Pink 6-petal flowers ===
     const sec6Alpha = sectionsLit >= 6 ? 1 : (sectionsLit >= 5 ? glow : 0);
     if (sec6Alpha > 0) {
         ctx.globalAlpha = sec6Alpha;
         ctx.fillStyle = sectionsLit >= 6 ? COLORS.pinkLight : COLORS.pink;
 
-        // Three flower clusters
-        for (let i = 0; i < 3; i++) {
-            const fx = w/2 - 25 + i * 25;
-            const fy = h/2 - 15 + Math.sin(i * 1.5) * 20;
+        // Three flower clusters with 6 petals each
+        const flowerCenters = [
+            {x: w/2 - 35, y: h * 0.7},
+            {x: w/2, y: h * 0.7 - 8},
+            {x: w/2 + 35, y: h * 0.7}
+        ];
 
-            // Flower center
-            ctx.fillRect(x + fx, y + fy, pixelSize * 2, pixelSize * 2);
-
-            // Petals
-            ctx.fillRect(x + fx - pixelSize, y + fy + pixelSize/2, pixelSize, pixelSize);
-            ctx.fillRect(x + fx + pixelSize * 2, y + fy + pixelSize/2, pixelSize, pixelSize);
-            ctx.fillRect(x + fx + pixelSize/2, y + fy - pixelSize, pixelSize, pixelSize);
-            ctx.fillRect(x + fx + pixelSize/2, y + fy + pixelSize * 2, pixelSize, pixelSize);
+        for (const fc of flowerCenters) {
+            // 6 petals arranged in a circle
+            for (let p = 0; p < 6; p++) {
+                const angle = p * Math.PI / 3;
+                ctx.beginPath();
+                ctx.arc(x + fc.x + Math.cos(angle) * 8, y + fc.y + Math.sin(angle) * 8, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Yellow center
+            ctx.fillStyle = COLORS.yellowLight;
+            ctx.beginPath();
+            ctx.arc(x + fc.x, y + fc.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = sectionsLit >= 6 ? COLORS.pinkLight : COLORS.pink;
         }
         ctx.globalAlpha = 1;
     }
@@ -1203,8 +1298,14 @@ function render() {
 document.addEventListener('keydown', (e) => {
     const isActionKey = e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyA';
 
-    // ESC returns to menu (B is used for breathing in this level)
+    // ESC or B returns to menu (except during meditation where B is exhale)
     if (e.code === 'Escape') {
+        window.location.href = 'level0-menu.html';
+        return;
+    }
+
+    // B button returns to menu (except during meditation where it's used for breathing)
+    if (e.code === 'KeyB' && state !== GameState.MEDITATION) {
         window.location.href = 'level0-menu.html';
         return;
     }
