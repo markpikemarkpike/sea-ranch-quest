@@ -1399,44 +1399,8 @@ const SeaRanchStyle = {
                     flex-shrink: 0 !important;
                 }
             }
-
-            /* Rotate prompt for portrait */
-            .rotate-prompt {
-                display: none;
-                position: fixed;
-                bottom: 200px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(26,26,26,0.9);
-                color: #f5f5f0;
-                padding: 8px 16px;
-                border-radius: 20px;
-                text-align: center;
-                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                font-size: 11px;
-                z-index: 10000;
-                white-space: nowrap;
-            }
-
-            @media (orientation: portrait) and (pointer: coarse) {
-                .rotate-prompt {
-                    display: block;
-                }
-            }
-
-            @media (orientation: landscape) {
-                .rotate-prompt {
-                    display: none !important;
-                }
-            }
         `;
         document.head.appendChild(style);
-
-        // Add rotate prompt
-        const rotatePrompt = document.createElement('div');
-        rotatePrompt.className = 'rotate-prompt';
-        rotatePrompt.textContent = '📱 Rotate for best experience';
-        document.body.appendChild(rotatePrompt);
 
         // JavaScript-based scaling for proper fit
         const self = this;
@@ -1597,18 +1561,27 @@ const SeaRanchStyle = {
         // Inject CSS
         const style = document.createElement('style');
         style.textContent = `
+            /* Prevent any horizontal overflow on mobile */
+            html, body {
+                max-width: 100vw;
+                overflow-x: hidden;
+            }
+
             .touch-controls {
                 position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
+                width: 100%;
+                max-width: 100vw;
                 height: 180px;
                 pointer-events: none;
                 z-index: 9999;
                 display: none;  /* Hidden by default on desktop */
+                flex-direction: row;
                 justify-content: space-between;
                 align-items: flex-end;
-                padding: 20px;
+                padding: 10px;
                 box-sizing: border-box;
             }
 
@@ -1790,6 +1763,26 @@ const SeaRanchStyle = {
             .arrow-icon {
                 font-size: 20px;
                 line-height: 1;
+            }
+
+            /* Narrow screens - reduce sizes */
+            @media (max-width: 400px) {
+                .touch-controls {
+                    padding: 5px;
+                }
+                .touch-dpad {
+                    width: 110px;
+                    height: 110px;
+                }
+                .touch-dpad .touch-btn {
+                    width: 34px;
+                    height: 34px;
+                }
+                .touch-action-btn {
+                    width: 46px;
+                    height: 46px;
+                    font-size: 16px;
+                }
             }
 
             /* Hide on landscape orientation with small height */

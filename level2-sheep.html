@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sea Ranch Quest - Sheep Herding</title>
-    <script src="sea-ranch-style.js"></script>
+    <script src="sea-ranch-style.js?v=4"></script>
     <style>
         :root {
             --black: #1a1a1a;
@@ -29,14 +29,16 @@
         }
 
         html, body {
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background: #1a1a1a;
             display: flex;
             justify-content: center;
             align-items: center;
+            position: fixed;
+            inset: 0;
         }
 
         #game-container {

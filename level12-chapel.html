@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script src="sea-ranch-style.js?v=4"></script>
 <title>Sea Ranch Quest - Level 12: Chapel Meditation</title>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,7 +12,7 @@ html, body {
     background: #1a1a1a;
     display: flex; justify-content: center; align-items: center;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    position: fixed;
+    position: fixed; inset: 0;
 }
 #game-container { width: 640px; height: 480px; position: relative; overflow: hidden; background: #e8e4dc; }
 #gameCanvas { display: block; width: 640px; height: 480px; }
@@ -179,58 +180,6 @@ html, body {
     letter-spacing: 1px;
 }
 
-/* Touch Controls - hidden on desktop, shown on mobile */
-#touchControls {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 180px;
-    padding: 20px;
-    display: none;
-    justify-content: space-between;
-    align-items: flex-end;
-    z-index: 9999;
-    pointer-events: none;
-}
-@media (pointer: coarse) {
-    #touchControls { display: flex; }
-}
-.dpad {
-    display: grid;
-    grid-template-columns: repeat(3, 40px);
-    grid-template-rows: repeat(3, 40px);
-    gap: 2px;
-    pointer-events: auto;
-}
-.dpad-btn {
-    background: rgba(0,0,0,0.3);
-    border: 2px solid rgba(255,255,255,0.4);
-    border-radius: 6px;
-    color: white;
-    font-size: 18px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.dpad-btn:active { background: rgba(255,255,255,0.4); }
-.action-buttons {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    pointer-events: auto;
-}
-.action-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.5);
-    background: rgba(0,0,0,0.3);
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
-}
-.action-btn:active { background: rgba(255,255,255,0.4); }
 </style>
 </head>
 <body>
@@ -246,24 +195,6 @@ html, body {
         <div class="level-subtitle">A peaceful meditation</div>
     </div>
     <div class="continue-hint">A to start · B to menu</div>
-</div>
-<div id="touchControls">
-    <div class="dpad">
-        <div></div>
-        <button class="dpad-btn" data-key="up">&#9650;</button>
-        <div></div>
-        <button class="dpad-btn" data-key="left">&#9664;</button>
-        <div></div>
-        <button class="dpad-btn" data-key="right">&#9654;</button>
-        <div></div>
-        <button class="dpad-btn" data-key="down">&#9660;</button>
-        <div></div>
-    </div>
-    <div class="action-buttons">
-        <button class="action-btn" data-key="b">B</button>
-        <button class="action-btn" data-key="y">Y</button>
-        <button class="action-btn" data-key="a">A</button>
-    </div>
 </div>
 </div>
 <script>
@@ -1393,38 +1324,8 @@ html, body {
     loadImages();
     gameLoop();
 
-    // Mobile scaling
-    function scaleGame() {
-        var container = document.getElementById('game-container');
-        var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-        var isSmall = window.innerWidth <= 768;
-        var isMobileUA = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (!isTouch && !isSmall && !isMobileUA) {
-            container.style.transform = '';
-            container.style.webkitTransform = '';
-            container.style.marginTop = '';
-            return;
-        }
-        var gameWidth = 640, gameHeight = 480, controlsHeight = 180, padding = 10;
-        var vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-        var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        var availableHeight = vh - controlsHeight - padding;
-        var scaleX = (vw - padding * 2) / gameWidth;
-        var scaleY = availableHeight / gameHeight;
-        var scale = Math.min(scaleX, scaleY, 1);
-        var t = 'scale(' + scale + ')';
-        container.style.transform = t;
-        container.style.webkitTransform = t;
-        container.style.transformOrigin = 'top center';
-        container.style.webkitTransformOrigin = 'top center';
-        container.style.marginTop = Math.max(padding, (availableHeight - gameHeight * scale) / 2) + 'px';
-    }
-    window.addEventListener('resize', scaleGame);
-    window.addEventListener('orientationchange', function() { setTimeout(scaleGame, 150); });
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', scaleGame);
-    scaleGame();
-    setTimeout(scaleGame, 100);
-    setTimeout(scaleGame, 500);
+    // Use shared responsive scaling and touch controls
+    SeaRanchStyle.setupTouchControls();
     </script>
 </body>
 </html>
