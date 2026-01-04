@@ -1577,153 +1577,164 @@ const SeaRanchStyle = {
                 height: 180px;
                 pointer-events: none;
                 z-index: 9999;
-                display: none;  /* Hidden by default on desktop */
+                display: none;
                 flex-direction: row;
                 justify-content: space-between;
                 align-items: flex-end;
-                padding: 10px;
+                padding: 10px 15px;
                 box-sizing: border-box;
             }
 
-            /* Show touch controls only on mobile/touch devices */
             @media (max-width: 768px) {
-                .touch-controls {
-                    display: flex;
-                }
+                .touch-controls { display: flex; }
             }
             @media (pointer: coarse) {
-                .touch-controls {
-                    display: flex;
-                }
+                .touch-controls { display: flex; }
             }
 
-            .touch-dpad {
+            /* ═══ JOYSTICK - Sea Ranch Style ═══ */
+            .touch-joystick {
                 position: relative;
-                width: 140px;
-                height: 140px;
+                width: 130px;
+                height: 130px;
                 pointer-events: auto;
+                touch-action: none;
             }
 
-            .touch-btn {
+            .joystick-base {
                 position: absolute;
-                background: rgba(245, 245, 240, 0.85);
-                border: 3px solid #1a1a1a;
-                border-radius: 8px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                font-weight: bold;
-                font-size: 18px;
-                color: #1a1a1a;
-                user-select: none;
-                -webkit-user-select: none;
-                touch-action: manipulation;
-                transition: transform 0.05s, background 0.05s;
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: linear-gradient(145deg, #f5f5f0 0%, #e8e4dc 50%, #d4c4a8 100%);
+                border: 4px solid #1a1a1a;
+                box-shadow:
+                    inset 0 2px 8px rgba(255,255,255,0.6),
+                    inset 0 -2px 6px rgba(139,115,85,0.3),
+                    3px 3px 0 #1a1a1a;
+                box-sizing: border-box;
             }
 
-            .touch-btn.active {
-                background: #2E5DA8;
-                color: #f5f5f0;
-                transform: scale(0.95);
+            /* Subtle wood grain texture */
+            .joystick-base::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: 50%;
+                background: repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(139, 115, 85, 0.06) 3px,
+                    rgba(139, 115, 85, 0.06) 4px
+                );
+                pointer-events: none;
             }
 
-            /* D-pad buttons */
-            .touch-dpad .touch-btn {
-                width: 44px;
-                height: 44px;
-            }
-
-            .touch-dpad .touch-up {
-                top: 0;
-                left: 50%;
-                transform: translateX(-50%);
-            }
-            .touch-dpad .touch-up.active {
-                transform: translateX(-50%) scale(0.95);
-            }
-
-            .touch-dpad .touch-down {
-                bottom: 0;
-                left: 50%;
-                transform: translateX(-50%);
-            }
-            .touch-dpad .touch-down.active {
-                transform: translateX(-50%) scale(0.95);
-            }
-
-            .touch-dpad .touch-left {
-                left: 0;
-                top: 50%;
-                transform: translateY(-50%);
-            }
-            .touch-dpad .touch-left.active {
-                transform: translateY(-50%) scale(0.95);
-            }
-
-            .touch-dpad .touch-right {
-                right: 0;
-                top: 50%;
-                transform: translateY(-50%);
-            }
-            .touch-dpad .touch-right.active {
-                transform: translateY(-50%) scale(0.95);
-            }
-
-            /* Center of d-pad (optional visual) */
-            .touch-dpad::after {
+            /* Direction indicators */
+            .joystick-base::after {
                 content: '';
                 position: absolute;
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                width: 30px;
-                height: 30px;
-                background: rgba(139, 115, 85, 0.3);
+                width: 70%;
+                height: 70%;
                 border-radius: 50%;
+                border: 2px dashed rgba(139, 115, 85, 0.25);
                 pointer-events: none;
             }
 
-            /* Action buttons */
+            .joystick-thumb {
+                position: absolute;
+                width: 56px;
+                height: 56px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                border-radius: 50%;
+                background: linear-gradient(145deg, #8b7355 0%, #6b5545 100%);
+                border: 3px solid #1a1a1a;
+                box-shadow:
+                    inset 0 2px 4px rgba(255,255,255,0.2),
+                    2px 2px 0 #1a1a1a;
+                transition: transform 0.05s ease-out;
+                pointer-events: none;
+            }
+
+            .joystick-thumb.active {
+                background: linear-gradient(145deg, #2E5DA8 0%, #1e4d88 100%);
+            }
+
+            /* Direction arrow hints on the base */
+            .joystick-arrows {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+            }
+            .joystick-arrow {
+                position: absolute;
+                font-size: 14px;
+                color: rgba(139, 115, 85, 0.4);
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            }
+            .joystick-arrow.up { top: 8px; left: 50%; transform: translateX(-50%); }
+            .joystick-arrow.down { bottom: 8px; left: 50%; transform: translateX(-50%); }
+            .joystick-arrow.left { left: 10px; top: 50%; transform: translateY(-50%); }
+            .joystick-arrow.right { right: 10px; top: 50%; transform: translateY(-50%); }
+
+            /* ═══ ACTION BUTTONS - Sea Ranch Style ═══ */
             .touch-actions {
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 12px;
                 align-items: flex-end;
                 pointer-events: auto;
             }
 
             .touch-actions-row {
                 display: flex;
-                gap: 10px;
+                gap: 12px;
+            }
+
+            .touch-btn {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-weight: bold;
+                user-select: none;
+                -webkit-user-select: none;
+                touch-action: manipulation;
             }
 
             .touch-action-btn {
-                position: relative;
-                width: 56px;
-                height: 56px;
+                width: 64px;
+                height: 64px;
                 border-radius: 50%;
-                font-size: 20px;
+                font-size: 22px;
+                border: 4px solid #1a1a1a;
+                box-shadow: 3px 3px 0 #1a1a1a;
+                transition: transform 0.05s, box-shadow 0.05s;
             }
 
             .touch-btn-a {
-                background: rgba(196, 30, 58, 0.9);
+                background: linear-gradient(145deg, #C41E3A 0%, #a01830 100%);
                 color: #f5f5f0;
-                border-color: #a01830;
             }
-            .touch-btn-a.active {
-                background: #C41E3A;
-                transform: scale(0.92);
+            .touch-btn-a:active, .touch-btn-a.active {
+                transform: translate(2px, 2px);
+                box-shadow: 1px 1px 0 #1a1a1a;
             }
 
             .touch-btn-b {
-                background: rgba(46, 93, 168, 0.9);
+                background: linear-gradient(145deg, #2E5DA8 0%, #1e4d88 100%);
                 color: #f5f5f0;
-                border-color: #1e4d88;
             }
-            .touch-btn-b.active {
-                background: #2E5DA8;
-                transform: scale(0.92);
+            .touch-btn-b:active, .touch-btn-b.active {
+                transform: translate(2px, 2px);
+                box-shadow: 1px 1px 0 #1a1a1a;
             }
 
             /* Menu button */
@@ -1734,78 +1745,56 @@ const SeaRanchStyle = {
                 width: 44px;
                 height: 44px;
                 border-radius: 8px;
-                font-size: 12px;
+                font-size: 11px;
                 pointer-events: auto;
                 z-index: 9999;
-                display: none;  /* Hidden by default on desktop */
+                display: none;
+                background: linear-gradient(145deg, #f5f5f0 0%, #d4c4a8 100%);
+                border: 3px solid #1a1a1a;
+                box-shadow: 2px 2px 0 #1a1a1a;
+                color: #1a1a1a;
+            }
+            .touch-menu-btn:active {
+                transform: translate(1px, 1px);
+                box-shadow: 1px 1px 0 #1a1a1a;
             }
 
-            /* Show menu button only on mobile/touch devices */
             @media (max-width: 768px) {
-                .touch-menu-btn {
-                    display: flex;
-                }
+                .touch-menu-btn { display: flex; }
             }
             @media (pointer: coarse) {
-                .touch-menu-btn {
-                    display: flex;
-                }
+                .touch-menu-btn { display: flex; }
             }
 
-            /* Rotate button (for driftwood level) */
+            /* Rotate button */
             .touch-rotate-btn {
-                width: 44px;
-                height: 44px;
-                border-radius: 8px;
-                font-size: 14px;
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                font-size: 16px;
+                background: linear-gradient(145deg, #7A9B6D 0%, #5a7b4d 100%);
+                color: #f5f5f0;
+                border: 3px solid #1a1a1a;
+                box-shadow: 2px 2px 0 #1a1a1a;
+            }
+            .touch-rotate-btn:active {
+                transform: translate(1px, 1px);
+                box-shadow: 1px 1px 0 #1a1a1a;
             }
 
-            /* Arrows for d-pad */
-            .arrow-icon {
-                font-size: 20px;
-                line-height: 1;
-            }
-
-            /* Narrow screens - reduce sizes */
+            /* Responsive adjustments */
             @media (max-width: 400px) {
-                .touch-controls {
-                    padding: 5px;
-                }
-                .touch-dpad {
-                    width: 110px;
-                    height: 110px;
-                }
-                .touch-dpad .touch-btn {
-                    width: 34px;
-                    height: 34px;
-                }
-                .touch-action-btn {
-                    width: 46px;
-                    height: 46px;
-                    font-size: 16px;
-                }
+                .touch-controls { padding: 8px 10px; }
+                .touch-joystick { width: 110px; height: 110px; }
+                .joystick-thumb { width: 46px; height: 46px; }
+                .touch-action-btn { width: 54px; height: 54px; font-size: 18px; }
             }
 
-            /* Hide on landscape orientation with small height */
             @media (max-height: 400px) and (orientation: landscape) {
-                .touch-controls {
-                    height: 120px;
-                    padding: 10px;
-                }
-                .touch-dpad {
-                    width: 100px;
-                    height: 100px;
-                }
-                .touch-dpad .touch-btn {
-                    width: 32px;
-                    height: 32px;
-                    font-size: 14px;
-                }
-                .touch-action-btn {
-                    width: 44px;
-                    height: 44px;
-                    font-size: 16px;
-                }
+                .touch-controls { height: 130px; }
+                .touch-joystick { width: 100px; height: 100px; }
+                .joystick-thumb { width: 40px; height: 40px; }
+                .touch-action-btn { width: 50px; height: 50px; font-size: 16px; }
             }
         `;
         document.head.appendChild(style);
@@ -1814,47 +1803,137 @@ const SeaRanchStyle = {
         const container = document.createElement('div');
         container.className = 'touch-controls';
 
-        // D-pad
+        // Joystick
         if (showDpad) {
-            const dpad = document.createElement('div');
-            dpad.className = 'touch-dpad';
+            const joystick = document.createElement('div');
+            joystick.className = 'touch-joystick';
 
-            const directions = [
-                { key: 'ArrowUp', cls: 'touch-up', label: '\u25B2' },
-                { key: 'ArrowDown', cls: 'touch-down', label: '\u25BC' },
-                { key: 'ArrowLeft', cls: 'touch-left', label: '\u25C0' },
-                { key: 'ArrowRight', cls: 'touch-right', label: '\u25B6' }
-            ];
+            const base = document.createElement('div');
+            base.className = 'joystick-base';
 
-            directions.forEach(({ key, cls, label }) => {
-                const btn = document.createElement('div');
-                btn.className = `touch-btn ${cls}`;
-
-                const arrowSpan = document.createElement('span');
-                arrowSpan.className = 'arrow-icon';
-                arrowSpan.textContent = label;
-                btn.appendChild(arrowSpan);
-
-                btn.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    this._handleTouchStart(key, btn);
-                }, { passive: false });
-
-                btn.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    this._handleTouchEnd(key, btn);
-                }, { passive: false });
-
-                btn.addEventListener('touchcancel', (e) => {
-                    this._handleTouchEnd(key, btn);
-                });
-
-                dpad.appendChild(btn);
+            // Direction arrow hints
+            const arrows = document.createElement('div');
+            arrows.className = 'joystick-arrows';
+            ['up', 'down', 'left', 'right'].forEach(dir => {
+                const arrow = document.createElement('div');
+                arrow.className = `joystick-arrow ${dir}`;
+                arrow.textContent = dir === 'up' ? '▲' : dir === 'down' ? '▼' : dir === 'left' ? '◀' : '▶';
+                arrows.appendChild(arrow);
             });
+            base.appendChild(arrows);
 
-            container.appendChild(dpad);
+            const thumb = document.createElement('div');
+            thumb.className = 'joystick-thumb';
+
+            joystick.appendChild(base);
+            joystick.appendChild(thumb);
+
+            // Joystick state
+            let joystickActive = false;
+            let joystickCenter = { x: 0, y: 0 };
+            let currentDirections = new Set();
+            const maxDistance = 35;
+
+            const updateJoystick = (touchX, touchY) => {
+                const rect = joystick.getBoundingClientRect();
+                joystickCenter = {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+
+                let dx = touchX - joystickCenter.x;
+                let dy = touchY - joystickCenter.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Clamp to max distance
+                if (distance > maxDistance) {
+                    dx = (dx / distance) * maxDistance;
+                    dy = (dy / distance) * maxDistance;
+                }
+
+                // Move thumb
+                thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+                // Calculate direction (8-way)
+                const newDirections = new Set();
+                const deadzone = 15;
+
+                if (distance > deadzone) {
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+                    // 8-way direction detection with 45-degree sectors
+                    if (angle > -67.5 && angle <= -22.5) {
+                        newDirections.add('ArrowUp');
+                        newDirections.add('ArrowRight');
+                    } else if (angle > -22.5 && angle <= 22.5) {
+                        newDirections.add('ArrowRight');
+                    } else if (angle > 22.5 && angle <= 67.5) {
+                        newDirections.add('ArrowDown');
+                        newDirections.add('ArrowRight');
+                    } else if (angle > 67.5 && angle <= 112.5) {
+                        newDirections.add('ArrowDown');
+                    } else if (angle > 112.5 && angle <= 157.5) {
+                        newDirections.add('ArrowDown');
+                        newDirections.add('ArrowLeft');
+                    } else if (angle > 157.5 || angle <= -157.5) {
+                        newDirections.add('ArrowLeft');
+                    } else if (angle > -157.5 && angle <= -112.5) {
+                        newDirections.add('ArrowUp');
+                        newDirections.add('ArrowLeft');
+                    } else if (angle > -112.5 && angle <= -67.5) {
+                        newDirections.add('ArrowUp');
+                    }
+                }
+
+                // Fire key events for direction changes
+                currentDirections.forEach(dir => {
+                    if (!newDirections.has(dir)) {
+                        this._dispatchKey(dir, 'keyup');
+                    }
+                });
+                newDirections.forEach(dir => {
+                    if (!currentDirections.has(dir)) {
+                        this._dispatchKey(dir, 'keydown');
+                    }
+                });
+                currentDirections = newDirections;
+            };
+
+            const resetJoystick = () => {
+                thumb.style.transform = 'translate(-50%, -50%)';
+                thumb.classList.remove('active');
+                currentDirections.forEach(dir => {
+                    this._dispatchKey(dir, 'keyup');
+                });
+                currentDirections = new Set();
+                joystickActive = false;
+            };
+
+            joystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                thumb.classList.add('active');
+                const touch = e.touches[0];
+                updateJoystick(touch.clientX, touch.clientY);
+                if (navigator.vibrate) navigator.vibrate(10);
+            }, { passive: false });
+
+            joystick.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!joystickActive) return;
+                const touch = e.touches[0];
+                updateJoystick(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            joystick.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                resetJoystick();
+            }, { passive: false });
+
+            joystick.addEventListener('touchcancel', resetJoystick);
+
+            container.appendChild(joystick);
         } else {
-            // Empty spacer
             container.appendChild(document.createElement('div'));
         }
 
