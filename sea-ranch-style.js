@@ -1496,9 +1496,17 @@ const SeaRanchStyle = {
      * Dispatch a synthetic keyboard event
      */
     _dispatchKey(key, type) {
+        // Map key to correct code value
+        let code;
+        if (key === ' ') code = 'Space';
+        else if (key === 'Enter') code = 'Enter';
+        else if (key === 'Escape') code = 'Escape';
+        else if (key.startsWith('Arrow')) code = key;  // ArrowUp, ArrowDown, etc.
+        else code = `Key${key.toUpperCase()}`;
+
         const event = new KeyboardEvent(type, {
             key: key,
-            code: key === ' ' ? 'Space' : `Key${key.toUpperCase()}`,
+            code: code,
             bubbles: true,
             cancelable: true
         });

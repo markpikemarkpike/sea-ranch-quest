@@ -268,13 +268,13 @@
         // Urchin spawning
         let urchinSpawnTimer = 0;
 
-        // Gentle ocean currents - subtle ambience, otter should feel in control
+        // Gentle ocean currents - reduced strength so otter feels in control with joystick
         const currents = [
             {
                 // Upper left - flows right and down
                 dirX: 0.6,
                 dirY: 0.5,
-                strength: 0.006,
+                strength: 0.003,
                 zoneX: 133,
                 zoneY: 120
             },
@@ -282,7 +282,7 @@
                 // Upper right - flows left
                 dirX: -0.7,
                 dirY: 0.3,
-                strength: 0.005,
+                strength: 0.003,
                 zoneX: 533,
                 zoneY: 150
             },
@@ -290,7 +290,7 @@
                 // Center left - flows down and right
                 dirX: 0.4,
                 dirY: 0.6,
-                strength: 0.004,
+                strength: 0.0025,
                 zoneX: 107,
                 zoneY: 270
             },
@@ -298,7 +298,7 @@
                 // Center - swirling, flows up and left
                 dirX: -0.5,
                 dirY: -0.5,
-                strength: 0.004,
+                strength: 0.0025,
                 zoneX: 320,
                 zoneY: 240
             },
@@ -306,7 +306,7 @@
                 // Center right - flows down
                 dirX: 0.3,
                 dirY: 0.7,
-                strength: 0.004,
+                strength: 0.0025,
                 zoneX: 507,
                 zoneY: 270
             },
@@ -314,7 +314,7 @@
                 // Bottom left - flows right
                 dirX: 0.8,
                 dirY: -0.2,
-                strength: 0.005,
+                strength: 0.003,
                 zoneX: 160,
                 zoneY: 390
             },
@@ -322,7 +322,7 @@
                 // Bottom right - flows left and up
                 dirX: -0.6,
                 dirY: -0.4,
-                strength: 0.004,
+                strength: 0.0025,
                 zoneX: 507,
                 zoneY: 390
             }
@@ -575,9 +575,9 @@
             if (gameState !== 'playing') return;
 
             // Otter movement - graceful and deliberate, not too fast
-            const accel = 0.18;
-            const maxSpeed = 2.4;
-            const friction = 0.95; // Smooth glide
+            const accel = 0.28;      // Snappier response for joystick
+            const maxSpeed = 2.8;    // Slightly faster top speed
+            const friction = 0.88;   // Tighter control, less floaty
 
             if (keys['ArrowUp'] || keys['w'] || keys['W']) otter.vy -= accel;
             if (keys['ArrowDown'] || keys['s'] || keys['S']) otter.vy += accel;

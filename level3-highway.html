@@ -577,7 +577,7 @@
             }
 
             // Steering - very responsive for dodging hazards
-            const steerPower = 8.0;  // High acceleration
+            const steerPower = 4.5;  // Balanced for joystick control
             if (keys.left) playerVelX -= steerPower * dt;
             if (keys.right) playerVelX += steerPower * dt;
 
