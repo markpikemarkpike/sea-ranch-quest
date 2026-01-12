@@ -1495,8 +1495,25 @@ function render() {
     ctx.restore();
 }
 
-function gameLoop() {
-    update();
+// Delta time for consistent speed
+let lastFrameTime = 0;
+let frameAccumulator = 0;
+const FIXED_DT = 1000 / 60; // 60fps target
+
+function gameLoop(currentTime) {
+    if (!lastFrameTime) lastFrameTime = currentTime;
+    const deltaTime = currentTime - lastFrameTime;
+    lastFrameTime = currentTime;
+    
+    frameAccumulator += deltaTime;
+    const maxUpdates = 5;
+    let updates = 0;
+    while (frameAccumulator >= FIXED_DT && updates < maxUpdates) {
+        update();
+        frameAccumulator -= FIXED_DT;
+        updates++;
+    }
+    
     render();
     requestAnimationFrame(gameLoop);
 }
@@ -1576,7 +1593,7 @@ storeImage.onload = () => {
 storeImage.src = STORE_IMAGE;
 
 // Start game loop
-gameLoop();
+requestAnimationFrame(gameLoop);
 
 // Use shared responsive scaling and touch controls
 SeaRanchStyle.setupTouchControls();

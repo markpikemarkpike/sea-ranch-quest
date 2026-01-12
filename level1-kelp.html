@@ -1134,8 +1134,20 @@
             SeaRanchStyle.drawLoseScreen(ctx, 'URCHIN BARREN');
         }
 
-        function gameLoop() {
-            time++;
+        // Delta time for consistent speed
+        let lastFrameTime = 0;
+        let frameAccumulator = 0;
+        const FIXED_DT = 1000 / 60;
+
+        function gameLoop(currentTime) {
+            if (!lastFrameTime) lastFrameTime = currentTime;
+            const deltaTime = currentTime - lastFrameTime;
+            lastFrameTime = currentTime;
+            
+            frameAccumulator += deltaTime;
+            if (frameAccumulator >= FIXED_DT) {
+                time++;
+                frameAccumulator -= FIXED_DT;
 
             if (gameState === 'title') {
                 drawTitle();
@@ -1166,13 +1178,14 @@
             if (gameState !== 'title') {
                 SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
             }
+            }
 
             requestAnimationFrame(gameLoop);
         }
 
         generateRocks();
         SeaRanchStyle.setupTouchControls();
-        gameLoop();
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>

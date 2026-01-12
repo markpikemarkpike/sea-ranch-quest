@@ -1619,9 +1619,22 @@
             ctx.textAlign = 'left';
         }
 
-        function gameLoop() {
-            time++;
-            update();
+        // Delta time for consistent speed
+        let lastFrameTime = 0;
+        let frameAccumulator = 0;
+        const FIXED_DT = 1000 / 60;
+
+        function gameLoop(currentTime) {
+            if (!lastFrameTime) lastFrameTime = currentTime;
+            const deltaTime = currentTime - lastFrameTime;
+            lastFrameTime = currentTime;
+            
+            frameAccumulator += deltaTime;
+            while (frameAccumulator >= FIXED_DT) {
+                time++;
+                update();
+                frameAccumulator -= FIXED_DT;
+            }
 
             if (gameState === 'title') {
                 drawTitle();
@@ -1653,7 +1666,7 @@
         }
 
         SeaRanchStyle.setupTouchControls();
-        gameLoop();
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>

@@ -1713,7 +1713,20 @@
         }
 
         // Main game loop
-        function gameLoop() {
+        // Delta time for consistent speed
+        let lastFrameTime = 0;
+        let frameAccumulator = 0;
+        const FIXED_DT = 1000 / 60;
+
+        function gameLoop(currentTime) {
+            if (!lastFrameTime) lastFrameTime = currentTime;
+            const deltaTime = currentTime - lastFrameTime;
+            lastFrameTime = currentTime;
+            frameAccumulator += deltaTime;
+            
+            // Only update at fixed rate
+            while (frameAccumulator >= FIXED_DT) {
+                frameAccumulator -= FIXED_DT;
             // Clear (scaled for 640x480)
             ctx.fillStyle = COLORS.black;
             ctx.fillRect(0, 0, 640, 480);
@@ -1767,12 +1780,13 @@
                 SeaRanchStyle.applyWeatheredEffect(ctx, { grainOpacity: 0.06, vignetteIntensity: 0.15 });
             }
 
+            }
             requestAnimationFrame(gameLoop);
         }
 
         // Start
         SeaRanchStyle.setupTouchControls();
-        gameLoop();
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
